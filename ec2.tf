@@ -1,7 +1,7 @@
 resource "aws_instance" "bluecore_dev" {
   ami                         = "ami-0892d3c7ee96c0bf7"
   instance_type               = "m7i-flex.2xlarge"
-  subnet_id                   = aws_subnet.bluecore-dev.id
+  subnet_id                   = aws_subnet.bluecore-dev-public-3.id
   vpc_security_group_ids      = [aws_security_group.bc_dev_sg.id, aws_security_group.bc_dev_ui_sg.id]
   associate_public_ip_address = "true"
   key_name                    = "bc-dev"
@@ -57,6 +57,7 @@ resource "aws_security_group" "bc_dev_ui_sg" {
     from_port   = 80
     to_port     = 80
     protocol    = "TCP"
+# Should limit this access to aws
     cidr_blocks = ["0.0.0.0/0"]
   }
 

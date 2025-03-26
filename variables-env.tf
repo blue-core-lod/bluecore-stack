@@ -6,7 +6,3 @@ variable "users_account_id" {
 variable "profile" {
   description = "User profile to use when running"
 }
-
-variable "availability_zone" {
-  default = "us-west-2a"
-}
