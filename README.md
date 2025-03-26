@@ -19,3 +19,18 @@ KC_HTTP_ENABLED=true
 KC_HTTP_RELATIVE_PATH=/keycloak/
 KC_LOG_LEVEL=INFO
 ```
+## Blue Core Technical Stack
+```mermaid
+graph LR;
+    sinopia["Sinopia"] --> keycloak["Keycloak"]
+    marva["Marva"] --> keycloak
+    graph_explorer["Graph Explorer"] --> keycloak
+    notebooks@{ shape: docs, label: "Jupyter Notebooks"} --> keycloak
+
+    keycloak <--> api["Blue Core API"]
+    api <--> db[("Blue Core Database")]
+    db <--> vector_db[("Triples Vector Datastore")]
+    api <--> vector_db
+    api <--> ai_agents@{ shape: procs, label: "LLM AI Agents"}
+    ai_agents <--> vector_db
+```
