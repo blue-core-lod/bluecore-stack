@@ -57,6 +57,9 @@ data "aws_iam_policy_document" "developers" {
     sid = "AllowActionsForDevelopers"
 
     actions = [
+      "acm:DescribeCertificate",
+      "acm:ListTagsForCertificate",
+      "acm:RequestCertificate",
       "application-autoscaling:*",
       "autoscaling:*",
       "backup:*",
@@ -77,6 +80,7 @@ data "aws_iam_policy_document" "developers" {
       "ecs:*",
       "ec2messages:*",
       "eks:*",
+      "elasticloadbalancing:*",
       "s3:*",
     ]
 
