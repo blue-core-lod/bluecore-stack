@@ -2,6 +2,8 @@ x-airflow-common:
   &airflow-common
   build:
     context: ./workflows
+    args:
+      GIT_TOKEN: ${GIT_TOKEN}
   environment:
     &airflow-common-env
     AIRFLOW__CORE__EXECUTOR: CeleryExecutor
@@ -99,6 +101,8 @@ services:
     restart: always
     build:
       context: ./api
+      args:
+        GIT_TOKEN: ${GIT_TOKEN}
     expose:
       - 8100
     env_file:
