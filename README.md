@@ -4,6 +4,8 @@
 The Keycloak Container requires a local `.env` with the following variables:
 
 ```bash
+GIT_TOKEN=<your-git-token>
+DATABASE_URL=postgresql+psycopg2://airflow:airflow@postgres/bluecore
 KEYCLOAK_ADMIN=admin
 KEYCLOAK_ADMIN_PASSWORD=gracious-professed
 KC_DB=postgres

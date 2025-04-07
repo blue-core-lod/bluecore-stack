@@ -8,7 +8,9 @@ RUN sh /uv-installer.sh && rm /uv-installer.sh
 
 ENV PATH="/root/.local/bin/:$PATH"
 
-RUN git clone --depth 1 https://github.com/blue-core-lod/bluecore_api.git
+ARG GIT_TOKEN
+
+RUN git clone --depth 1 https://${GIT_TOKEN}@github.com/blue-core-lod/bluecore_api.git
 
 WORKDIR /bluecore_api
 
