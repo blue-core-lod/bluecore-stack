@@ -46,3 +46,48 @@ data "aws_iam_policy_document" "validate_cert_access" {
     resources = ["*"]
   }
 }
+
+#
+# role to allow for sul-dlss-users admin to manage bluecore resources
+#
+resource "aws_iam_role" "dlss_manage" {
+  name               = "dlss_manage"
+  assume_role_policy = data.aws_iam_policy_document.dlss_manage.json
+  provider           = aws.users_root
+}
+
+data "aws_iam_policy_document" "dlss_manage" {
+  statement {
+    sid     = "1"
+    actions = ["sts:AssumeRole"]
+
+    principals {
+      type = "AWS"
+      identifiers = [
+        "arn:aws:iam::390882271260:root",
+      ]
+    }
+  }
+}
+
+resource "aws_iam_role_policy_attachment" "dlss_manage_access" {
+  policy_arn = aws_iam_policy.dlss_manage_access.arn
+  role       = aws_iam_role.dlss_manage.name
+  provider   = aws.users_root
+}
+
+resource "aws_iam_policy" "dlss_manage_access" {
+  name     = "dlss_manage_access"
+  policy   = data.aws_iam_policy_document.dlss_manage_access.json
+  provider = aws.users_root
+}
+
+data "aws_iam_policy_document" "dlss_manage_access" {
+  statement {
+    sid = "DLSSAdminAccess"
+    actions = [
+      "*",
+    ]
+    resources = ["*"]
+  }
+}
