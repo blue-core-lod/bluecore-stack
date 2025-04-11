@@ -57,8 +57,7 @@ resource "aws_security_group" "bc_dev_ui_sg" {
     from_port   = 80
     to_port     = 80
     protocol    = "TCP"
-# Should limit this access to aws
-    cidr_blocks = ["0.0.0.0/0"]
+    cidr_blocks = [aws_subnet.bluecore-dev-public-1.cidr_block,aws_subnet.bluecore-dev-public-2.cidr_block,aws_subnet.bluecore-dev-public-3.cidr_block]
   }
 
   tags = {
