@@ -73,7 +73,7 @@ resource "aws_alb_target_group" "bluecore_dev_alb_default_tg" {
 resource "aws_lb_target_group_attachment" "bluecore_dev_alb_default_tg_attachment" {
   target_group_arn = aws_alb_target_group.bluecore_dev_alb_default_tg.id
   target_id        = aws_instance.bluecore_dev.private_ip
-  port             = 80
+   port             = 443
 }
 
 resource "aws_alb_listener" "bluecore_dev_alb_http_listener" {

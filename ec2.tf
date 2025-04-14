@@ -54,8 +54,8 @@ resource "aws_security_group" "bc_dev_ui_sg" {
   vpc_id      = aws_vpc.bluecore-dev.id
 
   ingress {
-    from_port   = 80
-    to_port     = 80
+    from_port   = 443
+    to_port     = 443
     protocol    = "TCP"
     cidr_blocks = [aws_subnet.bluecore-dev-public-1.cidr_block,aws_subnet.bluecore-dev-public-2.cidr_block,aws_subnet.bluecore-dev-public-3.cidr_block]
   }
