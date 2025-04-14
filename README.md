@@ -20,6 +20,7 @@ KC_PROXY=edge
 KC_HTTP_ENABLED=true
 KC_HTTP_RELATIVE_PATH=/keycloak/
 KC_LOG_LEVEL=INFO
+KC_HOSTNAME=https://dev.bcld.info/keycloak
 ```
 ## Blue Core Technical Stack
 ```mermaid
