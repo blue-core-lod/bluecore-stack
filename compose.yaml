@@ -82,17 +82,18 @@ services:
     image: quay.io/keycloak/keycloak:26.1.2
     expose:
       - 8080
+      - 8443
     env_file:
       - ./.env
     command:
-      - start-dev
+      - start
 
   nginx:
     restart: always
     build:
       context: ./nginx
     ports:
-      - "80:80"
+      - "443:80"
     depends_on:
       - keycloak
       - airflow-webserver
