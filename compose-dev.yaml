@@ -93,7 +93,7 @@ services:
     build:
       context: ./nginx
     ports:
-      - "443:80"
+      - "80:80"
     depends_on:
       - keycloak
       - airflow-webserver
