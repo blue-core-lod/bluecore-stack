@@ -42,3 +42,8 @@ graph LR;
     ai_agents <--> workflows
     ai_agents <--> vector_db
 ```
+## For Local Development
+Dev Docker compose file needs to be specified when starting the container service.
+```bash
+docker compose -f compose-dev.yaml up
+```
