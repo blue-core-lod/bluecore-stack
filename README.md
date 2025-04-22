@@ -22,6 +22,29 @@ KC_HTTP_RELATIVE_PATH=/keycloak/
 KC_LOG_LEVEL=INFO
 KC_HOSTNAME=https://dev.bcld.info/keycloak
 ```
+
+## Setup Airflow (Blue Core Workflows)
+### Blue Core Database Connection
+Some DAGs require a `bluecore_db` Postgres Connection (In the UI from the **Admin -> Connection** menu) 
+with the following variables:
+
+- **Connection Id**: bluecore_db
+- **Connection Type**: Postgres
+- **Host**: postgres
+- **Database**: bluecore
+- **Login**: airflow
+- **Password**: airflow
+
+## Setup Keycloak
+To use Keycloak in the API and Airflow, you will need to do the following steps:
+1. Create a `bluecore` realm
+2. Create a `bluecore_api` client in the `bluecore` realm
+   - **Client id**: `bluecore_api`
+   - Turn on **Client authentication**
+3. Create `create` and `update` Realm roles
+4. Create a user 
+5. Add the `create` and `update` roles to the user
+
 ## Blue Core Technical Stack
 ```mermaid
 graph LR;
