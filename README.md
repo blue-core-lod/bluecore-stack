@@ -4,11 +4,14 @@
 The Keycloak Container requires a local `.env` with the following variables:
 
 ```bash
+# Blue Core API
 DATABASE_URL=postgresql+psycopg2://airflow:airflow@postgres/bluecore
-KEYCLOAK_URL=http://keycloak:8080
+KEYCLOAK_URL=http://keycloak:8080/keycloak/
 KEYCLOAK_REALM=bluecore
 KEYCLOAK_CLIENT_ID=bluecore_api
 KEYCLOAK_CLIENT_SECRET=<from bluecore_api client in keycloak>
+
+# Keycloak
 KEYCLOAK_ADMIN=admin
 KEYCLOAK_ADMIN_PASSWORD=gracious-professed
 KC_DB=postgres
