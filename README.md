@@ -45,7 +45,7 @@ To use Keycloak in the API and Airflow, you will need to do the following steps:
    - **Client id**: `bluecore_api`
    - Turn on **Client authentication**
 3. Create `create` and `update` Realm roles
-4. Create a user 
+4. Create a user in the new `bluecore` realm
 5. Add the `create` and `update` roles to the user
 
 ## Blue Core Technical Stack
