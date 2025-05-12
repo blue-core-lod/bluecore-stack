@@ -32,7 +32,7 @@ resource "aws_security_group" "bc_dev_sg" {
     from_port   = 22
     to_port     = 22
     protocol    = "TCP"
-    cidr_blocks = ["171.66.132.0/23", "171.66.134.0/23"]
+    cidr_blocks = ["171.66.132.0/23", "171.66.134.0/23", "99.103.104.152/32"]
   }
 
   egress {
