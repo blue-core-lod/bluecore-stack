@@ -10,7 +10,7 @@ ENV PYTHONPATH "${PYTHONPATH}:/opt/airflow"
 
 ARG GIT_TOKEN
 
-RUN git clone https://${GIT_TOKEN}@github.com/blue-core-lod/bluecore-workflows.git --depth 1 /opt/airflow/bluecore-workflows
+RUN git clone https://github.com/blue-core-lod/bluecore-workflows.git --depth 1 /opt/airflow/bluecore-workflows
 
 RUN mv bluecore-workflows/README.md /opt/airflow/. && mv bluecore-workflows/uv.lock /opt/airflow/. && mv bluecore-workflows/pyproject.toml /opt/airflow/.
 

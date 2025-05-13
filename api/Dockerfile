@@ -10,7 +10,7 @@ ENV PATH="/root/.local/bin/:$PATH"
 
 ARG GIT_TOKEN
 
-RUN git clone --depth 1 https://${GIT_TOKEN}@github.com/blue-core-lod/bluecore_api.git
+RUN git clone --depth 1 https://github.com/blue-core-lod/bluecore_api.git
 
 WORKDIR /bluecore_api
 
