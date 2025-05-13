@@ -2,8 +2,6 @@ x-airflow-common:
   &airflow-common
   build:
     context: ./workflows
-    args:
-      GIT_TOKEN: ${GIT_TOKEN}
   environment:
     &airflow-common-env
     AIRFLOW__CORE__EXECUTOR: CeleryExecutor
