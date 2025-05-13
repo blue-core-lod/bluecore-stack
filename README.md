@@ -51,6 +51,23 @@ To use Keycloak in the API and Airflow, you will need to do the following steps:
 4. Create a user in the new `bluecore` realm
 5. Add the `create` and `update` roles to the user
 
+###  💾 Exporting Keycloak realm config
+To export any changes of the bluecore realm config, you can use the following commands
+depending on the environment you are working in:
+
+```bash
+   # 🚧 Development
+   ./scripts/export-keycloak-realm.sh
+````
+
+```bash
+   # 🚀 Production
+   ./scripts/export-keycloak-realm.sh --env=production
+```
+
+This will export the realm config to the `keycloak-export` directory.
+
+
 ## Blue Core Technical Stack
 ```mermaid
 graph LR;
