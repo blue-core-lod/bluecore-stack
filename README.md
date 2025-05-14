@@ -82,12 +82,12 @@ To export any changes of the bluecore realm config, you can use the following co
 depending on the environment you are working in:
 
 ```bash
-   # 🚧 Development
+   # 🚧 Local Development
    ./scripts/export-keycloak-realm.sh
 ````
 
 ```bash
-   # 🚀 Production
+   # 🚀 Deployed Production in EC2  
    ./scripts/export-keycloak-realm.sh --env=production
 ```
 
