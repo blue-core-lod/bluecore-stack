@@ -1,6 +1,6 @@
 # Blue Core Terraform and Docker
 
-## Configuration
+## ⚙️ Configuration
 The Keycloak Container requires a local `.env` with the following variables:
 
 ```bash
@@ -55,7 +55,7 @@ KC_LOG_LEVEL=INFO
 KC_HOSTNAME=https://dev.bcld.info/keycloak
 ```
 
-## Setup Airflow (Blue Core Workflows)
+## 🛠️ Setup Airflow (Blue Core Workflows)
 ### Blue Core Database Connection
 Some DAGs require a `bluecore_db` Postgres Connection (In the UI from the **Admin -> Connection** menu) 
 with the following variables:
@@ -67,15 +67,26 @@ with the following variables:
 - **Login**: airflow
 - **Password**: airflow
 
-## Setup Keycloak
-To use Keycloak in the API and Airflow, you will need to do the following steps:
-1. Create a `bluecore` realm
-2. Create a `bluecore_api` client in the `bluecore` realm
-   - **Client id**: `bluecore_api`
-   - Turn on **Client authentication**
-3. Create `create` and `update` Realm roles
-4. Create a user in the new `bluecore` realm
-5. Add the `create` and `update` roles to the user
+## 🔐 Keycloak local development and credentials
+Keycloak will automatically import realm config located at: `keycloak-export/bluecore-realm.json` \
+when the Keycloak container starts. 
+### 🔑 Logging into Airflow using Keycloak with developer credentials
+Airflow local development URL:
+>  - http://localhost/workflows
+
+This realm config contains the following:
+> - Realm: `bluecore`
+> - Client: `bluecore_workflows`
+> - Username: `developer` #admin account
+> - password: `123456`
+> 
+>⚠️ **Note**: Other account names that can be used are: `dev_op`,`dev_public`,`dev_user`, and `dev_viewer` with the same password. 
+> These accounts reflect the roles associated in their name.
+### 🔑 Logging into Keycloak master realm
+You can also create a new realm and client in Keycloak by going to:
+> - http://localhost/keycloak 
+> - username: `admin` 
+> - password: `gracious-professed`
 
 ###  💾 Exporting Keycloak realm config
 To export any changes of the bluecore realm config, you can use the following commands
@@ -92,7 +103,7 @@ depending on the environment you are working in:
 This will export the realm config to the `keycloak-export` directory.
 
 
-## Blue Core Technical Stack
+## 📐 Blue Core Technical Stack
 ```mermaid
 graph LR;
     sinopia["Sinopia"] --> keycloak["Keycloak"]
@@ -112,7 +123,7 @@ graph LR;
     ai_agents <--> workflows
     ai_agents <--> vector_db
 ```
-## For Local Development
+## 🐳 Running Locally with Docker
 Dev Docker compose file needs to be specified when starting the container service.
 ```bash
 docker compose -f compose-dev.yaml up
