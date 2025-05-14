@@ -4,16 +4,36 @@
 The Keycloak Container requires a local `.env` with the following variables:
 
 ```bash
-# Blue Core API
+###########################--------------------------------
+## Airflow Configuration ##
+###########################
 DATABASE_URL=postgresql+psycopg2://airflow:airflow@postgres/bluecore
-KEYCLOAK_URL=http://keycloak:8080/keycloak/
-KEYCLOAK_REALM=bluecore
-KEYCLOAK_CLIENT_ID=bluecore_api
-KEYCLOAK_CLIENT_SECRET=<from bluecore_api client in keycloak>
 
-# Keycloak
+######################-------------------------------------
+## Keycloak Clients ##
+######################
+# Client 1: bluecore_api
+API_KEYCLOAK_CLIENT_ID=bluecore_api
+API_KEYCLOAK_CLIENT_SECRET=K0b2aBJlqDFcTiozMTP5XM6vf2G9E18W
+
+# Client 2: airflow_client
+AIRFLOW_KEYCLOAK_REALM=bluecore
+AIRFLOW_KEYCLOAK_CLIENT_ID=bluecore_workflows
+AIRFLOW_KEYCLOAK_CLIENT_SECRET=KIu8gWa8rtjlT0Zl7zkNzsObFZGJ2IsJ
+KEYCLOAK_INTERNAL_URL=http://keycloak:8080/keycloak/
+KEYCLOAK_EXTERNAL_URL=http://localhost/keycloak/
+
+############################-------------------------------
+## Keycloak Configuration ##
+############################
+# Bluecore realm and keycloak path
+KEYCLOAK_REALM=bluecore
+
+# Master realm Admin credentials
 KEYCLOAK_ADMIN=admin
 KEYCLOAK_ADMIN_PASSWORD=gracious-professed
+
+# Keycloak database connection
 KC_DB=postgres
 KC_DB_URL_HOST=postgres
 KC_DB_URL_PORT=5432
@@ -21,6 +41,12 @@ KC_DB_URL_DATABASE=keycloak
 KC_DB_SCHEMA=public
 KC_DB_USERNAME=airflow
 KC_DB_PASSWORD=airflow
+
+# Keycloak health check enabled
+KC_HEALTH_ENABLED=true 
+
+# Keycloak HTTP and proxy access settings
+KEYCLOAK_URL=http://keycloak:8080/keycloak/
 KC_PROXY_HEADERS=xforwarded
 KC_PROXY=edge
 KC_HTTP_ENABLED=true
