@@ -80,14 +80,12 @@ To use Keycloak in the API and Airflow, you will need to do the following steps:
 ###  💾 Exporting Keycloak realm config
 To export any changes of the bluecore realm config, you can use the following commands
 depending on the environment you are working in:
-
+###### 🚧 Local Development
 ```bash
-   # 🚧 Local Development
    ./scripts/export-keycloak-realm.sh
 ````
-
+###### 🚀 Deployed Production in EC2
 ```bash
-   # 🚀 Deployed Production in EC2  
    ./scripts/export-keycloak-realm.sh --env=production
 ```
 
