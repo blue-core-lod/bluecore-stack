@@ -1,19 +1,38 @@
 # Blue Core Terraform and Docker
 
-## Configuration
+## ⚙️ Configuration
 The Keycloak Container requires a local `.env` with the following variables:
 
 ```bash
-# Blue Core API
+###########################--------------------------------
+## Airflow Configuration ##
+###########################
 DATABASE_URL=postgresql+psycopg2://airflow:airflow@postgres/bluecore
-KEYCLOAK_URL=http://keycloak:8080/keycloak/
-KEYCLOAK_REALM=bluecore
-KEYCLOAK_CLIENT_ID=bluecore_api
-KEYCLOAK_CLIENT_SECRET=<from bluecore_api client in keycloak>
 
-# Keycloak
+######################-------------------------------------
+## Keycloak Clients ##
+######################
+# Client 1: bluecore_api
+API_KEYCLOAK_CLIENT_ID=bluecore_api
+API_KEYCLOAK_CLIENT_SECRET=K0b2aBJlqDFcTiozMTP5XM6vf2G9E18W
+
+# Client 2: airflow_client
+AIRFLOW_KEYCLOAK_CLIENT_ID=bluecore_workflows
+AIRFLOW_KEYCLOAK_CLIENT_SECRET=KIu8gWa8rtjlT0Zl7zkNzsObFZGJ2IsJ
+KEYCLOAK_INTERNAL_URL=http://keycloak:8080/keycloak/
+KEYCLOAK_EXTERNAL_URL=http://localhost/keycloak/
+
+############################-------------------------------
+## Keycloak Configuration ##
+############################
+# Bluecore realm and keycloak path
+KEYCLOAK_REALM=bluecore
+
+# Master realm Admin credentials
 KEYCLOAK_ADMIN=admin
 KEYCLOAK_ADMIN_PASSWORD=gracious-professed
+
+# Keycloak database connection
 KC_DB=postgres
 KC_DB_URL_HOST=postgres
 KC_DB_URL_PORT=5432
@@ -21,6 +40,12 @@ KC_DB_URL_DATABASE=keycloak
 KC_DB_SCHEMA=public
 KC_DB_USERNAME=airflow
 KC_DB_PASSWORD=airflow
+
+# Keycloak health check enabled
+KC_HEALTH_ENABLED=true 
+
+# Keycloak HTTP and proxy access settings
+KEYCLOAK_URL=http://keycloak:8080/keycloak/
 KC_PROXY_HEADERS=xforwarded
 KC_PROXY=edge
 KC_HTTP_ENABLED=true
@@ -29,7 +54,7 @@ KC_LOG_LEVEL=INFO
 KC_HOSTNAME=https://dev.bcld.info/keycloak
 ```
 
-## Setup Airflow (Blue Core Workflows)
+## 🛠️ Setup Airflow (Blue Core Workflows)
 ### Blue Core Database Connection
 Some DAGs require a `bluecore_db` Postgres Connection (In the UI from the **Admin -> Connection** menu) 
 with the following variables:
@@ -41,17 +66,43 @@ with the following variables:
 - **Login**: airflow
 - **Password**: airflow
 
-## Setup Keycloak
-To use Keycloak in the API and Airflow, you will need to do the following steps:
-1. Create a `bluecore` realm
-2. Create a `bluecore_api` client in the `bluecore` realm
-   - **Client id**: `bluecore_api`
-   - Turn on **Client authentication**
-3. Create `create` and `update` Realm roles
-4. Create a user in the new `bluecore` realm
-5. Add the `create` and `update` roles to the user
+## 🔐 Keycloak local development and credentials
+Keycloak will automatically import realm config located at: `keycloak-export/bluecore-realm.json` \
+when the Keycloak container starts. 
+### 🔑 Logging into Airflow using Keycloak with developer credentials
+Airflow local development URL:
+>  - http://localhost/workflows
 
-## Blue Core Technical Stack
+This realm config contains the following:
+> - Realm: `bluecore`
+> - Client: `bluecore_workflows`
+> - Username: `developer` #admin account
+> - password: `123456`
+> 
+>⚠️ **Note**: Other account names that can be used are: `dev_op`,`dev_public`,`dev_user`, and `dev_viewer` with the same password. 
+> These accounts reflect the roles associated in their name.
+### 🔑 Logging into Keycloak master realm
+You can also create a new realm and client in Keycloak by going to:
+> - http://localhost/keycloak 
+> - username: `admin` 
+> - password: `gracious-professed`
+
+###  💾 Exporting Keycloak realm config
+To export any changes of the bluecore realm config, you can use the following commands
+depending on the environment you are working in:
+###### 🚧 Local Development
+```bash
+   ./scripts/export-keycloak-realm.sh
+````
+###### 🚀 Deployed Production in EC2
+```bash
+   ./scripts/export-keycloak-realm.sh --env=production
+```
+
+This will export the realm config to the `keycloak-export` directory.
+
+
+## 📐 Blue Core Technical Stack
 ```mermaid
 graph LR;
     sinopia["Sinopia"] --> keycloak["Keycloak"]
@@ -71,7 +122,7 @@ graph LR;
     ai_agents <--> workflows
     ai_agents <--> vector_db
 ```
-## For Local Development
+## 🐳 Running Locally with Docker
 Dev Docker compose file needs to be specified when starting the container service.
 ```bash
 docker compose -f compose-dev.yaml up
