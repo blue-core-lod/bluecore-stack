@@ -80,14 +80,14 @@ services:
     restart: always
     build:
       context: ./api
-      args:
-        GIT_TOKEN: ${GIT_TOKEN}
     expose:
       - 8100
     env_file:
       - ./.env
     depends_on:
       - postgres
+    volumes:
+       - ${AIRFLOW_PROJ_DIR:-.}/uploads:/bluecore_api/uploads
 
   airflow-webserver:
     <<: *airflow-common
