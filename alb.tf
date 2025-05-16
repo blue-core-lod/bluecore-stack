@@ -104,3 +104,8 @@ resource "aws_alb_listener" "bluecore_dev_alb_https_listener" {
     type             = "forward"
   }
 }
+# Attach WAF to dev alb
+resource "aws_wafv2_web_acl_association" "bcld_dev_waf_assoc" {
+  resource_arn = aws_alb.bluecore_dev_alb.arn
+  web_acl_arn  = aws_wafv2_web_acl.bcld_waf.arn
+}
