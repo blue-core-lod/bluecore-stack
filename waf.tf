@@ -11,7 +11,7 @@ resource "aws_wafv2_web_acl" "bcld_waf" {
     priority = 10
 
     override_action {
-      count {}
+      none {}
     }
 
     statement {
@@ -33,7 +33,7 @@ resource "aws_wafv2_web_acl" "bcld_waf" {
     priority = 20
 
     override_action {
-      count {}
+      none {}
     }
 
     statement {
@@ -55,7 +55,7 @@ resource "aws_wafv2_web_acl" "bcld_waf" {
     priority = 30
 
     override_action {
-      count {}
+      none {}
     }
 
     statement {
@@ -78,7 +78,7 @@ resource "aws_wafv2_web_acl" "bcld_waf" {
     priority = 5
 
     override_action {
-      count {}
+      none {}
     }
 
     statement {
