@@ -4,6 +4,7 @@ resource "aws_instance" "bluecore_dev" {
   subnet_id                   = aws_subnet.bluecore-dev-public-3.id
   vpc_security_group_ids      = [aws_security_group.bc_dev_sg.id, aws_security_group.bc_dev_ui_sg.id]
   associate_public_ip_address = "true"
+  iam_instance_profile        = aws_iam_instance_profile.bcld_ses_ec2_role.name
   key_name                    = "bc-dev"
 
   root_block_device {

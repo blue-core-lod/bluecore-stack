@@ -10,12 +10,12 @@ terraform {
 
 # need unaliased provider as default
 provider "aws" {
-  region  = "us-west-2"
+  region  = var.region
   profile = var.profile
 }
 
 provider "aws" {
   alias   = "users_root"
-  region  = "us-west-2"
+  region  = var.region
   profile = var.profile
 }

@@ -3,6 +3,10 @@ variable "users_account_id" {
   default     = "038462753403"
 }
 
+variable "region" {
+  default = "us-west-2"
+}
+
 variable "profile" {
   description = "User profile to use when running"
 }
