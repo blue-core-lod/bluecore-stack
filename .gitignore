@@ -6,5 +6,7 @@ terraform.tfstate.*.backup
 samlapi_formauth.py
 .DS_Store
 .terraform.lock.hcl
-.env
+.env*
 *swp
+logs/*
+uploads/*
