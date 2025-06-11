@@ -15,6 +15,9 @@ DATABASE_URL=postgresql+psycopg2://airflow:airflow@postgres/bluecore
 # Client 1: bluecore_api
 API_KEYCLOAK_CLIENT_ID=bluecore_api
 
+## BLUECORE_ENV is optional, defaults to https://bcld.info
+BLUECORE_ENV=https://dev.bcld.info
+
 # Client 2: airflow_client
 AIRFLOW_KEYCLOAK_CLIENT_ID=bluecore_workflows
 AIRFLOW_KEYCLOAK_CLIENT_SECRET=KIu8gWa8rtjlT0Zl7zkNzsObFZGJ2IsJ
