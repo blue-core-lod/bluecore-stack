@@ -3,6 +3,10 @@ variable "users_account_id" {
   default     = "038462753403"
 }
 
+variable "ses_domain" {
+  default = "bcld.info"
+}
+
 variable "region" {
   default = "us-west-2"
 }
