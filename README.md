@@ -4,10 +4,18 @@
 The Keycloak Container requires a local `.env` with the following variables:
 
 ```bash
+
+###############################----------------------------
+## GitHub Container Registry ##
+###############################
+# create a "classic" GitHub token and ensure it grants permission to read:packages
+CR_PAT=YOUR_GITHUB_TOKEN
+
 ###########################--------------------------------
 ## Airflow Configuration ##
 ###########################
 DATABASE_URL=postgresql+psycopg2://airflow:airflow@postgres/bluecore
+AIRFLOW_URL=https://dev.bcld.info/workflows
 
 ######################-------------------------------------
 ## Keycloak Clients ##
@@ -15,8 +23,8 @@ DATABASE_URL=postgresql+psycopg2://airflow:airflow@postgres/bluecore
 # Client 1: bluecore_api
 API_KEYCLOAK_CLIENT_ID=bluecore_api
 
-## BLUECORE_ENV is optional, defaults to https://bcld.info
-BLUECORE_ENV=https://dev.bcld.info
+## BLUECORE_URL is optional, defaults to https://bcld.info
+BLUECORE_URL=https://dev.bcld.info
 
 # Client 2: airflow_client
 AIRFLOW_KEYCLOAK_CLIENT_ID=bluecore_workflows
