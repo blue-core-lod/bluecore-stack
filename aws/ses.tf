@@ -47,3 +47,7 @@ resource "aws_iam_role_policy_attachment" "bcld_ses_ec2_policy_attach" {
   role       = aws_iam_role.bcld_ses_ec2_role.name
   policy_arn = aws_iam_policy.bcld_ses_ec2_policy.arn
 }
+
+resource "aws_ses_domain_identity" "bcld_ses_domain" {
+  domain = var.ses_domain
+}
