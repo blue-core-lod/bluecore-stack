@@ -1,11 +1,16 @@
 #!/bin/bash
-databases=("bluecore,bluecore_admin", "keycloak,keycloak")
+set -e
 
-for database in "${databases[@]}"; do
-  IFS=',' read -r -a parts <<< "$database"
-  echo "Creating database ${parts[0]}"
-  psql -v ON_ERROR_STOP=1 --username airflow <<-EOSQL
-    SELECT 'CREATE DATABASE ${parts[0]}' WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = '${parts[0]}')\gexec
-    GRANT ALL PRIVILEGES ON DATABASE '${parts[0]}' TO airflow;
+databases=(
+    keycloak
+    bluecore
+)
+
+for db in "${databases[@]}"; do
+  echo "Creating database $db"
+  psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" <<-EOSQL
+    SELECT 'CREATE DATABASE $db' WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = '$db')\gexec
+    GRANT ALL PRIVILEGES ON DATABASE $db TO $POSTGRES_USER;
 EOSQL
 done
+
