@@ -65,3 +65,10 @@ resource "aws_ses_identity_notification_topic" "bcld_ses_bounce_identity" {
   identity                 = aws_ses_domain_identity.bcld_ses_domain.arn
   include_original_headers = true
 }
+
+resource "aws_ses_identity_notification_topic" "bcld_ses_delivery_identity" {
+  topic_arn                = aws_sns_topic.bcld_email_sns.arn
+  notification_type        = "Delivery"
+  identity                 = aws_ses_domain_identity.bcld_ses_domain.arn
+  include_original_headers = true
+}
