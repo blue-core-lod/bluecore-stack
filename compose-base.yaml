@@ -37,6 +37,7 @@ x-airflow-common:
   volumes:
     - ${AIRFLOW_PROJ_DIR:-.}/logs:/opt/airflow/logs
     - ${AIRFLOW_PROJ_DIR:-.}/uploads:/opt/airflow/uploads
+    - ${AIRFLOW_PROJ_DIR:-.}/config:/opt/airflow/config
 
   user: "${AIRFLOW_UID:-50000}:0"
   depends_on:
