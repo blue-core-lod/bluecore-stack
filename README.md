@@ -18,6 +18,8 @@ AIRFLOW_WWW_USER_USERNAME=airflow
 AIRFLOW_WWW_USER_PASSWORD=airflow
 AIRFLOW_EXTERNAL_URL=http://localhost/workflows/
 AIRFLOW_INTERNAL_URL=http://airflow-apiserver:8080/workflows/
+AIRFLOW_PROJ_DIR=.
+AIRFLOW_CONN_BLUECORE_DB: 'postgresql+psycopg2://airflow:airflow@postgres:5432/bluecore'
 
 ######################-------------------------------------
 ## Keycloak Clients ##
@@ -75,6 +77,8 @@ with the following variables:
 - **Database**: bluecore
 - **Login**: airflow
 - **Password**: airflow
+
+Setting AIRFLOW_CONN_BLUECORE_DB environment variable will achieve similar goal.
 
 ## 🔐 Keycloak local development and credentials
 Keycloak will automatically import realm config located at: `keycloak-export/bluecore-realm.json` \
