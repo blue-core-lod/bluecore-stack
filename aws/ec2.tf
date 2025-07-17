@@ -9,7 +9,7 @@ resource "aws_instance" "bluecore_dev" {
 
   root_block_device {
     volume_type = "gp2"
-    volume_size = 120
+    volume_size = 220
   }
 
   tags = {
