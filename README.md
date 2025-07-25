@@ -1,5 +1,8 @@
 # Blue Core Terraform and Docker
 
+## Set-up
+To clone the repository with git, `git clone --recurse-submodules .`.
+
 ## ⚙️ Configuration
 The development Keycloak Container requires a local `.env` with the following variables:
 
