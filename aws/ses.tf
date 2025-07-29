@@ -51,3 +51,24 @@ resource "aws_iam_role_policy_attachment" "bcld_ses_ec2_policy_attach" {
 resource "aws_ses_domain_identity" "bcld_ses_domain" {
   domain = var.ses_domain
 }
+
+resource "aws_ses_identity_notification_topic" "bcld_ses_complaint_identity" {
+  topic_arn                = aws_sns_topic.bcld_email_sns.arn
+  notification_type        = "Complaint"
+  identity                 = aws_ses_domain_identity.bcld_ses_domain.arn
+  include_original_headers = true
+}
+
+resource "aws_ses_identity_notification_topic" "bcld_ses_bounce_identity" {
+  topic_arn                = aws_sns_topic.bcld_email_sns.arn
+  notification_type        = "Bounce"
+  identity                 = aws_ses_domain_identity.bcld_ses_domain.arn
+  include_original_headers = true
+}
+
+resource "aws_ses_identity_notification_topic" "bcld_ses_delivery_identity" {
+  topic_arn                = aws_sns_topic.bcld_email_sns.arn
+  notification_type        = "Delivery"
+  identity                 = aws_ses_domain_identity.bcld_ses_domain.arn
+  include_original_headers = true
+}

@@ -1,10 +1,12 @@
 # Blue Core Terraform and Docker
 
+## Set-up
+To clone the repository with git, `git clone --recurse-submodules .`.
+
 ## ⚙️ Configuration
-The Keycloak Container requires a local `.env` with the following variables:
+The development Keycloak Container requires a local `.env` with the following variables:
 
-```bash
-
+```
 ###############################----------------------------
 ## GitHub Container Registry ##
 ###############################
@@ -15,16 +17,19 @@ CR_PAT=YOUR_GITHUB_TOKEN
 ## Airflow Configuration ##
 ###########################
 DATABASE_URL=postgresql+psycopg2://airflow:airflow@postgres/bluecore
-AIRFLOW_URL=https://dev.bcld.info/workflows
+AIRFLOW_WWW_USER_USERNAME=airflow
+AIRFLOW_WWW_USER_PASSWORD=airflow
+AIRFLOW_EXTERNAL_URL=http://localhost/workflows/
+AIRFLOW_INTERNAL_URL=http://airflow-apiserver:8080/workflows/
+AIRFLOW_PROJ_DIR=.
+AIRFLOW_CONN_BLUECORE_DB: 'postgresql+psycopg2://airflow:airflow@postgres:5432/bluecore'
 
 ######################-------------------------------------
 ## Keycloak Clients ##
 ######################
 # Client 1: bluecore_api
 API_KEYCLOAK_CLIENT_ID=bluecore_api
-
-## BLUECORE_URL is optional, defaults to https://bcld.info
-BLUECORE_URL=https://dev.bcld.info
+BLUECORE_URL=http://localhost
 
 # Client 2: airflow_client
 AIRFLOW_KEYCLOAK_CLIENT_ID=bluecore_workflows
@@ -36,6 +41,7 @@ KEYCLOAK_EXTERNAL_URL=http://localhost/keycloak/
 ## Keycloak Configuration ##
 ############################
 # Bluecore realm and keycloak path
+KC_HOSTNAME_STRICT=false
 KEYCLOAK_REALM=bluecore
 
 # Master realm Admin credentials
@@ -55,13 +61,12 @@ KC_DB_PASSWORD=airflow
 KC_HEALTH_ENABLED=true 
 
 # Keycloak HTTP and proxy access settings
-KEYCLOAK_URL=http://keycloak:8080/keycloak/
 KC_PROXY_HEADERS=xforwarded
 KC_PROXY=edge
 KC_HTTP_ENABLED=true
 KC_HTTP_RELATIVE_PATH=/keycloak/
 KC_LOG_LEVEL=INFO
-KC_HOSTNAME=https://dev.bcld.info/keycloak
+# KC_HOSTNAME=https://dev.bcld.info/keycloak 
 ```
 
 ## 🛠️ Setup Airflow (Blue Core Workflows)
@@ -75,6 +80,8 @@ with the following variables:
 - **Database**: bluecore
 - **Login**: airflow
 - **Password**: airflow
+
+Setting AIRFLOW_CONN_BLUECORE_DB environment variable will achieve similar goal.
 
 ## 🔐 Keycloak local development and credentials
 Keycloak will automatically import realm config located at: `keycloak-export/bluecore-realm.json` \

@@ -17,11 +17,11 @@ x-airflow-common:
     AIRFLOW__CORE__DAGS_FOLDER: '/opt/airflow/ils_middleware/dags'
     AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: 'true'
     AIRFLOW__CORE__LOAD_EXAMPLES: 'false'
-    AIRFLOW__CORE__EXECUTION_API_SERVER_URL: 'http://airflow-apiserver:8080/execution/'
+    AIRFLOW__CORE__EXECUTION_API_SERVER_URL: 'http://airflow-apiserver:8080/workflows/execution/'
+    AIRFLOW__API__AUTH_BACKEND: 'airflow.api.auth.backend.basic_auth,airflow.api.auth.backend.session'
+    AIRFLOW__API__BASE_URL: ${AIRFLOW_EXTERNAL_URL:-http://localhost/workflows}
     AIRFLOW__WEBSERVER__SHOW_TRIGGER_FORM_IF_NO_PARAMS: 'true'
     AIRFLOW__WEBSERVER__ALLOWED_PAYLOAD_SIZE: 250.0
-    AIRFLOW__API__AUTH_BACKEND: 'airflow.api.auth.backend.basic_auth,airflow.api.auth.backend.session'
-    AIRFLOW__API__BASE_URL: ${AIRFLOW_URL:-http://localhost/workflows}
     AIRFLOW_VAR_SINOPIA_ENV: ${AIRFLOW_VAR_SINOPIA_ENV:-dev}
     # yamllint disable rule:line-length
     # Use simple http server on scheduler for health checks
@@ -37,8 +37,8 @@ x-airflow-common:
     - ./.env
   volumes:
     - ${AIRFLOW_PROJ_DIR:-.}/logs:/opt/airflow/logs
-    - ${AIRFLOW_PROJ_DIR:-.}/config:/opt/airflow/config
     - ${AIRFLOW_PROJ_DIR:-.}/uploads:/opt/airflow/uploads
+    - ${AIRFLOW_PROJ_DIR:-.}/config:/opt/airflow/config
 
   user: "${AIRFLOW_UID:-50000}:0"
   depends_on:
@@ -98,8 +98,6 @@ services:
     command: api-server
     expose:
       - 8080
-    env_file:
-      - ./.env
     healthcheck:
       test: ["CMD", "curl", "--fail", "http://localhost:8080/api/v2/version"]
       interval: 30s
@@ -161,6 +159,8 @@ services:
       # Required to handle warm shutdown of the celery workers properly
       # See https://airflow.apache.org/docs/docker-stack/entrypoint.html#signal-propagation
       DUMB_INIT_SETSID: "0"
+      # AIRFLOW__CORE__EXECUTION_API_SERVER_URL: 'http://airflow-apiserver:8080/workflows/execution/'
+
     restart: always
     depends_on:
       <<: *airflow-common-depends-on
