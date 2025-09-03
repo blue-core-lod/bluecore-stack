@@ -96,8 +96,6 @@ services:
   marva:
     restart: always
     image: ghcr.io/blue-core-lod/marva:latest
-    env_file:
-      - ./.env
     expose:
       - 8004
     depends_on:
