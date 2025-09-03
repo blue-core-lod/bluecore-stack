@@ -93,6 +93,16 @@ services:
     volumes:
        - ${AIRFLOW_PROJ_DIR:-.}/uploads:/bluecore_api/uploads
 
+  marva:
+    restart: always
+    image: ghcr.io/blue-core-lod/marva:latest
+    env_file:
+      - ./.env
+    expose:
+      - 8004
+    depends_on:
+      - bc_api
+
   airflow-apiserver:
     <<: *airflow-common
     command: api-server
