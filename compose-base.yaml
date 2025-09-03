@@ -101,6 +101,14 @@ services:
     depends_on:
       - bc_api
 
+  marva:
+    restart: always
+    image: ghcr.io/blue-core-lod/marva:latest
+    expose:
+      - 8004
+    depends_on:
+      - bc_api
+
   airflow-apiserver:
     <<: *airflow-common
     command: api-server
