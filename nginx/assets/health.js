@@ -13,7 +13,7 @@ async function checkOnce() {
   ]);
 
   const okHealth = results[0].status === 'fulfilled' && results[0].value.ok;
-  const okApi     = results[1].status === 'fulfilled' && results[1].value.ok;
+  const okApi    = results[1].status === 'fulfilled' && results[1].value.ok;
 
   badge.classList.remove('status-ok','status-warn','status-down');
 
