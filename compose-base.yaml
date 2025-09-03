@@ -93,6 +93,14 @@ services:
     volumes:
        - ${AIRFLOW_PROJ_DIR:-.}/uploads:/bluecore_api/uploads
 
+  sinopia:
+    restart: always
+    image: ghcr.io/blue-core-lod/sinopia:latest
+    expose:
+      - 8004
+    depends_on:
+      - bc_api
+
   marva:
     restart: always
     image: ghcr.io/blue-core-lod/marva:latest
