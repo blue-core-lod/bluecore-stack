@@ -124,7 +124,7 @@ This will export the realm config to the `keycloak-export` directory.
 graph LR;
     sinopia["Sinopia"] --> keycloak["Keycloak"]
     marva["Marva"] --> keycloak
-    graph_explorer["Graph Explorer"] --> keycloak
+    graph_toolkit["Graph Toolkit"] --> keycloak
     notebooks@{ shape: docs, label: "Jupyter Notebooks"} --> keycloak
 
     keycloak <--> api["Blue Core API"]
