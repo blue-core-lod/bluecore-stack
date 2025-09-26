@@ -4,6 +4,12 @@ resource "aws_iam_user" "edsu" {
   force_destroy = true
 }
 
+resource "aws_iam_user" "dnelson" {
+  provider      = aws.users_root
+  name          = "dnelson"
+  force_destroy = true
+}
+
 resource "aws_iam_user" "jpnelson" {
   provider      = aws.users_root
   name          = "jpnelson"
@@ -16,6 +22,7 @@ resource "aws_iam_group_membership" "developers" {
 
   users = [
     "edsu",
+    "dnelson",
     "jpnelson",
   ]
 
