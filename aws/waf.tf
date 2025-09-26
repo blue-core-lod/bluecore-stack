@@ -133,3 +133,13 @@ resource "aws_wafv2_web_acl" "bcld_waf" {
     sampled_requests_enabled   = true
   }
 }
+
+resource "aws_cloudwatch_log_group" "waf_logs" {
+  name              = "aws-waf-logs-bcld"
+  retention_in_days = "14"
+}
+
+resource "aws_wafv2_web_acl_logging_configuration" "waf_logs_config" {
+  log_destination_configs = [aws_cloudwatch_log_group.waf_logs.arn]
+  resource_arn            = aws_wafv2_web_acl.bcld_waf.arn
+}
