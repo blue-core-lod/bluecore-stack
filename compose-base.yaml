@@ -88,6 +88,7 @@ services:
       - 8100
     env_file:
       - ./.env
+    user: "${AIRFLOW_UID:-50000}:0"
     depends_on:
       - postgres
     volumes:
