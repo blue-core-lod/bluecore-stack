@@ -23,6 +23,7 @@ x-airflow-common:
     AIRFLOW__WEBSERVER__SHOW_TRIGGER_FORM_IF_NO_PARAMS: 'true'
     AIRFLOW__WEBSERVER__ALLOWED_PAYLOAD_SIZE: 250.0
     AIRFLOW_VAR_SINOPIA_ENV: ${AIRFLOW_VAR_SINOPIA_ENV:-dev}
+    AIRFLOW_VAR_BLUECORE_URL: ${BLUECORE_URL:https://bcld.info}
     # yamllint disable rule:line-length
     # Use simple http server on scheduler for health checks
     # See https://airflow.apache.org/docs/apache-airflow/stable/administration-and-deployment/logging-monitoring/check-health.html#scheduler-health-check-server
