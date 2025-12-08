@@ -66,3 +66,13 @@ resource "aws_security_group" "bc_dev_ui_sg" {
     Terraform = "true"
   }
 }
+
+resource "aws_eip" "bc_dev_eip" {
+  domain   = "vpc"
+  instance = aws_instance.bluecore_dev.id
+
+  tags = {
+    Name      = "bc-dev-eip"
+    Terraform = "true"
+  }
+}
