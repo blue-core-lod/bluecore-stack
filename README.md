@@ -144,3 +144,127 @@ Dev Docker compose file needs to be specified when starting the container servic
 ```bash
 docker compose -f compose-dev.yaml up
 ```
+
+## 🧪 Integration Test Suite
+Use this suite to validate API + Workflows + Keycloak behavior before merging.
+Tests use Playwright's `APIRequestContext` (HTTP-only, no browser UI).
+
+### What is covered
+- API and Airflow endpoint reachability.
+- Auth contract for API write endpoints.
+- Keycloak-authenticated DAG triggers (`resource_loader`, `monitor_institutions_exports`).
+- Ingest + processed readback checks.
+- Embedding create/read behavior when vector backend is enabled.
+
+### Which script to use
+- `./scripts/integration-tests.sh`: normal local test runner (recommended for daily dev).
+- `./scripts/workflow-tests.sh`: GitHub Actions parity runner via `act`.
+
+### Quick start (recommended)
+From `terraform/`:
+```bash
+./scripts/integration-tests.sh
+```
+
+
+### Dev mode (fast reruns)
+Use this for iterative local development where code changes are reflected in tests.
+
+```bash
+# Start/reuse dev stack and run full integration suite (containers remain active)
+./scripts/integration-tests.sh --dev-mode
+
+# Run a targeted selection against the same stack
+./scripts/integration-tests.sh --dev-mode tests/integration/workflows/test_health.py -k airflow
+
+# Stop the dev stack and exit
+./scripts/integration-tests.sh --dev-mode-stop
+```
+
+Dev mode behavior:
+- Uses `COMPOSE_PROJECT_NAME=terraform_integration_test`.
+- Keeps stack up between runs.
+- Skips pull/reset by default.
+- If stack is already running, model migrations are skipped by default.
+- Adds a dev-only compose override that bind-mounts local API/workflows source into containers.
+- API runs in autoreload mode (`fastapi dev`) so local API code edits are reflected without rebuilding images.
+- Workflows code (`ils_middleware`) is bind-mounted into Airflow services so DAG/task code edits are visible without rebuilding images.
+
+Note:
+- If you already had a dev-mode stack running before this behavior was added, run `./scripts/integration-tests.sh --dev-mode-stop` once, then start dev mode again so containers are recreated with the new mounts/command.
+
+### Test Git branch refs directly (no manual checkout)
+`integration-tests.sh` can fetch/build branches into `terraform/external/`.
+
+```bash
+# API ref only (other services pulled from images generated from main branches)
+./scripts/integration-tests.sh --api-ref <bluecore_api branch>
+
+# API + workflows + models refs together
+./scripts/integration-tests.sh \
+  --api-ref <bluecore_api branch> \
+  --workflows-ref <bluecore-workflow branch> \
+  --models-ref <bluecore-models branch>
+```
+
+Branch ref behavior:
+- `--api-ref`: builds API image from that branch reference and tags it as `bluecore_api:<ref>`.
+- `--workflows-ref`: builds workflows image from that branch reference and tags it as `bluecore_workflows:<ref>`.
+- `--models-ref`: uses that models branch reference for migrations.
+
+### Local source mode (your local checkouts)
+```bash
+# Build API/workflows from sibling repos (../bluecore_api and ../bluecore-workflows)
+BUILD_LOCAL_DEV_IMAGES=1 ./scripts/integration-tests.sh
+```
+
+CI Notes:
+- Apple Silicon: `compose-arm64-workflows.yaml` is added automatically.
+- GitHub Actions: Milvus bind-mount cleanup is skipped by default to avoid container file permission noise.
+
+## 🧪 Workflow Parity Runner (`workflow-tests.sh`)
+Use this when you want local execution that matches `.github/workflows/manual-integration-test.yml`.
+
+### Quick commands
+```bash
+# Default parity run
+./scripts/workflow-tests.sh
+
+# Build refs through workflow-style inputs
+./scripts/workflow-tests.sh \
+  --api-ref <bluecore_api branch>  \
+  --workflows-ref <bluecore-workflow branch> \
+  --models-ref <bluecore-models branch>
+
+# Use local checkouts for api/workflows/models
+./scripts/workflow-tests.sh --local-sources
+```
+
+### Local-source options (default path set to "../\<bluecore app\>")
+```bash
+# Use only local API checkout
+./scripts/workflow-tests.sh --local-api
+
+# Use only local workflows checkout
+./scripts/workflow-tests.sh --local-workflows
+
+# Use only local models checkout for migrations
+./scripts/workflow-tests.sh --local-models
+
+# Custom local checkout paths
+./scripts/workflow-tests.sh \
+  --local-api-dir ../my-bluecore_api \
+  --local-workflows-dir ../my-bluecore-workflows \
+  --local-models-dir ../my-bluecore-models
+```
+
+### Required secrets for `act`
+Create `terraform/.secrets`:
+```bash
+GITHUB_TOKEN=ghp_or_github_pat
+BLUECORE_REPO_READ_TOKEN=ghp_or_github_pat
+```
+
+Token guidance:
+- `GITHUB_TOKEN` and `BLUECORE_REPO_READ_TOKEN` must be able to read required repos/images.
+- For private GHCR images, run `docker login ghcr.io` with a token that has `read:packages`.

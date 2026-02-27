@@ -1,0 +1,48 @@
+services:
+  # Mount local API source and run FastAPI in autoreload mode for dev-mode reruns.
+  bc_api:
+    command:
+      - uv
+      - run
+      - fastapi
+      - dev
+      - src/bluecore_api/app/main.py
+      - --host
+      - 0.0.0.0
+      - --port
+      - "8100"
+      - --root-path
+      - /api
+    volumes:
+      - ${LOCAL_BLUECORE_API_DIR}/src:/bluecore_api/src
+      - ${LOCAL_BLUECORE_API_DIR}/pyproject.toml:/bluecore_api/pyproject.toml:ro
+      - ${LOCAL_BLUECORE_API_DIR}/uv.lock:/bluecore_api/uv.lock:ro
+
+  # Mount workflows code into all Airflow runtime services so DAG/task code edits are visible.
+  airflow-apiserver:
+    volumes:
+      - ${LOCAL_BLUECORE_WORKFLOWS_DIR}/ils_middleware:/opt/airflow/ils_middleware
+
+  airflow-scheduler:
+    volumes:
+      - ${LOCAL_BLUECORE_WORKFLOWS_DIR}/ils_middleware:/opt/airflow/ils_middleware
+
+  airflow-dag-processor:
+    volumes:
+      - ${LOCAL_BLUECORE_WORKFLOWS_DIR}/ils_middleware:/opt/airflow/ils_middleware
+
+  airflow-worker:
+    volumes:
+      - ${LOCAL_BLUECORE_WORKFLOWS_DIR}/ils_middleware:/opt/airflow/ils_middleware
+
+  airflow-init:
+    volumes:
+      - ${LOCAL_BLUECORE_WORKFLOWS_DIR}/ils_middleware:/opt/airflow/ils_middleware
+
+  airflow-cli:
+    volumes:
+      - ${LOCAL_BLUECORE_WORKFLOWS_DIR}/ils_middleware:/opt/airflow/ils_middleware
+
+  airflow-triggerer:
+    volumes:
+      - ${LOCAL_BLUECORE_WORKFLOWS_DIR}/ils_middleware:/opt/airflow/ils_middleware

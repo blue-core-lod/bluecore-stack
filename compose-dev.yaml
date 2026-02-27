@@ -3,7 +3,7 @@ include:
 
 services:
   keycloak:
-    image: quay.io/keycloak/keycloak:26.1.2
+    image: ${KEYCLOAK_IMAGE:-quay.io/keycloak/keycloak:26.1.2}
     expose:
       - 8080
       - 8443
@@ -26,6 +26,7 @@ services:
     ports:
       - "80:80"
     depends_on:
+      - bc_api
       - keycloak
       - airflow-apiserver
     volumes:

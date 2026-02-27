@@ -1,0 +1,500 @@
+name: Manual Integration Test
+
+on:
+  # ============================================================================
+  # Run on every branch push, and also allow manual runs with custom inputs.
+  # ----------------------------------------------------------------------------
+  push:
+    branches:
+      - "**"
+  workflow_dispatch:
+    # ==========================================================================
+    # Manual inputs for testing different refs/images without editing this file.
+    # Each input below defines: UI help text (`description`), whether it must be
+    # set (`required`), the fallback value (`default`), and the value type (`type`).
+    # --------------------------------------------------------------------------
+    inputs:
+      # Optional: Build the API image in this run from the git branch selected
+      api_image:
+        description: "Optional API image override (e.g. ghcr.io/blue-core-lod/bluecore_api:pr-123)"
+        required: false
+        default: ""
+        type: string
+      # Optional: Build the Workflows image in this run from the git branch selected
+      workflows_image:
+        description: "Optional Workflows image override (e.g. ghcr.io/blue-core-lod/bluecore-workflows:pr-123)"
+        required: false
+        default: ""
+        type: string
+      keycloak_image:
+        description: "Keycloak image to use"
+        required: false
+        default: "quay.io/keycloak/keycloak:26.1.2"
+        type: string
+      build_api_image:
+        description: "Build API image from source ref in this workflow"
+        required: true
+        default: false
+        type: boolean
+      # Build the Workflows image in this run from the git ref selected in `workflows_ref`.
+      build_workflows_image:
+        description: "Build Workflows image from source ref in this workflow"
+        required: true
+        default: false
+        type: boolean
+      # API git ref (branch/tag/commit) used for API builds and API fixture/CLI checkout.
+      api_ref:
+        description: "bluecore_api git ref when build_api_image=true"
+        required: false
+        default: "main"
+        type: string
+      # Workflows git ref (branch/tag/commit) used when building bluecore-workflows.
+      workflows_ref:
+        description: "bluecore-workflows git ref when build_workflows_image=true"
+        required: false
+        default: "main"
+        type: string
+      # Models git ref to use for database migrations during the test run.
+      models_ref:
+        description: "bluecore-models git ref used for DB migrations"
+        required: false
+        default: "main"
+        type: string
+      # Docker Compose project name
+      compose_project_name:
+        description: "Compose project name for this run"
+        required: false
+        default: "terraform_integration_ci"
+        type: string
+      # Database name used by the integration test stack.
+      integration_db_name:
+        description: "Integration test DB name"
+        required: false
+        default: "bluecore_integration_test"
+        type: string
+      # Optional pytest file/test selector to run a smaller targeted test set.
+      pytest_target:
+        description: "Optional pytest target (default runs full tests/integration suite)"
+        required: false
+        default: ""
+        type: string
+      # Toggle the heavier "full stack" profile (nginx + vector stack services).
+      full_stack_profile:
+        description: "Enable production-like integration profile (nginx + milvus/minio/etcd)"
+        required: false
+        default: true
+        type: boolean
+
+jobs:
+  integration:
+    # ==========================================================================
+    # Main job: prepare the stack inputs/images, then run terraform integration tests.
+    # --------------------------------------------------------------------------
+    runs-on: ubuntu-latest
+    permissions:
+      # Allow reading repo contents and package images only.
+      contents: read
+      packages: read
+    env:
+      # Use a repo read token when available, otherwise fall back to the default token.
+      CHECKOUT_TOKEN: ${{ secrets.BLUECORE_REPO_READ_TOKEN != '' && secrets.BLUECORE_REPO_READ_TOKEN || github.token }}
+
+    steps:
+      # Check out terraform so this workflow can use local compose files and scripts.
+      - name: Checkout terraform
+        uses: actions/checkout@v4
+
+      # ========================================================================
+      # Install Python used by workflow helper scripts and test commands.
+      # ------------------------------------------------------------------------
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      # ========================================================================
+      # Fix the Node PATH when running under act so later actions still work.
+      # ------------------------------------------------------------------------
+      - name: Restore Node PATH for act
+        if: ${{ env.ACT }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if command -v node >/dev/null 2>&1; then
+            node_dir="$(dirname "$(command -v node)")"
+          elif [[ -x /opt/acttoolcache/node/24.13.1/x64/bin/node ]]; then
+            node_dir="/opt/acttoolcache/node/24.13.1/x64/bin"
+          elif [[ -x /opt/acttoolcache/node/24.13.1/arm64/bin/node ]]; then
+            node_dir="/opt/acttoolcache/node/24.13.1/arm64/bin"
+          elif [[ -x /usr/local/bin/node ]]; then
+            node_dir="/usr/local/bin"
+          elif [[ -x /usr/bin/node ]]; then
+            node_dir="/usr/bin"
+          else
+            echo "Node binary not found; skipping PATH update."
+            exit 0
+          fi
+
+          echo "Restoring node path for act: ${node_dir}"
+          echo "${node_dir}" >> "$GITHUB_PATH"
+
+      # ========================================================================
+      # Create a test environment with tools used by this workflow.
+      # ------------------------------------------------------------------------
+      - name: Install test runtime
+        run: |
+          set -euo pipefail
+          venv_dir="${RUNNER_TEMP:-/tmp}/terraform-integration-venv"
+          python -m venv --clear "$venv_dir"
+          . "$venv_dir/bin/activate"
+          python -m pip install --upgrade pip
+          python -m pip install uv pytest playwright
+          echo "TEST_RUNTIME_VENV=$venv_dir" >> "$GITHUB_ENV"
+          echo "$venv_dir/bin" >> "$GITHUB_PATH"
+
+      # ========================================================================
+      # Log in to GHCR so docker compose can pull the images used in tests.
+      # ------------------------------------------------------------------------
+      - name: Log in to GHCR
+        if: ${{ !env.ACT }}
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # ========================================================================
+      # Check out bluecore-models so migrations can run from the selected branch.
+      # ------------------------------------------------------------------------
+      - name: Checkout bluecore-models
+        uses: actions/checkout@v4
+        with:
+          repository: blue-core-lod/bluecore-models
+          token: ${{ env.CHECKOUT_TOKEN }}
+          ref: ${{ inputs.models_ref || 'main' }}
+          path: external/bluecore-models
+          fetch-depth: 1
+
+      # ========================================================================
+      # Normalize workflow inputs into usable outputs for later steps.
+      # Selects Docker image tags based on branch names and build flags, applies
+      # defaults for any unset inputs, and writes everything to GITHUB_OUTPUT.
+      # ------------------------------------------------------------------------
+      - name: Resolve image plan
+        id: resolve
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          # ====================================================================
+          # Turn branch/tag names into local Docker image tags.
+          # --------------------------------------------------------------------
+          sanitize_tag_component() {
+            local raw="$1"
+            local cleaned
+
+            # Normalize common git ref prefixes when present.
+            raw="${raw#refs/heads/}"
+            raw="${raw#refs/tags/}"
+            raw="${raw#refs/}"
+
+            cleaned="$(printf '%s' "$raw" \
+              | tr '[:upper:]' '[:lower:]' \
+              | sed -E 's#[^a-z0-9._-]+#-#g; s#(^[-._]+|[-._]+$)##g; s#[-._]{2,}#-#g')"
+
+            if [[ -z "$cleaned" ]]; then
+              cleaned="ref"
+            fi
+
+            # Keep tags short and readable.
+            printf '%.40s' "$cleaned"
+          }
+
+          # ====================================================================
+          # Set workflow inputs into shell variables.
+          # --------------------------------------------------------------------
+          api_image_input="${{ inputs.api_image }}"
+          workflows_image_input="${{ inputs.workflows_image }}"
+          keycloak_image_input="${{ inputs.keycloak_image }}"
+          build_api_image_input="${{ inputs.build_api_image }}"
+          build_workflows_image_input="${{ inputs.build_workflows_image }}"
+          api_ref_input="${{ inputs.api_ref }}"
+          workflows_ref_input="${{ inputs.workflows_ref }}"
+          models_ref_input="${{ inputs.models_ref }}"
+          compose_project_name_input="${{ inputs.compose_project_name }}"
+          integration_db_name_input="${{ inputs.integration_db_name }}"
+          pytest_target_input="${{ inputs.pytest_target }}"
+
+          # ====================================================================
+          # Set empty inputs to defaults, Assign values if present.
+          # --------------------------------------------------------------------
+          build_api_image="${build_api_image_input:-false}"
+          build_workflows_image="${build_workflows_image_input:-false}"
+          api_ref="${api_ref_input:-main}"
+          workflows_ref="${workflows_ref_input:-main}"
+          models_ref="${models_ref_input:-main}"
+          compose_project_name="${compose_project_name_input:-terraform_integration_ci}"
+          integration_db_name="${integration_db_name_input:-bluecore_integration_test}"
+          keycloak_image="${keycloak_image_input:-quay.io/keycloak/keycloak:26.1.2}"
+          pytest_target="${pytest_target_input:-}"
+          api_ref_tag="$(sanitize_tag_component "$api_ref")"
+          workflows_ref_tag="$(sanitize_tag_component "$workflows_ref")"
+
+          # ====================================================================
+          # Start with explicit image overrides (if provided) before choosing defaults.
+          # --------------------------------------------------------------------
+          api_image="$api_image_input"
+          workflows_image="$workflows_image_input"
+
+          # ====================================================================
+          # If no image was provided, pick a local build tag or the default GHCR image.
+          # --------------------------------------------------------------------
+          if [[ -z "$api_image" ]]; then
+            if [[ "$build_api_image" == "true" ]]; then
+              api_image="bluecore_api:${api_ref_tag}-gha-${{ github.run_id }}-${{ github.run_attempt }}"
+            else
+              api_image="ghcr.io/blue-core-lod/bluecore_api:latest"
+            fi
+          fi
+
+          if [[ -z "$workflows_image" ]]; then
+            if [[ "$build_workflows_image" == "true" ]]; then
+              workflows_image="bluecore_workflows:${workflows_ref_tag}-gha-${{ github.run_id }}-${{ github.run_attempt }}"
+            else
+              workflows_image="ghcr.io/blue-core-lod/bluecore-workflows:latest"
+            fi
+          fi
+
+          # ====================================================================
+          # Skip pulls when building locally so compose does not replace fresh images.
+          # --------------------------------------------------------------------
+          pull_before_up="1"
+          if [[ "$build_api_image" == "true" || "$build_workflows_image" == "true" ]]; then
+            pull_before_up="0"
+          fi
+
+          # ====================================================================
+          # Write to $GITHUB_OUTPUT so later steps can read them via steps.resolve.outputs.*.
+          # --------------------------------------------------------------------
+          {
+            echo "api_image=$api_image"
+            echo "workflows_image=$workflows_image"
+            echo "keycloak_image=$keycloak_image"
+            echo "build_api_image=$build_api_image"
+            echo "build_workflows_image=$build_workflows_image"
+            echo "api_ref=$api_ref"
+            echo "workflows_ref=$workflows_ref"
+            echo "models_ref=$models_ref"
+            echo "compose_project_name=$compose_project_name"
+            echo "integration_db_name=$integration_db_name"
+            echo "pytest_target=$pytest_target"
+            echo "pull_before_up=$pull_before_up"
+          } >> "$GITHUB_OUTPUT"
+
+      # ========================================================================
+      # Check out API source only when this run needs to build the API image.
+      # ------------------------------------------------------------------------
+      - name: Checkout bluecore_api
+        if: ${{ steps.resolve.outputs.build_api_image == 'true' }}
+        uses: actions/checkout@v4
+        with:
+          repository: blue-core-lod/bluecore_api
+          token: ${{ env.CHECKOUT_TOKEN }}
+          ref: ${{ steps.resolve.outputs.api_ref }}
+          path: external/bluecore_api
+          fetch-depth: 1
+
+      # ========================================================================
+      # Otherwise still check out API source so fixtures and CLI files are available.
+      # ------------------------------------------------------------------------
+      - name: Checkout bluecore_api (fixtures + CLI source)
+        if: ${{ steps.resolve.outputs.build_api_image != 'true' }}
+        uses: actions/checkout@v4
+        with:
+          repository: blue-core-lod/bluecore_api
+          token: ${{ env.CHECKOUT_TOKEN }}
+          ref: ${{ steps.resolve.outputs.api_ref }}
+          path: external/bluecore_api
+          fetch-depth: 1
+
+      # ========================================================================
+      # Build the API image from the checked-out source when requested.
+      # ------------------------------------------------------------------------
+      - name: Build API image
+        if: ${{ steps.resolve.outputs.build_api_image == 'true' }}
+        run: |
+          docker build -t "${{ steps.resolve.outputs.api_image }}" external/bluecore_api
+
+      # ========================================================================
+      # Check out workflows source only when this run needs to build that image.
+      # ------------------------------------------------------------------------
+      - name: Checkout bluecore-workflows
+        if: ${{ steps.resolve.outputs.build_workflows_image == 'true' }}
+        uses: actions/checkout@v4
+        with:
+          repository: blue-core-lod/bluecore-workflows
+          token: ${{ env.CHECKOUT_TOKEN }}
+          ref: ${{ steps.resolve.outputs.workflows_ref }}
+          path: external/bluecore-workflows
+          fetch-depth: 1
+
+      # ========================================================================
+      # Build the workflows image from the checked-out source when requested.
+      # ------------------------------------------------------------------------
+      - name: Build Workflows image
+        if: ${{ steps.resolve.outputs.build_workflows_image == 'true' }}
+        run: |
+          docker build -t "${{ steps.resolve.outputs.workflows_image }}" external/bluecore-workflows
+
+      # ========================================================================
+      # Create a local .env for the integration stack if one does not exist yet.
+      # ------------------------------------------------------------------------
+      - name: Create integration .env
+        shell: bash
+        run: |
+          if [[ -f .env ]]; then
+            echo ".env already exists; keeping existing file."
+            exit 0
+          fi
+          cat > .env <<'EOF'
+            DATABASE_URL=postgresql+psycopg2://airflow:airflow@postgres/bluecore
+            AIRFLOW_WWW_USER_USERNAME=airflow
+            AIRFLOW_WWW_USER_PASSWORD=airflow
+            AIRFLOW_EXTERNAL_URL=http://localhost/workflows/
+            AIRFLOW_INTERNAL_URL=http://airflow-apiserver:8080/workflows/
+            AIRFLOW_PROJ_DIR=.
+            AIRFLOW_CONN_BLUECORE_DB=postgresql+psycopg2://airflow:airflow@postgres:5432/bluecore
+            API_KEYCLOAK_CLIENT_ID=bluecore_api
+            BLUECORE_URL=http://localhost
+            AIRFLOW_KEYCLOAK_CLIENT_ID=bluecore_workflows
+            AIRFLOW_KEYCLOAK_CLIENT_SECRET=KIu8gWa8rtjlT0Zl7zkNzsObFZGJ2IsJ
+            KEYCLOAK_INTERNAL_URL=http://keycloak:8080/keycloak/
+            KEYCLOAK_EXTERNAL_URL=http://localhost/keycloak/
+            KC_HOSTNAME_STRICT=false
+            KEYCLOAK_REALM=bluecore
+            KEYCLOAK_ADMIN=admin
+            KEYCLOAK_ADMIN_PASSWORD=gracious-professed
+            KC_DB=postgres
+            KC_DB_URL_HOST=postgres
+            KC_DB_URL_PORT=5432
+            KC_DB_URL_DATABASE=keycloak
+            KC_DB_SCHEMA=public
+            KC_DB_USERNAME=airflow
+            KC_DB_PASSWORD=airflow
+            KC_HEALTH_ENABLED=true
+            KC_PROXY_HEADERS=xforwarded
+            KC_PROXY=edge
+            KC_HTTP_ENABLED=true
+            KC_HTTP_RELATIVE_PATH=/keycloak/
+            KC_LOG_LEVEL=INFO
+            KC_HOSTNAME=http://localhost/keycloak
+          EOF
+
+      # ========================================================================
+      # Print the final refs/images/settings so it is clear what this run uses.
+      # ------------------------------------------------------------------------
+      - name: Show effective integration inputs
+        run: |
+          echo "API ref:                ${{ steps.resolve.outputs.api_ref }}"
+          echo "Workflows ref:          ${{ steps.resolve.outputs.workflows_ref }}"
+          echo "API image:              ${{ steps.resolve.outputs.api_image }}"
+          echo "Workflows image:        ${{ steps.resolve.outputs.workflows_image }}"
+          echo "Models ref:             ${{ steps.resolve.outputs.models_ref }}"
+          echo "API source label:       bluecore_api@${{ steps.resolve.outputs.api_ref }}"
+          echo "WF source label:        bluecore-workflows@${{ steps.resolve.outputs.workflows_ref }}"
+          echo "Model source lbl:       bluecore-models@${{ steps.resolve.outputs.models_ref }}"
+          echo "Models dir:             ${GITHUB_WORKSPACE}/external/bluecore-models"
+          echo "Fixtures dir:           ${GITHUB_WORKSPACE}/external/bluecore_api/sample"
+          echo "Sample load URL:        https://raw.githubusercontent.com/blue-core-lod/bluecore_api/refs/heads/main/sample/batch-small.jsonld"
+          echo "Pull before update?:    ${{ steps.resolve.outputs.pull_before_up }}"
+          echo "Compose project:        ${{ steps.resolve.outputs.compose_project_name }}"
+          echo "Integration DB:         ${{ steps.resolve.outputs.integration_db_name }}"
+          echo "Pytest target:          ${{ steps.resolve.outputs.pytest_target }}"
+          echo "Full stack mode:        ${{ (github.event_name != 'workflow_dispatch') || (inputs.full_stack_profile || false) || (env.INTEGRATION_FULL_STACK == '1') }}"
+          echo "Compose profiles:       ${{ ((github.event_name != 'workflow_dispatch') || (inputs.full_stack_profile || false) || (env.INTEGRATION_FULL_STACK == '1')) && 'integration-full' || '(default)' }}"
+
+      # ========================================================================
+      # Fail early if expected API fixture and CLI files are missing.
+      # ------------------------------------------------------------------------
+      - name: Verify integration fixture file
+        run: |
+          test -f "${GITHUB_WORKSPACE}/external/bluecore_api/sample/batch.jsonld"
+          ls -l "${GITHUB_WORKSPACE}/external/bluecore_api/sample/batch.jsonld"
+          test -f "${GITHUB_WORKSPACE}/external/bluecore_api/src/bluecore_api/cli.py"
+          ls -l "${GITHUB_WORKSPACE}/external/bluecore_api/src/bluecore_api/cli.py"
+
+      # ========================================================================
+      # Show important Airflow config values from merged compose settings for debug.
+      # ------------------------------------------------------------------------
+      - name: Show effective Airflow log settings
+        env:
+          COMPOSE_PROJECT_NAME: ${{ steps.resolve.outputs.compose_project_name }}
+          POSTGRES_HOST_PORT: "15432"
+          INTEGRATION_DB_NAME: ${{ steps.resolve.outputs.integration_db_name }}
+          COMPOSE_PROFILES: ${{ ((github.event_name != 'workflow_dispatch') || (inputs.full_stack_profile || false) || (env.INTEGRATION_FULL_STACK == '1')) && 'integration-full' || env.COMPOSE_PROFILES }}
+          AIRFLOW_UID: "50000"
+          BLUECORE_API_IMAGE: ${{ steps.resolve.outputs.api_image }}
+          BLUECORE_WORKFLOWS_IMAGE: ${{ steps.resolve.outputs.workflows_image }}
+          KEYCLOAK_IMAGE: ${{ steps.resolve.outputs.keycloak_image }}
+        run: |
+          docker compose -f compose-dev.yaml -f compose-integration-test.yaml config | grep -E "AIRFLOW__LOGGING__BASE_LOG_FOLDER|AIRFLOW__LOGGING__DAG_PROCESSOR_CHILD_PROCESS_LOG_DIRECTORY|AIRFLOW__API_AUTH__JWT_SECRET|AIRFLOW__CORE__INTERNAL_API_SECRET_KEY" || true
+
+      # ========================================================================
+      # Run the terraform integration test script with the resolved refs/images/env.
+      # ------------------------------------------------------------------------
+      - name: Run terraform integration tests
+        env:
+          BLUECORE_API_IMAGE: ${{ steps.resolve.outputs.api_image }}
+          BLUECORE_WORKFLOWS_IMAGE: ${{ steps.resolve.outputs.workflows_image }}
+          KEYCLOAK_IMAGE: ${{ steps.resolve.outputs.keycloak_image }}
+          BLUECORE_API_ROOT: ${{ github.workspace }}/external/bluecore_api
+          MODELS_DIR: ${{ github.workspace }}/external/bluecore-models
+          MODELS_SOURCE_LABEL: bluecore-models@${{ steps.resolve.outputs.models_ref }}
+          INTEGRATION_API_REF: ${{ steps.resolve.outputs.api_ref }}
+          INTEGRATION_WORKFLOWS_REF: ${{ steps.resolve.outputs.workflows_ref }}
+          INTEGRATION_MODELS_REF: ${{ steps.resolve.outputs.models_ref }}
+          INTEGRATION_SAMPLE_BATCH_SOURCE: ${{ github.workspace }}/external/bluecore_api/sample/batch-small.jsonld
+          INTEGRATION_BATCH_JSONLD_URL: https://raw.githubusercontent.com/blue-core-lod/bluecore_api/refs/heads/main/sample/batch-small.jsonld
+          PULL_BEFORE_UP: ${{ steps.resolve.outputs.pull_before_up }}
+          COMPOSE_PROJECT_NAME: ${{ steps.resolve.outputs.compose_project_name }}
+          INTEGRATION_DB_NAME: ${{ steps.resolve.outputs.integration_db_name }}
+          COMPOSE_PROFILES: ${{ ((github.event_name != 'workflow_dispatch') || (inputs.full_stack_profile || false) || (env.INTEGRATION_FULL_STACK == '1')) && 'integration-full' || env.COMPOSE_PROFILES }}
+          INTEGRATION_BASE_URL: ${{ ((github.event_name != 'workflow_dispatch') || (inputs.full_stack_profile || false) || (env.INTEGRATION_FULL_STACK == '1')) && 'http://localhost/api' || env.INTEGRATION_BASE_URL }}
+          INTEGRATION_AIRFLOW_BASE_URL: ${{ ((github.event_name != 'workflow_dispatch') || (inputs.full_stack_profile || false) || (env.INTEGRATION_FULL_STACK == '1')) && 'http://localhost' || env.INTEGRATION_AIRFLOW_BASE_URL }}
+          INTEGRATION_KEYCLOAK_TOKEN_URL: ${{ ((github.event_name != 'workflow_dispatch') || (inputs.full_stack_profile || false) || (env.INTEGRATION_FULL_STACK == '1')) && 'http://localhost/keycloak/realms/bluecore/protocol/openid-connect/token' || env.INTEGRATION_KEYCLOAK_TOKEN_URL }}
+          INTEGRATION_REQUIRE_VECTOR_BACKEND: ${{ ((github.event_name != 'workflow_dispatch') || (inputs.full_stack_profile || false) || (env.INTEGRATION_FULL_STACK == '1')) && '1' || env.INTEGRATION_REQUIRE_VECTOR_BACKEND }}
+          COMPACT_LOG_OUTPUT: "1"
+          COMPOSE_PROGRESS: plain
+          COMPOSE_ANSI: never
+          PYTHON_BIN: ${{ runner.temp }}/terraform-integration-venv/bin/python
+        shell: bash
+        run: |
+          export PATH="${TEST_RUNTIME_VENV:-${RUNNER_TEMP:-/tmp}/terraform-integration-venv}/bin:${PATH}"
+          # ====================================================================
+          # Run a specific pytest target when provided; otherwise run the default suite.
+          # --------------------------------------------------------------------
+          if [[ -n "${{ steps.resolve.outputs.pytest_target }}" ]]; then
+            ./scripts/integration-tests.sh ${{ steps.resolve.outputs.pytest_target }}
+          else
+            ./scripts/integration-tests.sh
+          fi
+
+      # ========================================================================
+      # On failure, print compose status and recent logs to help debug quickly.
+      # ------------------------------------------------------------------------
+      - name: Dump compose diagnostics on failure
+        if: ${{ failure() }}
+        shell: bash
+        env:
+          COMPOSE_PROJECT_NAME: ${{ steps.resolve.outputs.compose_project_name }}
+          POSTGRES_HOST_PORT: "15432"
+          INTEGRATION_DB_NAME: ${{ steps.resolve.outputs.integration_db_name }}
+          COMPOSE_PROFILES: ${{ ((github.event_name != 'workflow_dispatch') || (inputs.full_stack_profile || false) || (env.INTEGRATION_FULL_STACK == '1')) && 'integration-full' || env.COMPOSE_PROFILES }}
+          AIRFLOW_UID: "50000"
+          BLUECORE_API_IMAGE: ${{ steps.resolve.outputs.api_image }}
+          BLUECORE_WORKFLOWS_IMAGE: ${{ steps.resolve.outputs.workflows_image }}
+          KEYCLOAK_IMAGE: ${{ steps.resolve.outputs.keycloak_image }}
+        run: |
+          docker compose -f compose-dev.yaml -f compose-integration-test.yaml ps -a || true
+          docker compose -f compose-dev.yaml -f compose-integration-test.yaml logs --tail=300 || true

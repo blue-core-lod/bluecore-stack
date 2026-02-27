@@ -10,3 +10,9 @@ samlapi_formauth.py
 *swp
 logs/*
 uploads/*
+__pycache__/
+*.py[cod]
+tests/playwright/.venv/
+.secrets
+/milvus/
+/config/airflow.cfg
