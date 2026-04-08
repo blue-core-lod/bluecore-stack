@@ -1,0 +1,27 @@
+services:
+  bc_api:
+    platform: linux/amd64
+
+  airflow-apiserver:
+    platform: linux/amd64
+
+  airflow-scheduler:
+    platform: linux/amd64
+
+  airflow-dag-processor:
+    platform: linux/amd64
+
+  airflow-worker:
+    platform: linux/amd64
+
+  airflow-triggerer:
+    platform: linux/amd64
+
+  airflow-init:
+    platform: linux/amd64
+
+  airflow-cli:
+    platform: linux/amd64
+
+  flower:
+    platform: linux/amd64
