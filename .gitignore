@@ -1,0 +1,12 @@
+samlapi_formauth.py
+.DS_Store
+.env*
+*swp
+logs/*
+uploads/*
+__pycache__/
+*.py[cod]
+tests/playwright/.venv/
+.secrets
+/milvus/
+/config/airflow.cfg
