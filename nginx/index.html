@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <title>Blue Core · API & Workflows</title>
+    <link rel="stylesheet" href="/assets/styles.css">
+</head>
+
+<body>
+<header class="site-header">
+    <div class="container header-inner">
+        <div class="brand">
+            <img src="/assets/bluecore-small.png" alt="Blue Core Logo" class="logo">
+            <span class="sep">|</span>
+            <span class="brand-sub">Platform</span>
+        </div>
+
+        <!-- Live gateway status -->
+        <div id="gw-badge" class="status-badge" role="status" aria-live="polite" title="Gateway status">
+            <span class="dot"></span>
+            <span class="label">Checking…</span>
+        </div>
+    </div>
+</header>
+
+<main class="container">
+    <p class="lead">API, identity, workflows, and tools.</p>
+
+    <nav class="list">
+        <a class="row" href="/sinopia/">
+            <span class="ic">📝</span>
+            <span class="txt">
+                <span class="title">Sinopia</span>
+                <span class="sub">Create and manage BIBFRAME descriptions.</span>
+            </span>
+            <span class="chev">›</span>
+        </a>
+
+        <a class="row" href="/marva/">
+            <span class="ic">📝</span>
+            <span class="txt">
+                <span class="title">Marva</span>
+                <span class="sub">Create and manage BIBFRAME descriptions.</span>
+            </span>
+            <span class="chev">›</span>
+        </a>
+
+        <a class="row" href="/toolbox/">
+            <span class="ic">🧰</span>
+            <span class="txt">
+                <span class="title">Graph Toolbox</span>
+                <span class="sub">Explore, query, and visualize graph data.</span>
+             </span>
+            <span class="chev">›</span>
+        </a>
+
+        <a class="row" href="/api/">
+            <span class="ic">📚</span>
+            <span class="txt">
+                <span class="title">API</span>
+                <span class="sub">Bluecore API.</span>
+            </span>
+            <span class="chev">›</span>
+        </a>
+
+        <a class="row" href="/keycloak/">
+            <span class="ic">🔐️</span>
+            <span class="txt">
+                <span class="title">Keycloak</span>
+                <span class="sub">Manage realms, clients, and identity flows.</span>
+            </span>
+            <span class="chev">›</span>
+        </a>
+
+        <a class="row" href="/workflows/">
+            <span class="ic">⚙️</span>
+            <span class="txt">
+                <span class="title">Workflows</span>
+                <span class="sub">Trigger, monitor, and debug pipelines.</span>
+            </span>
+            <span class="chev">›</span>
+        </a>
+    </nav>
+
+    <footer class="links">
+        <a href="/api/docs">API Docs</a>
+        <a href="/api/openapi.json">OpenAPI JSON</a>
+        <a href="/workflows/api/v2/monitor/health">Workflows Health</a>
+    </footer>
+</main>
+
+<script src="/assets/health.js" defer></script>
+</body>
+</html>
