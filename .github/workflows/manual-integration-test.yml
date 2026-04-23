@@ -389,6 +389,11 @@ jobs:
             KC_HTTP_RELATIVE_PATH=/keycloak/
             KC_LOG_LEVEL=INFO
             KC_HOSTNAME=http://localhost/keycloak
+            MARVA_MW_PORT=9401
+            MARVA_REDIRECT_BASE=http://localhost/marva/
+            BLUECORE_STACK_KEYCLOAK_REDIRECT_URI=http://localhost/marva/util/auth/callback
+            KEYCLOAK_MIDDLEWARE_BASE=http://marva-keycloak-middleware:9401/marva/util
+            CORS_ORIGIN: "*"
           EOF
 
       # ========================================================================
