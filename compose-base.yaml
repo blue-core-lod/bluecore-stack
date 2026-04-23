@@ -107,11 +107,20 @@ services:
 
   marva:
     restart: always
-    image: ghcr.io/blue-core-lod/marva:latest
+    image: ${MARVA_IMAGE:-ghcr.io/blue-core-lod/marva:latest}
     expose:
-      - 8004
+      - 8080
     depends_on:
       - bc_api
+      - marva-keycloak-middleware
+
+  marva-keycloak-middleware:
+    restart: always
+    image: ${MARVA_KEYCLOAK_MIDDLEWARE_IMAGE:-ghcr.io/blue-core-lod/marva-keycloak-middleware:latest}
+    expose:
+      - 9401
+    env_file:
+      - ./.env
 
   airflow-apiserver:
     <<: *airflow-common
