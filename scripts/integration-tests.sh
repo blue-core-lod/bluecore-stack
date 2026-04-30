@@ -23,6 +23,8 @@ user_set_compose_project_name="${COMPOSE_PROJECT_NAME+x}"
 user_set_build_local_dev_images="${BUILD_LOCAL_DEV_IMAGES+x}"
 user_set_build_local_bc_api_image="${BUILD_LOCAL_BC_API_IMAGE+x}"
 user_set_build_local_workflows_image="${BUILD_LOCAL_WORKFLOWS_IMAGE+x}"
+user_set_build_local_marva_image="${BUILD_LOCAL_MARVA_IMAGE+x}"
+user_set_build_local_marva_middleware_image="${BUILD_LOCAL_MARVA_MIDDLEWARE_IMAGE+x}"
 user_set_auto_start_stack="${AUTO_START_STACK+x}"
 user_set_apply_models_migrations="${APPLY_MODELS_MIGRATIONS+x}"
 
@@ -66,10 +68,13 @@ POSTGRES_READY_TIMEOUT_SECONDS="${POSTGRES_READY_TIMEOUT_SECONDS:-120}"
 BUILD_LOCAL_DEV_IMAGES="${BUILD_LOCAL_DEV_IMAGES:-0}"
 LOCAL_BLUECORE_API_DIR="${LOCAL_BLUECORE_API_DIR:-$ROOT_DIR/../bluecore_api}"
 LOCAL_BLUECORE_WORKFLOWS_DIR="${LOCAL_BLUECORE_WORKFLOWS_DIR:-$ROOT_DIR/../bluecore-workflows}"
+LOCAL_MARVA_DIR="${LOCAL_MARVA_DIR:-$ROOT_DIR/../../BLUECORE_EDITORS/marva_editor}"
 LOCAL_IMAGE_TAG="${LOCAL_IMAGE_TAG:-integration-test-local}"
 LOCAL_BUILD_PLATFORM="${LOCAL_BUILD_PLATFORM:-}"
 BUILD_LOCAL_BC_API_IMAGE="${BUILD_LOCAL_BC_API_IMAGE:-1}"
 BUILD_LOCAL_WORKFLOWS_IMAGE="${BUILD_LOCAL_WORKFLOWS_IMAGE:-1}"
+BUILD_LOCAL_MARVA_IMAGE="${BUILD_LOCAL_MARVA_IMAGE:-1}"
+BUILD_LOCAL_MARVA_MIDDLEWARE_IMAGE="${BUILD_LOCAL_MARVA_MIDDLEWARE_IMAGE:-1}"
 EXTERNAL_CHECKOUT_ROOT="${EXTERNAL_CHECKOUT_ROOT:-$ROOT_DIR/external}"
 
 ###########################
@@ -94,8 +99,12 @@ INTEGRATION_KEYCLOAK_ADMIN_PASSWORD="${INTEGRATION_KEYCLOAK_ADMIN_PASSWORD:-${KE
 ###########################
 user_bluecore_api_image="${BLUECORE_API_IMAGE:-}"
 user_bluecore_workflows_image="${BLUECORE_WORKFLOWS_IMAGE:-}"
+user_marva_image="${MARVA_IMAGE:-}"
+user_marva_middleware_image="${MARVA_KEYCLOAK_MIDDLEWARE_IMAGE:-}"
 effective_bluecore_api_image="${user_bluecore_api_image:-ghcr.io/blue-core-lod/bluecore_api:latest}"
 effective_bluecore_workflows_image="${user_bluecore_workflows_image:-ghcr.io/blue-core-lod/bluecore-workflows:latest}"
+effective_marva_image="${user_marva_image:-}"
+effective_marva_middleware_image="${user_marva_middleware_image:-}"
 
 usage() {
   cat <<'EOF'
@@ -438,6 +447,12 @@ service_should_pull() {
     if [[ "$BUILD_LOCAL_WORKFLOWS_IMAGE" == "1" && "$image" == "$effective_bluecore_workflows_image" ]] && is_workflows_service "$service"; then
       return 1
     fi
+    if [[ "$BUILD_LOCAL_MARVA_IMAGE" == "1" && "$service" == "marva" && "$image" == "$effective_marva_image" ]]; then
+      return 1
+    fi
+    if [[ "$BUILD_LOCAL_MARVA_MIDDLEWARE_IMAGE" == "1" && "$service" == "marva-keycloak-middleware" && "$image" == "$effective_marva_middleware_image" ]]; then
+      return 1
+    fi
   fi
 
   return 0
@@ -487,6 +502,14 @@ image_origin_for_service() {
     fi
     if is_workflows_service "$service" && [[ "$BUILD_LOCAL_WORKFLOWS_IMAGE" == "1" && "$image" == "$effective_bluecore_workflows_image" ]]; then
       echo "local build ($LOCAL_BLUECORE_WORKFLOWS_DIR)"
+      return
+    fi
+    if [[ "$service" == "marva" && "$BUILD_LOCAL_MARVA_IMAGE" == "1" && "$image" == "$effective_marva_image" ]]; then
+      echo "local build ($LOCAL_MARVA_DIR)"
+      return
+    fi
+    if [[ "$service" == "marva-keycloak-middleware" && "$BUILD_LOCAL_MARVA_MIDDLEWARE_IMAGE" == "1" && "$image" == "$effective_marva_middleware_image" ]]; then
+      echo "local build ($LOCAL_MARVA_DIR)"
       return
     fi
   fi
@@ -547,6 +570,21 @@ build_local_dev_images() {
     fi
     echo "Building Workflows image: $effective_bluecore_workflows_image"
     docker build "${build_args[@]}" -t "$effective_bluecore_workflows_image" "$LOCAL_BLUECORE_WORKFLOWS_DIR"
+  fi
+
+  if [[ "$BUILD_LOCAL_MARVA_IMAGE" == "1" || "$BUILD_LOCAL_MARVA_MIDDLEWARE_IMAGE" == "1" ]]; then
+    if [[ ! -d "$LOCAL_MARVA_DIR" ]]; then
+      echo "Local Marva directory not found: $LOCAL_MARVA_DIR"
+      return 1
+    fi
+    if [[ "$BUILD_LOCAL_MARVA_IMAGE" == "1" ]]; then
+      echo "Building Marva image: $effective_marva_image"
+      docker build "${build_args[@]}" --target builder -t "$effective_marva_image" "$LOCAL_MARVA_DIR"
+    fi
+    if [[ "$BUILD_LOCAL_MARVA_MIDDLEWARE_IMAGE" == "1" ]]; then
+      echo "Building Marva middleware image: $effective_marva_middleware_image"
+      docker build "${build_args[@]}" -f "$LOCAL_MARVA_DIR/Dockerfile.middleware" -t "$effective_marva_middleware_image" "$LOCAL_MARVA_DIR"
+    fi
   fi
 }
 
@@ -818,6 +856,7 @@ if [[ "$INTEGRATION_DEV_MODE" == "1" ]]; then
   compose_env+=(
     "LOCAL_BLUECORE_API_DIR=$LOCAL_BLUECORE_API_DIR"
     "LOCAL_BLUECORE_WORKFLOWS_DIR=$LOCAL_BLUECORE_WORKFLOWS_DIR"
+    "LOCAL_MARVA_DIR=$LOCAL_MARVA_DIR"
   )
 fi
 
@@ -868,6 +907,17 @@ else
   fi
 fi
 
+# If developer passed explicit pytest targets (file/dir/nodeid), run only those.
+pytest_targets=(tests/integration)
+if (( pytest_passthrough_count > 0 )); then
+  for arg in "${pytest_passthrough_args[@]}"; do
+    if [[ "$arg" == *"/"* || "$arg" == *.py || "$arg" == *"::"* ]]; then
+      pytest_targets=("$arg")
+      break
+    fi
+  done
+fi
+
 if [[ "$AUTO_START_STACK" == "1" ]]; then
   if [[ "$RESET_STACK_BEFORE_UP" == "1" ]]; then
     log_banner "🧹  Resetting integration stack state..."
@@ -882,15 +932,26 @@ if [[ "$AUTO_START_STACK" == "1" ]]; then
     if [[ "$BUILD_LOCAL_WORKFLOWS_IMAGE" == "1" && -z "$user_bluecore_workflows_image" && -z "$effective_workflows_ref" ]]; then
       effective_bluecore_workflows_image="bluecore_workflows:${LOCAL_IMAGE_TAG}"
     fi
+    if [[ "$BUILD_LOCAL_MARVA_IMAGE" == "1" && -z "$user_marva_image" ]]; then
+      effective_marva_image="marva:${LOCAL_IMAGE_TAG}"
+    fi
+    if [[ "$BUILD_LOCAL_MARVA_MIDDLEWARE_IMAGE" == "1" && -z "$user_marva_middleware_image" ]]; then
+      effective_marva_middleware_image="marva-keycloak-middleware:${LOCAL_IMAGE_TAG}"
+    fi
     compose_env+=(
       "BLUECORE_API_IMAGE=$effective_bluecore_api_image"
       "BLUECORE_WORKFLOWS_IMAGE=$effective_bluecore_workflows_image"
+      "MARVA_IMAGE=$effective_marva_image"
+      "MARVA_KEYCLOAK_MIDDLEWARE_IMAGE=$effective_marva_middleware_image"
     )
     log_banner "🏗️  Building local development images..."
     echo "API source dir: $LOCAL_BLUECORE_API_DIR"
     echo "Workflows source dir: $LOCAL_BLUECORE_WORKFLOWS_DIR"
+    echo "Marva source dir: $LOCAL_MARVA_DIR"
     echo "API image: $effective_bluecore_api_image"
     echo "Workflows image: $effective_bluecore_workflows_image"
+    echo "Marva image: $effective_marva_image"
+    echo "Marva middleware image: $effective_marva_middleware_image"
     if [[ -n "$LOCAL_BUILD_PLATFORM" ]]; then
       echo "Build platform: $LOCAL_BUILD_PLATFORM"
     fi
@@ -984,7 +1045,7 @@ echo "Bluecore Workflows image: $effective_bluecore_workflows_image"
 echo "Vector backend required: $default_require_vector_backend"
 echo "------------------------------"
 set +e
-(cd "$ROOT_DIR" && INTEGRATION_KEYCLOAK_TOKEN_URL="$default_keycloak_token_url" INTEGRATION_AIRFLOW_BASE_URL="$default_airflow_base_url" INTEGRATION_REQUIRE_VECTOR_BACKEND="$default_require_vector_backend" "$PYTHON_BIN" -m pytest tests/integration --ignore=external -v -s --color=yes "${pytest_args[@]}")
+(cd "$ROOT_DIR" && INTEGRATION_FULL_STACK="$INTEGRATION_FULL_STACK" COMPOSE_PROFILES="${compose_profiles_value:-}" INTEGRATION_KEYCLOAK_TOKEN_URL="$default_keycloak_token_url" INTEGRATION_AIRFLOW_BASE_URL="$default_airflow_base_url" INTEGRATION_REQUIRE_VECTOR_BACKEND="$default_require_vector_backend" "$PYTHON_BIN" -m pytest "${pytest_targets[@]}" --ignore=external -v -s --color=yes "${pytest_args[@]}")
 test_exit_code=$?
 set -e
 

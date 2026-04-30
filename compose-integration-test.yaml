@@ -20,6 +20,9 @@ services:
   marva:
     profiles: ["integration-full"]
 
+  marva-keycloak-middleware:
+    profiles: ["integration-full"]
+
   airflow-triggerer:
     profiles: ["disabled"]
 
