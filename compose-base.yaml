@@ -122,6 +122,7 @@ services:
   marva-keycloak-middleware:
     restart: always
     image: ${MARVA_KEYCLOAK_MIDDLEWARE_IMAGE:-ghcr.io/blue-core-lod/marva-keycloak-middleware:latest}
+    platform: linux/amd64
     expose:
       - 9401
     env_file:
