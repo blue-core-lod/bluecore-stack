@@ -296,6 +296,11 @@ services:
         echo "Files in shared volumes:"
         echo
         ls -la /opt/airflow/{logs,dags,plugins,config}
+        echo
+        if [[ -n $AIRFLOW_CONN_BLUECORE_DB ]]; then
+          echo "Connection URI found. Adding bluecore_db connection."
+          airflow connections add 'bluecore_db' --conn-uri "${AIRFLOW_CONN_BLUECORE_DB}"
+        fi
 
     # yamllint enable rule:line-length
     environment:

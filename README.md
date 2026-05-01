@@ -22,7 +22,7 @@ AIRFLOW_WWW_USER_PASSWORD=airflow
 AIRFLOW_EXTERNAL_URL=http://localhost/workflows/
 AIRFLOW_INTERNAL_URL=http://airflow-apiserver:8080/workflows/
 AIRFLOW_PROJ_DIR=.
-AIRFLOW_CONN_BLUECORE_DB: 'postgresql+psycopg2://airflow:airflow@postgres:5432/bluecore'
+AIRFLOW_CONN_BLUECORE_DB='postgresql://airflow:airflow@postgres:5432/bluecore'
 
 ######################-------------------------------------
 ## Keycloak Clients ##
