@@ -5,7 +5,6 @@ x-airflow-common:
   # and uncomment the "build" line below, Then run `docker-compose build` to build the images.
   # image: ${AIRFLOW_IMAGE_NAME:-apache/airflow:3.0.1}
   image: ${BLUECORE_WORKFLOWS_IMAGE:-ghcr.io/blue-core-lod/bluecore-workflows:latest}
-  platform: linux/amd64
   environment:
     &airflow-common-env
     AIRFLOW__CORE__EXECUTOR: CeleryExecutor
@@ -103,7 +102,6 @@ services:
   sinopia:
     restart: always
     image: ghcr.io/blue-core-lod/sinopia:latest
-    platform: linux/amd64
     expose:
       - 8004
     depends_on:
@@ -112,7 +110,6 @@ services:
   marva:
     restart: always
     image: ${MARVA_IMAGE:-ghcr.io/blue-core-lod/marva:latest}
-    platform: linux/amd64
     expose:
       - 8080
     depends_on:
@@ -122,7 +119,6 @@ services:
   marva-keycloak-middleware:
     restart: always
     image: ${MARVA_KEYCLOAK_MIDDLEWARE_IMAGE:-ghcr.io/blue-core-lod/marva-keycloak-middleware:latest}
-    platform: linux/amd64
     expose:
       - 9401
     env_file:
