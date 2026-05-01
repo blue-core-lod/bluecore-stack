@@ -66,7 +66,23 @@ KC_PROXY=edge
 KC_HTTP_ENABLED=true
 KC_HTTP_RELATIVE_PATH=/keycloak/
 KC_LOG_LEVEL=INFO
-# KC_HOSTNAME=https://dev.bcld.info/keycloak 
+# KC_HOSTNAME=https://dev.bcld.info/keycloak
+
+####################################-----------------------
+## Marva Middleware Configuration ##
+####################################
+MARVA_MW_PORT=9401
+MARVA_REDIRECT_BASE=http://localhost/marva/
+BLUECORE_STACK_KEYCLOAK_REDIRECT_URI=http://localhost/marva/util/auth/callback
+KEYCLOAK_MIDDLEWARE_BASE=http://marva-keycloak-middleware:9401/marva/util
+CORS_ORIGIN=*
+# MARVA_UTIL_PATH= #TODO: will need to be configured with marva backend for additional Marva features
+
+# ---------------------------------------------------------
+# Env Values already assigned in "Keycloak Clients" section
+# ---------------------------------------------------------
+# KEYCLOAK_INTERNAL_URL=http://keycloak:8080/keycloak/
+# KEYCLOAK_EXTERNAL_URL=http://localhost/keycloak/
 ```
 
 ## 🛠️ Setup Airflow (Blue Core Workflows)
@@ -144,6 +160,12 @@ Dev Docker compose file needs to be specified when starting the container servic
 ```bash
 docker compose -f compose-dev.yaml up
 ```
+
+### 🚧 Using Local code in Blue Stack
+📝 Note: Blue Stack deploys locally with images pulled from GitHub. 
+<br/>
+In order to `deploy from your local code` to see any development changes [See This Guide](https://github.com/blue-core-lod/bluecore_info/wiki/Building-and-using-local-images-inside-Terraform-and-Blue%E2%80%90stack).
+
 
 ## 🧪 Integration Test Suite
 Use this suite to validate API + Workflows + Keycloak behavior before merging.

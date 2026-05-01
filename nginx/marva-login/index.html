@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <title>Marva Login</title>
+    <style>
+        body {
+            margin: 0;
+            font-family: Inter, "Helvetica Neue", Arial, sans-serif;
+            background: #e9eef6;
+            color: #1a2741;
+        }
+        .header {
+            display: flex;
+            align-items: center;
+            padding: 1.8rem 2rem;
+        }
+        .header img {
+            height: 34px;
+            margin-right: 0.6rem;
+        }
+        .header .title {
+            font-size: 1.9rem;
+            font-weight: 700;
+            color: #232323;
+        }
+        .mat {
+            background: #b9cbe1;
+            padding: 2.8rem 1rem;
+            display: flex;
+            justify-content: center;
+        }
+        .card {
+            width: 930px;
+            max-width: 96vw;
+            background: #f7fafd;
+            border-radius: 11px;
+            box-shadow: 0 4px 16px rgba(40, 50, 100, 0.13);
+            padding: 2.3rem 2.2rem;
+            display: grid;
+            gap: 1.5rem;
+            grid-template-columns: 2fr 1fr;
+        }
+        .news h2 {
+            margin: 0 0 0.5rem;
+            font-size: 1.4rem;
+            color: #25395d;
+        }
+        .news p {
+            margin: 0 0 0.8rem;
+            color: #294b6d;
+            font-weight: 600;
+        }
+        .news ul {
+            margin: 0;
+            padding-left: 1.1rem;
+            line-height: 1.7;
+        }
+        .login-box {
+            background: #fff;
+            border-radius: 9px;
+            box-shadow: 0 2px 8px rgba(40, 60, 120, 0.1);
+            padding: 1.6rem;
+            text-align: center;
+        }
+        .login-box h3 {
+            margin: 0 0 1rem;
+            font-size: 1.05rem;
+            color: #263b58;
+        }
+        .btn {
+            display: inline-block;
+            border: 0;
+            border-radius: 5px;
+            background: #2264af;
+            color: #fff;
+            font-size: 1.05rem;
+            font-weight: 600;
+            padding: 0.8rem 1.8rem;
+            text-decoration: none;      /* no underline */
+            cursor: pointer;
+            transition: background-color 0.15s ease, transform 0.08s ease, box-shadow 0.15s ease;
+        }
+        .btn:hover {
+            background: #1d5697;
+            box-shadow: 0 4px 12px rgba(34, 100, 175, 0.25);
+        }
+        .btn:active {
+            transform: translateY(1px) scale(0.99);
+            background: #184a83;
+        }
+        .btn:focus-visible {
+            outline: 2px solid #9ec0ea;
+            outline-offset: 2px;
+        }
+        .about {
+            max-width: 940px;
+            margin: 2.4rem auto;
+            padding: 0 1.2rem;
+        }
+        .about h2 {
+            margin: 0 0 0.6rem;
+            font-size: 1.45rem;
+            color: #253354;
+        }
+        .about p {
+            margin: 0.4rem 0;
+            line-height: 1.6;
+        }
+        @media (max-width: 960px) {
+            .card {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+
+</head>
+<body>
+<header class="header">
+    <img src="/assets/bluecore-small.png" alt="Blue Core Logo"/>
+    <span class="title">| MARVA</span>
+</header>
+
+<section class="mat">
+    <div class="card">
+        <section class="news">
+            <h2>Latest news</h2>
+            <p>Bluecore Marva Version Highlights</p>
+            <ul>
+                <li>Core authentication powered by Keycloak SSO</li>
+                <li>UI/UX aligned with Blue Core platform</li>
+                <li>Feedback welcome via GitHub or support channels</li>
+            </ul>
+        </section>
+        <section class="login-box">
+            <h3>Login to Marva Editor</h3>
+             <a class="btn" href="/marva/">Login</a>
+        </section>
+    </div>
+</section>
+
+<section class="about">
+    <h2>A modern Bibframe editor from the Library of Congress</h2>
+    <p>
+        <strong>Marva</strong> is a Bibframe RDF/XML editor developed at the Library of Congress,
+        designed to create and edit linked data records for libraries.
+    </p>
+    <p>
+        Marva is an open-source Vue 3 application
+        (<a href="https://github.com/lcnetdev/marva-quartz" target="_blank" rel="noopener">GitHub</a>).
+    </p>
+</section>
+
+</body>
+</html>

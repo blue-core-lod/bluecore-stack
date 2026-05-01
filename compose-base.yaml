@@ -5,6 +5,7 @@ x-airflow-common:
   # and uncomment the "build" line below, Then run `docker-compose build` to build the images.
   # image: ${AIRFLOW_IMAGE_NAME:-apache/airflow:3.0.1}
   image: ${BLUECORE_WORKFLOWS_IMAGE:-ghcr.io/blue-core-lod/bluecore-workflows:latest}
+  platform: linux/amd64
   environment:
     &airflow-common-env
     AIRFLOW__CORE__EXECUTOR: CeleryExecutor
@@ -61,6 +62,8 @@ services:
     volumes:
       - postgres-db-volume:/var/lib/postgresql/data
       - ./scripts/init-multi-postgres-dbs.sh:/docker-entrypoint-initdb.d/init-multi-postgres-dbs.sh
+    post_start:
+      - command: /usr/bin/bash -c "until pg_isready -U airflow; do echo 'Waiting for postgres to be ready...'; sleep 3; done; /usr/bin/bash /docker-entrypoint-initdb.d/init-multi-postgres-dbs.sh"
     healthcheck:
       test: ["CMD", "pg_isready", "-U", "airflow"]
       interval: 10s
@@ -100,6 +103,7 @@ services:
   sinopia:
     restart: always
     image: ghcr.io/blue-core-lod/sinopia:latest
+    platform: linux/amd64
     expose:
       - 8004
     depends_on:
@@ -107,11 +111,21 @@ services:
 
   marva:
     restart: always
-    image: ghcr.io/blue-core-lod/marva:latest
+    image: ${MARVA_IMAGE:-ghcr.io/blue-core-lod/marva:latest}
+    platform: linux/amd64
     expose:
-      - 8004
+      - 8080
     depends_on:
       - bc_api
+      - marva-keycloak-middleware
+
+  marva-keycloak-middleware:
+    restart: always
+    image: ${MARVA_KEYCLOAK_MIDDLEWARE_IMAGE:-ghcr.io/blue-core-lod/marva-keycloak-middleware:latest}
+    expose:
+      - 9401
+    env_file:
+      - ./.env
 
   airflow-apiserver:
     <<: *airflow-common
