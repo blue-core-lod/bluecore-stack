@@ -25,3 +25,12 @@ services:
 
   flower:
     platform: linux/amd64
+
+  marva:
+    platform: linux/amd64
+  
+  marva-keycloak-middleware:
+    platform: linux/amd64
+  
+  sinopia:
+    platform: linux/amd64
