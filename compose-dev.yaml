@@ -2,6 +2,24 @@ include:
   - compose-base.yaml
 
 services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: airflow
+      POSTGRES_PASSWORD: airflow
+      POSTGRES_MULTIPLE_DB: airflow, keycloak, bluecore
+    ports:
+      - ${POSTGRES_HOST_PORT:-5432}:5432
+    volumes:
+      - postgres-db-volume:/var/lib/postgresql/data
+      - ./scripts/init-multi-postgres-dbs.sh:/docker-entrypoint-initdb.d/init-multi-postgres-dbs.sh
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "airflow"]
+      interval: 10s
+      retries: 5
+      start_period: 5s
+    restart: always
+
   keycloak:
     image: ${KEYCLOAK_IMAGE:-quay.io/keycloak/keycloak:26.1.2}
     expose:
@@ -17,9 +35,22 @@ services:
       interval: 10s
       timeout: 10s
       retries: 20
+    depends_on:
+      postgres:
+        condition: service_healthy
     volumes:
       - ./keycloak-export/bluecore-realm.json:/opt/keycloak/data/import/realm.json
       - ./keycloak-export/:/opt/keycloak/data/export
+
+  bc_api:
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  airflow-init:
+    depends_on:
+      postgres:
+        condition: service_healthy
 
   nginx:
     image: nginx:1.27.4-alpine
@@ -33,3 +64,6 @@ services:
       - ./nginx/bluecore.conf:/etc/nginx/conf.d/default.conf
       - ./nginx:/var/www/html
     restart: always
+
+volumes:
+  postgres-db-volume:

@@ -9,9 +9,9 @@ x-airflow-common:
     &airflow-common-env
     AIRFLOW__CORE__EXECUTOR: CeleryExecutor
     AIRFLOW__CORE__AUTH_MANAGER: airflow.providers.fab.auth_manager.fab_auth_manager.FabAuthManager
-    AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres/airflow
-    AIRFLOW_CONN_BLUECORE_DB: postgresql+psycopg2://airflow:airflow@postgres:5432/bluecore
-    AIRFLOW__CELERY__RESULT_BACKEND: db+postgresql://airflow:airflow@postgres/airflow
+    AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://${DATABASE_USERNAME:-airflow}:${DATABASE_PASSWORD:-airflow}@${DATABASE_HOSTNAME:-postgres}/airflow
+    AIRFLOW_CONN_BLUECORE_DB: postgresql+psycopg2://${DATABASE_USERNAME:-airflow}:${DATABASE_PASSWORD:-airflow}@${DATABASE_HOSTNAME:-postgres}:5432/bluecore
+    AIRFLOW__CELERY__RESULT_BACKEND: db+postgresql://${DATABASE_USERNAME:-airflow}:${DATABASE_PASSWORD:-airflow}@${DATABASE_HOSTNAME:-postgres}/airflow
     AIRFLOW__CELERY__BROKER_URL: redis://:@redis:6379/0
     AIRFLOW__CORE__FERNET_KEY: ''
     AIRFLOW__CORE__DAGS_FOLDER: '/opt/airflow/ils_middleware/dags'
@@ -46,30 +46,8 @@ x-airflow-common:
     &airflow-common-depends-on
     redis:
       condition: service_healthy
-    postgres:
-      condition: service_healthy
 
 services:
-  postgres:
-    image: postgres:16
-    environment:
-      POSTGRES_USER: airflow
-      POSTGRES_PASSWORD: airflow
-      POSTGRES_MULTIPLE_DB: airflow, keycloak, bluecore
-    ports:
-      - ${POSTGRES_HOST_PORT:-5432}:5432
-    volumes:
-      - postgres-db-volume:/var/lib/postgresql/data
-      - ./scripts/init-multi-postgres-dbs.sh:/docker-entrypoint-initdb.d/init-multi-postgres-dbs.sh
-    post_start:
-      - command: /usr/bin/bash -c "until pg_isready -U airflow; do echo 'Waiting for postgres to be ready...'; sleep 3; done; /usr/bin/bash /docker-entrypoint-initdb.d/init-multi-postgres-dbs.sh"
-    healthcheck:
-      test: ["CMD", "pg_isready", "-U", "airflow"]
-      interval: 10s
-      retries: 5
-      start_period: 5s
-    restart: always
-
   redis:
     # Redis is limited to 7.2-bookworm due to licencing change
     # https://redis.io/blog/redis-adopts-dual-source-available-licensing/
@@ -94,8 +72,6 @@ services:
     user: "${AIRFLOW_UID:-50000}:0"
     environment:
       MILVUS_URI: http://milvus:19530
-    depends_on:
-      - postgres
     volumes:
        - ${AIRFLOW_PROJ_DIR:-.}/uploads:/bluecore_api/uploads
 
@@ -412,4 +388,3 @@ services:
       - "etcd"
       - "minio"
 volumes:
-  postgres-db-volume:
