@@ -42,16 +42,6 @@ services:
       - ./keycloak-export/bluecore-realm.json:/opt/keycloak/data/import/realm.json
       - ./keycloak-export/:/opt/keycloak/data/export
 
-  bc_api:
-    depends_on:
-      postgres:
-        condition: service_healthy
-
-  airflow-init:
-    depends_on:
-      postgres:
-        condition: service_healthy
-
   nginx:
     image: nginx:1.27.4-alpine
     ports:

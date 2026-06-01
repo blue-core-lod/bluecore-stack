@@ -387,4 +387,3 @@ services:
     depends_on:
       - "etcd"
       - "minio"
-volumes:
