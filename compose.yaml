@@ -18,9 +18,8 @@ services:
       - start
       - --import-realm
     volumes:
-      - /home/ubuntu/keycloak-export/bluecore-realm.json:/opt/keycloak/data/import/realm.json
-      - /home/ubuntu/keycloak-export:/opt/keycloak/data/export
-
+      - /home/bluecore/bluecore-stack/keycloak-export/bluecore-realm.json:/opt/keycloak/data/import/realm.json
+      - /home/bluecore/bluecore-stack/keycloak-export:/opt/keycloak/data/export
 
   nginx:
     image: nginx:1.27.4-alpine
