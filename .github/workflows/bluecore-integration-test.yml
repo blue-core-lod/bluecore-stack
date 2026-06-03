@@ -1,4 +1,4 @@
-name: Manual Integration Test
+name: Bluecore Integration Test
 
 on:
   # ============================================================================
@@ -14,45 +14,23 @@ on:
     # set (`required`), the fallback value (`default`), and the value type (`type`).
     # --------------------------------------------------------------------------
     inputs:
-      # Optional: Build the API image in this run from the git branch selected
-      api_image:
-        description: "Optional API image override (e.g. ghcr.io/blue-core-lod/bluecore_api:pr-123)"
-        required: false
-        default: ""
-        type: string
-      # Optional: Build the Workflows image in this run from the git branch selected
-      workflows_image:
-        description: "Optional Workflows image override (e.g. ghcr.io/blue-core-lod/bluecore-workflows:pr-123)"
-        required: false
-        default: ""
-        type: string
-      keycloak_image:
-        description: "Keycloak image to use"
-        required: false
-        default: "quay.io/keycloak/keycloak:26.1.2"
-        type: string
-      build_api_image:
-        description: "Build API image from source ref in this workflow"
-        required: true
-        default: false
-        type: boolean
-      # Build the Workflows image in this run from the git ref selected in `workflows_ref`.
-      build_workflows_image:
-        description: "Build Workflows image from source ref in this workflow"
-        required: true
-        default: false
-        type: boolean
-      # API git ref (branch/tag/commit) used for API builds and API fixture/CLI checkout.
+      # API git ref-branch used for API builds and API fixture/CLI checkout.
       api_ref:
-        description: "bluecore_api git ref when build_api_image=true"
+        description: "bluecore_api git ref (non-main builds image from branch-ref)"
         required: false
         default: "main"
         type: string
-      # Workflows git ref (branch/tag/commit) used when building bluecore-workflows.
+      # Workflows git ref-branch used when building bluecore-workflows.
       workflows_ref:
-        description: "bluecore-workflows git ref when build_workflows_image=true"
+        description: "bluecore-workflows git ref (non-main builds image from branch-ref)"
         required: false
         default: "main"
+        type: string
+      # Marva git ref-branch used when building marva + middleware images.
+      marva_ref:
+        description: "marva_editor git ref (non-main builds image from branch-ref)"
+        required: false
+        default: "bluecore-dev-mvp"
         type: string
       # Models git ref to use for database migrations during the test run.
       models_ref:
@@ -60,35 +38,41 @@ on:
         required: false
         default: "main"
         type: string
-      # Docker Compose project name
-      compose_project_name:
-        description: "Compose project name for this run"
-        required: false
-        default: "terraform_integration_ci"
-        type: string
-      # Database name used by the integration test stack.
-      integration_db_name:
-        description: "Integration test DB name"
-        required: false
-        default: "bluecore_integration_test"
-        type: string
       # Optional pytest file/test selector to run a smaller targeted test set.
       pytest_target:
         description: "Optional pytest target (default runs full tests/integration suite)"
         required: false
         default: ""
         type: string
-      # Toggle the heavier "full stack" profile (nginx + vector stack services).
-      full_stack_profile:
-        description: "Enable production-like integration profile (nginx + milvus/minio/etcd)"
+      # Optional: Use a prebuilt API image.
+      api_image:
+        description: "Optional API image override (e.g. ghcr.io/blue-core-lod/bluecore_api:pr-123)"
         required: false
-        default: true
-        type: boolean
+        default: ""
+        type: string
+      # Optional: Use a prebuilt Workflows image.
+      workflows_image:
+        description: "Optional Workflows image override (e.g. ghcr.io/blue-core-lod/bluecore-workflows:pr-123)"
+        required: false
+        default: ""
+        type: string
+      # Optional: Use a prebuilt Marva image.
+      marva_image:
+        description: "Optional Marva image override (e.g. ghcr.io/blue-core-lod/marva:pr-123)"
+        required: false
+        default: ""
+        type: string
+      # Optional: Use a prebuilt Marva middleware image.
+      marva_middleware_image:
+        description: "Optional Marva middleware image override (e.g. ghcr.io/blue-core-lod/marva-keycloak-middleware:pr-123)"
+        required: false
+        default: ""
+        type: string
 
 jobs:
   integration:
     # ==========================================================================
-    # Main job: prepare the stack inputs/images, then run terraform integration tests.
+    # Main job: prepare the stack inputs/images, then run bluecore-stack integration tests.
     # --------------------------------------------------------------------------
     runs-on: ubuntu-latest
     permissions:
@@ -102,13 +86,13 @@ jobs:
     steps:
       # Check out terraform so this workflow can use local compose files and scripts.
       - name: Checkout terraform
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       # ========================================================================
       # Install Python used by workflow helper scripts and test commands.
       # ------------------------------------------------------------------------
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: "3.13"
 
@@ -158,7 +142,7 @@ jobs:
       # ------------------------------------------------------------------------
       - name: Log in to GHCR
         if: ${{ !env.ACT }}
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -168,7 +152,7 @@ jobs:
       # Check out bluecore-models so migrations can run from the selected branch.
       # ------------------------------------------------------------------------
       - name: Checkout bluecore-models
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           repository: blue-core-lod/bluecore-models
           token: ${{ env.CHECKOUT_TOKEN }}
@@ -216,36 +200,54 @@ jobs:
           # --------------------------------------------------------------------
           api_image_input="${{ inputs.api_image }}"
           workflows_image_input="${{ inputs.workflows_image }}"
-          keycloak_image_input="${{ inputs.keycloak_image }}"
-          build_api_image_input="${{ inputs.build_api_image }}"
-          build_workflows_image_input="${{ inputs.build_workflows_image }}"
+          marva_image_input="${{ inputs.marva_image }}"
+          marva_middleware_image_input="${{ inputs.marva_middleware_image }}"
           api_ref_input="${{ inputs.api_ref }}"
           workflows_ref_input="${{ inputs.workflows_ref }}"
+          marva_ref_input="${{ inputs.marva_ref }}"
           models_ref_input="${{ inputs.models_ref }}"
-          compose_project_name_input="${{ inputs.compose_project_name }}"
-          integration_db_name_input="${{ inputs.integration_db_name }}"
           pytest_target_input="${{ inputs.pytest_target }}"
 
           # ====================================================================
           # Set empty inputs to defaults, Assign values if present.
           # --------------------------------------------------------------------
-          build_api_image="${build_api_image_input:-false}"
-          build_workflows_image="${build_workflows_image_input:-false}"
           api_ref="${api_ref_input:-main}"
           workflows_ref="${workflows_ref_input:-main}"
+          marva_ref="${marva_ref_input:-bluecore-dev-mvp}"
           models_ref="${models_ref_input:-main}"
-          compose_project_name="${compose_project_name_input:-terraform_integration_ci}"
-          integration_db_name="${integration_db_name_input:-bluecore_integration_test}"
-          keycloak_image="${keycloak_image_input:-quay.io/keycloak/keycloak:26.1.2}"
+          compose_project_name="terraform_integration_ci"
+          integration_db_name="bluecore_integration_test"
+          keycloak_image="quay.io/keycloak/keycloak:26.1.2"
           pytest_target="${pytest_target_input:-}"
           api_ref_tag="$(sanitize_tag_component "$api_ref")"
           workflows_ref_tag="$(sanitize_tag_component "$workflows_ref")"
+          marva_ref_tag="$(sanitize_tag_component "$marva_ref")"
+
+          # Build from source refs automatically when ref is non-main and no image override is set.
+          build_api_image="false"
+          build_workflows_image="false"
+          build_marva_image="false"
+          build_marva_middleware_image="false"
+          if [[ "$api_ref" != "main" && -z "$api_image_input" ]]; then
+            build_api_image="true"
+          fi
+          if [[ "$workflows_ref" != "main" && -z "$workflows_image_input" ]]; then
+            build_workflows_image="true"
+          fi
+          if [[ "$marva_ref" != "bluecore-dev-mvp" && -z "$marva_image_input" ]]; then
+            build_marva_image="true"
+          fi
+          if [[ "$marva_ref" != "bluecore-dev-mvp" && -z "$marva_middleware_image_input" ]]; then
+            build_marva_middleware_image="true"
+          fi
 
           # ====================================================================
           # Start with explicit image overrides (if provided) before choosing defaults.
           # --------------------------------------------------------------------
           api_image="$api_image_input"
           workflows_image="$workflows_image_input"
+          marva_image="$marva_image_input"
+          marva_middleware_image="$marva_middleware_image_input"
 
           # ====================================================================
           # If no image was provided, pick a local build tag or the default GHCR image.
@@ -266,11 +268,27 @@ jobs:
             fi
           fi
 
+          if [[ -z "$marva_image" ]]; then
+            if [[ "$build_marva_image" == "true" ]]; then
+              marva_image="marva:${marva_ref_tag}-gha-${{ github.run_id }}-${{ github.run_attempt }}"
+            else
+              marva_image="ghcr.io/blue-core-lod/marva:latest"
+            fi
+          fi
+
+          if [[ -z "$marva_middleware_image" ]]; then
+            if [[ "$build_marva_middleware_image" == "true" ]]; then
+              marva_middleware_image="marva-keycloak-middleware:${marva_ref_tag}-gha-${{ github.run_id }}-${{ github.run_attempt }}"
+            else
+              marva_middleware_image="ghcr.io/blue-core-lod/marva-keycloak-middleware:latest"
+            fi
+          fi
+
           # ====================================================================
           # Skip pulls when building locally so compose does not replace fresh images.
           # --------------------------------------------------------------------
           pull_before_up="1"
-          if [[ "$build_api_image" == "true" || "$build_workflows_image" == "true" ]]; then
+          if [[ "$build_api_image" == "true" || "$build_workflows_image" == "true" || "$build_marva_image" == "true" || "$build_marva_middleware_image" == "true" ]]; then
             pull_before_up="0"
           fi
 
@@ -280,11 +298,16 @@ jobs:
           {
             echo "api_image=$api_image"
             echo "workflows_image=$workflows_image"
+            echo "marva_image=$marva_image"
+            echo "marva_middleware_image=$marva_middleware_image"
             echo "keycloak_image=$keycloak_image"
             echo "build_api_image=$build_api_image"
             echo "build_workflows_image=$build_workflows_image"
+            echo "build_marva_image=$build_marva_image"
+            echo "build_marva_middleware_image=$build_marva_middleware_image"
             echo "api_ref=$api_ref"
             echo "workflows_ref=$workflows_ref"
+            echo "marva_ref=$marva_ref"
             echo "models_ref=$models_ref"
             echo "compose_project_name=$compose_project_name"
             echo "integration_db_name=$integration_db_name"
@@ -297,7 +320,7 @@ jobs:
       # ------------------------------------------------------------------------
       - name: Checkout bluecore_api
         if: ${{ steps.resolve.outputs.build_api_image == 'true' }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           repository: blue-core-lod/bluecore_api
           token: ${{ env.CHECKOUT_TOKEN }}
@@ -310,7 +333,7 @@ jobs:
       # ------------------------------------------------------------------------
       - name: Checkout bluecore_api (fixtures + CLI source)
         if: ${{ steps.resolve.outputs.build_api_image != 'true' }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           repository: blue-core-lod/bluecore_api
           token: ${{ env.CHECKOUT_TOKEN }}
@@ -331,7 +354,7 @@ jobs:
       # ------------------------------------------------------------------------
       - name: Checkout bluecore-workflows
         if: ${{ steps.resolve.outputs.build_workflows_image == 'true' }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           repository: blue-core-lod/bluecore-workflows
           token: ${{ env.CHECKOUT_TOKEN }}
@@ -346,6 +369,35 @@ jobs:
         if: ${{ steps.resolve.outputs.build_workflows_image == 'true' }}
         run: |
           docker build -t "${{ steps.resolve.outputs.workflows_image }}" external/bluecore-workflows
+
+      # ========================================================================
+      # Check out Marva source only when this run needs to build marva images.
+      # ------------------------------------------------------------------------
+      - name: Checkout marva_editor
+        if: ${{ steps.resolve.outputs.build_marva_image == 'true' || steps.resolve.outputs.build_marva_middleware_image == 'true' }}
+        uses: actions/checkout@v5
+        with:
+          repository: blue-core-lod/marva_editor
+          token: ${{ env.CHECKOUT_TOKEN }}
+          ref: ${{ steps.resolve.outputs.marva_ref }}
+          path: external/marva_editor
+          fetch-depth: 1
+
+      # ========================================================================
+      # Build Marva + middleware images from selected Marva ref when requested.
+      # ------------------------------------------------------------------------
+      - name: Build Marva image
+        if: ${{ steps.resolve.outputs.build_marva_image == 'true' }}
+        run: |
+          docker build -t "${{ steps.resolve.outputs.marva_image }}" external/marva_editor
+
+      # ========================================================================
+      # Build the Marva middleware image from the checked-out source when requested.
+      # ------------------------------------------------------------------------
+      - name: Build Marva middleware image
+        if: ${{ steps.resolve.outputs.build_marva_middleware_image == 'true' }}
+        run: |
+          docker build -f external/marva_editor/Dockerfile.middleware -t "${{ steps.resolve.outputs.marva_middleware_image }}" external/marva_editor
 
       # ========================================================================
       # Create a local .env for the integration stack if one does not exist yet.
@@ -403,8 +455,11 @@ jobs:
         run: |
           echo "API ref:                ${{ steps.resolve.outputs.api_ref }}"
           echo "Workflows ref:          ${{ steps.resolve.outputs.workflows_ref }}"
+          echo "Marva ref:              ${{ steps.resolve.outputs.marva_ref }}"
           echo "API image:              ${{ steps.resolve.outputs.api_image }}"
           echo "Workflows image:        ${{ steps.resolve.outputs.workflows_image }}"
+          echo "Marva image:            ${{ steps.resolve.outputs.marva_image }}"
+          echo "Marva middleware image: ${{ steps.resolve.outputs.marva_middleware_image }}"
           echo "Models ref:             ${{ steps.resolve.outputs.models_ref }}"
           echo "API source label:       bluecore_api@${{ steps.resolve.outputs.api_ref }}"
           echo "WF source label:        bluecore-workflows@${{ steps.resolve.outputs.workflows_ref }}"
@@ -416,8 +471,8 @@ jobs:
           echo "Compose project:        ${{ steps.resolve.outputs.compose_project_name }}"
           echo "Integration DB:         ${{ steps.resolve.outputs.integration_db_name }}"
           echo "Pytest target:          ${{ steps.resolve.outputs.pytest_target }}"
-          echo "Full stack mode:        ${{ (github.event_name != 'workflow_dispatch') || (inputs.full_stack_profile || false) || (env.INTEGRATION_FULL_STACK == '1') }}"
-          echo "Compose profiles:       ${{ ((github.event_name != 'workflow_dispatch') || (inputs.full_stack_profile || false) || (env.INTEGRATION_FULL_STACK == '1')) && 'integration-full' || '(default)' }}"
+          echo "Full stack mode:        true"
+          echo "Compose profiles:       integration-full"
 
       # ========================================================================
       # Fail early if expected API fixture and CLI files are missing.
@@ -437,10 +492,12 @@ jobs:
           COMPOSE_PROJECT_NAME: ${{ steps.resolve.outputs.compose_project_name }}
           POSTGRES_HOST_PORT: "15432"
           INTEGRATION_DB_NAME: ${{ steps.resolve.outputs.integration_db_name }}
-          COMPOSE_PROFILES: ${{ ((github.event_name != 'workflow_dispatch') || (inputs.full_stack_profile || false) || (env.INTEGRATION_FULL_STACK == '1')) && 'integration-full' || env.COMPOSE_PROFILES }}
+          COMPOSE_PROFILES: integration-full
           AIRFLOW_UID: "50000"
           BLUECORE_API_IMAGE: ${{ steps.resolve.outputs.api_image }}
           BLUECORE_WORKFLOWS_IMAGE: ${{ steps.resolve.outputs.workflows_image }}
+          MARVA_IMAGE: ${{ steps.resolve.outputs.marva_image }}
+          MARVA_KEYCLOAK_MIDDLEWARE_IMAGE: ${{ steps.resolve.outputs.marva_middleware_image }}
           KEYCLOAK_IMAGE: ${{ steps.resolve.outputs.keycloak_image }}
         run: |
           docker compose -f compose-dev.yaml -f compose-integration-test.yaml config | grep -E "AIRFLOW__LOGGING__BASE_LOG_FOLDER|AIRFLOW__LOGGING__DAG_PROCESSOR_CHILD_PROCESS_LOG_DIRECTORY|AIRFLOW__API_AUTH__JWT_SECRET|AIRFLOW__CORE__INTERNAL_API_SECRET_KEY" || true
@@ -452,23 +509,26 @@ jobs:
         env:
           BLUECORE_API_IMAGE: ${{ steps.resolve.outputs.api_image }}
           BLUECORE_WORKFLOWS_IMAGE: ${{ steps.resolve.outputs.workflows_image }}
+          MARVA_IMAGE: ${{ steps.resolve.outputs.marva_image }}
+          MARVA_KEYCLOAK_MIDDLEWARE_IMAGE: ${{ steps.resolve.outputs.marva_middleware_image }}
           KEYCLOAK_IMAGE: ${{ steps.resolve.outputs.keycloak_image }}
           BLUECORE_API_ROOT: ${{ github.workspace }}/external/bluecore_api
           MODELS_DIR: ${{ github.workspace }}/external/bluecore-models
           MODELS_SOURCE_LABEL: bluecore-models@${{ steps.resolve.outputs.models_ref }}
           INTEGRATION_API_REF: ${{ steps.resolve.outputs.api_ref }}
           INTEGRATION_WORKFLOWS_REF: ${{ steps.resolve.outputs.workflows_ref }}
+          INTEGRATION_MARVA_REF: ${{ steps.resolve.outputs.marva_ref }}
           INTEGRATION_MODELS_REF: ${{ steps.resolve.outputs.models_ref }}
           INTEGRATION_SAMPLE_BATCH_SOURCE: ${{ github.workspace }}/external/bluecore_api/sample/batch-small.jsonld
           INTEGRATION_BATCH_JSONLD_URL: https://raw.githubusercontent.com/blue-core-lod/bluecore_api/refs/heads/main/sample/batch-small.jsonld
           PULL_BEFORE_UP: ${{ steps.resolve.outputs.pull_before_up }}
           COMPOSE_PROJECT_NAME: ${{ steps.resolve.outputs.compose_project_name }}
           INTEGRATION_DB_NAME: ${{ steps.resolve.outputs.integration_db_name }}
-          COMPOSE_PROFILES: ${{ ((github.event_name != 'workflow_dispatch') || (inputs.full_stack_profile || false) || (env.INTEGRATION_FULL_STACK == '1')) && 'integration-full' || env.COMPOSE_PROFILES }}
-          INTEGRATION_BASE_URL: ${{ ((github.event_name != 'workflow_dispatch') || (inputs.full_stack_profile || false) || (env.INTEGRATION_FULL_STACK == '1')) && 'http://localhost/api' || env.INTEGRATION_BASE_URL }}
-          INTEGRATION_AIRFLOW_BASE_URL: ${{ ((github.event_name != 'workflow_dispatch') || (inputs.full_stack_profile || false) || (env.INTEGRATION_FULL_STACK == '1')) && 'http://localhost' || env.INTEGRATION_AIRFLOW_BASE_URL }}
-          INTEGRATION_KEYCLOAK_TOKEN_URL: ${{ ((github.event_name != 'workflow_dispatch') || (inputs.full_stack_profile || false) || (env.INTEGRATION_FULL_STACK == '1')) && 'http://localhost/keycloak/realms/bluecore/protocol/openid-connect/token' || env.INTEGRATION_KEYCLOAK_TOKEN_URL }}
-          INTEGRATION_REQUIRE_VECTOR_BACKEND: ${{ ((github.event_name != 'workflow_dispatch') || (inputs.full_stack_profile || false) || (env.INTEGRATION_FULL_STACK == '1')) && '1' || env.INTEGRATION_REQUIRE_VECTOR_BACKEND }}
+          COMPOSE_PROFILES: integration-full
+          INTEGRATION_BASE_URL: http://localhost/api
+          INTEGRATION_AIRFLOW_BASE_URL: http://localhost
+          INTEGRATION_KEYCLOAK_TOKEN_URL: http://localhost/keycloak/realms/bluecore/protocol/openid-connect/token
+          INTEGRATION_REQUIRE_VECTOR_BACKEND: "1"
           COMPACT_LOG_OUTPUT: "1"
           COMPOSE_PROGRESS: plain
           COMPOSE_ANSI: never
@@ -495,10 +555,12 @@ jobs:
           COMPOSE_PROJECT_NAME: ${{ steps.resolve.outputs.compose_project_name }}
           POSTGRES_HOST_PORT: "15432"
           INTEGRATION_DB_NAME: ${{ steps.resolve.outputs.integration_db_name }}
-          COMPOSE_PROFILES: ${{ ((github.event_name != 'workflow_dispatch') || (inputs.full_stack_profile || false) || (env.INTEGRATION_FULL_STACK == '1')) && 'integration-full' || env.COMPOSE_PROFILES }}
+          COMPOSE_PROFILES: integration-full
           AIRFLOW_UID: "50000"
           BLUECORE_API_IMAGE: ${{ steps.resolve.outputs.api_image }}
           BLUECORE_WORKFLOWS_IMAGE: ${{ steps.resolve.outputs.workflows_image }}
+          MARVA_IMAGE: ${{ steps.resolve.outputs.marva_image }}
+          MARVA_KEYCLOAK_MIDDLEWARE_IMAGE: ${{ steps.resolve.outputs.marva_middleware_image }}
           KEYCLOAK_IMAGE: ${{ steps.resolve.outputs.keycloak_image }}
         run: |
           docker compose -f compose-dev.yaml -f compose-integration-test.yaml ps -a || true
