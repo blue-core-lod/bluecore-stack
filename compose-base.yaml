@@ -61,6 +61,8 @@ services:
     volumes:
       - postgres-db-volume:/var/lib/postgresql/data
       - ./scripts/init-multi-postgres-dbs.sh:/docker-entrypoint-initdb.d/init-multi-postgres-dbs.sh
+    post_start:
+      - command: /usr/bin/bash -c "until pg_isready -U airflow; do echo 'Waiting for postgres to be ready...'; sleep 3; done; /usr/bin/bash /docker-entrypoint-initdb.d/init-multi-postgres-dbs.sh"
     healthcheck:
       test: ["CMD", "pg_isready", "-U", "airflow"]
       interval: 10s
@@ -294,6 +296,11 @@ services:
         echo "Files in shared volumes:"
         echo
         ls -la /opt/airflow/{logs,dags,plugins,config}
+        echo
+        if [[ -n $AIRFLOW_CONN_BLUECORE_DB ]]; then
+          echo "Connection URI found. Adding bluecore_db connection."
+          airflow connections add 'bluecore_db' --conn-uri "${AIRFLOW_CONN_BLUECORE_DB}"
+        fi
 
     # yamllint enable rule:line-length
     environment:
