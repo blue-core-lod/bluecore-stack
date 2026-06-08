@@ -298,8 +298,13 @@ services:
         ls -la /opt/airflow/{logs,dags,plugins,config}
         echo
         if [[ -n $AIRFLOW_CONN_BLUECORE_DB ]]; then
-          echo "Connection URI found. Adding bluecore_db connection."
-          airflow connections add 'bluecore_db' --conn-uri "${AIRFLOW_CONN_BLUECORE_DB}"
+          echo "Connection URI found. Checking if bluecore_db connection exists."
+          if ! airflow connections get 'bluecore_db' >/dev/null 2>&1; then
+            echo "bluecore_db connection does not exist. Adding it now."
+            airflow connections add 'bluecore_db' --conn-uri "${AIRFLOW_CONN_BLUECORE_DB}"
+          else
+            echo "bluecore_db connection already exists. Skipping."
+          fi
         fi
 
     # yamllint enable rule:line-length
