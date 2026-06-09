@@ -120,13 +120,13 @@ cleanup_stale_act_manual_integration_containers() {
     [[ -z "$id" || -z "$name" ]] && continue
     stale_ids+=("$id")
     stale_names+=("$name")
-  done < <(printf '%s\n' "$docker_ps_output" | awk '$2 ~ /^act-Manual-Integration-Test-/ {print $1 "|" $2}')
+  done < <(printf '%s\n' "$docker_ps_output" | awk '$2 ~ /^act-Bluecore-Integration-Test-/ {print $1 "|" $2}')
 
   if [[ ${#stale_ids[@]} -eq 0 ]]; then
     return 0
   fi
 
-  echo "Removing stale act Manual Integration Test containers:"
+  echo "Removing stale act Bluecore Integration Test containers:"
   for name in "${stale_names[@]}"; do
     echo " - $name"
   done

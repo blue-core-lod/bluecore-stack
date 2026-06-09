@@ -27,6 +27,7 @@ user_set_build_local_marva_image="${BUILD_LOCAL_MARVA_IMAGE+x}"
 user_set_build_local_marva_middleware_image="${BUILD_LOCAL_MARVA_MIDDLEWARE_IMAGE+x}"
 user_set_auto_start_stack="${AUTO_START_STACK+x}"
 user_set_apply_models_migrations="${APPLY_MODELS_MIGRATIONS+x}"
+user_set_models_dir="${MODELS_DIR+x}"
 
 ###########################
 ## RUNNER BEHAVIOR FLAGS ##
@@ -59,7 +60,7 @@ PYTHON_BIN="${PYTHON_BIN:-$DEFAULT_TERRAFORM_VENV_PYTHON}"
 COMPOSE_PROJECT_NAME="${COMPOSE_PROJECT_NAME:-terraform_integration}"
 INTEGRATION_DB_NAME="${INTEGRATION_DB_NAME:-bluecore_integration_test}"
 MODELS_DIR="${MODELS_DIR:-$ROOT_DIR/../bluecore-models}"
-MODELS_SOURCE_LABEL="${MODELS_SOURCE_LABEL:-local}"
+MODELS_SOURCE_LABEL="${MODELS_SOURCE_LABEL:-bluecore-models@auto}"
 POSTGRES_READY_TIMEOUT_SECONDS="${POSTGRES_READY_TIMEOUT_SECONDS:-120}"
 
 ###########################
@@ -71,10 +72,10 @@ LOCAL_BLUECORE_WORKFLOWS_DIR="${LOCAL_BLUECORE_WORKFLOWS_DIR:-$ROOT_DIR/../bluec
 LOCAL_MARVA_DIR="${LOCAL_MARVA_DIR:-$ROOT_DIR/../../BLUECORE_EDITORS/marva_editor}"
 LOCAL_IMAGE_TAG="${LOCAL_IMAGE_TAG:-integration-test-local}"
 LOCAL_BUILD_PLATFORM="${LOCAL_BUILD_PLATFORM:-}"
-BUILD_LOCAL_BC_API_IMAGE="${BUILD_LOCAL_BC_API_IMAGE:-1}"
-BUILD_LOCAL_WORKFLOWS_IMAGE="${BUILD_LOCAL_WORKFLOWS_IMAGE:-1}"
-BUILD_LOCAL_MARVA_IMAGE="${BUILD_LOCAL_MARVA_IMAGE:-1}"
-BUILD_LOCAL_MARVA_MIDDLEWARE_IMAGE="${BUILD_LOCAL_MARVA_MIDDLEWARE_IMAGE:-1}"
+BUILD_LOCAL_BC_API_IMAGE="${BUILD_LOCAL_BC_API_IMAGE:-0}"
+BUILD_LOCAL_WORKFLOWS_IMAGE="${BUILD_LOCAL_WORKFLOWS_IMAGE:-0}"
+BUILD_LOCAL_MARVA_IMAGE="${BUILD_LOCAL_MARVA_IMAGE:-0}"
+BUILD_LOCAL_MARVA_MIDDLEWARE_IMAGE="${BUILD_LOCAL_MARVA_MIDDLEWARE_IMAGE:-0}"
 EXTERNAL_CHECKOUT_ROOT="${EXTERNAL_CHECKOUT_ROOT:-$ROOT_DIR/external}"
 
 ###########################
@@ -82,9 +83,11 @@ EXTERNAL_CHECKOUT_ROOT="${EXTERNAL_CHECKOUT_ROOT:-$ROOT_DIR/external}"
 ###########################
 api_ref=""
 workflows_ref=""
+marva_ref=""
 models_ref=""
 BLUECORE_API_REPO_URL="${BLUECORE_API_REPO_URL:-https://github.com/blue-core-lod/bluecore_api.git}"
 BLUECORE_WORKFLOWS_REPO_URL="${BLUECORE_WORKFLOWS_REPO_URL:-https://github.com/blue-core-lod/bluecore-workflows.git}"
+MARVA_REPO_URL="${MARVA_REPO_URL:-https://github.com/blue-core-lod/marva_editor.git}"
 BLUECORE_MODELS_REPO_URL="${BLUECORE_MODELS_REPO_URL:-https://github.com/blue-core-lod/bluecore-models.git}"
 
 ###########################
@@ -111,11 +114,12 @@ usage() {
 Usage: ./scripts/integration-tests.sh [runner options] [pytest args]
 
 Runner options:
-  --dev-mode             Keep stack up, skip reset/pull, default local images and project name.
-                         If stack is already running, reuse it and skip migrations by default.
+  --dev-mode             Keep stack up, skip reset/pull, default local images project name.
+                          If stack is already running, reuse it and skip migrations by default.
   --dev-mode-stop        Stop dev-mode stack, remove containers/images/volumes, then exit.
   --api-ref <ref>        Build API image from a Git ref into terraform/external/bluecore_api
   --workflows-ref <ref>  Build Workflows image from a Git ref into terraform/external/bluecore-workflows
+  --marva-ref <ref>      Build Marva + Marva middleware images from a Git ref into terraform/external/marva_editor
   --models-ref <ref>     Run migrations from a Git ref into terraform/external/bluecore-models
   -h, --help             Show this help text
 
@@ -327,6 +331,17 @@ checkout_repo_ref() {
   echo "  source: $checkout_source"
   echo "  kind:   $resolved_ref_kind"
   echo "  commit: $(git -C "$target_dir" rev-parse --short HEAD)"
+}
+
+# Resolve the latest stable (vX.Y.Z) release tag from a repository.
+resolve_latest_release_tag() {
+  local repo_url="$1"
+
+  git ls-remote --tags --refs "$repo_url" "v*" 2>/dev/null \
+    | sed -E 's#^.*refs/tags/##' \
+    | rg '^v[0-9]+\.[0-9]+\.[0-9]+$' \
+    | sort -V \
+    | tail -n 1
 }
 
 compose_args=(-f "$COMPOSE_FILE")
@@ -579,7 +594,11 @@ build_local_dev_images() {
     fi
     if [[ "$BUILD_LOCAL_MARVA_IMAGE" == "1" ]]; then
       echo "Building Marva image: $effective_marva_image"
-      docker build "${build_args[@]}" --target builder -t "$effective_marva_image" "$LOCAL_MARVA_DIR"
+      if [[ "$INTEGRATION_DEV_MODE" == "1" ]]; then
+        docker build "${build_args[@]}" --target builder -t "$effective_marva_image" "$LOCAL_MARVA_DIR"
+      else
+        docker build "${build_args[@]}" -t "$effective_marva_image" "$LOCAL_MARVA_DIR"
+      fi
     fi
     if [[ "$BUILD_LOCAL_MARVA_MIDDLEWARE_IMAGE" == "1" ]]; then
       echo "Building Marva middleware image: $effective_marva_middleware_image"
@@ -706,6 +725,14 @@ while [[ $# -gt 0 ]]; do
       workflows_ref="$2"
       shift 2
       ;;
+    --marva-ref)
+      if [[ $# -lt 2 ]]; then
+        echo "Missing value for --marva-ref"
+        exit 1
+      fi
+      marva_ref="$2"
+      shift 2
+      ;;
     --models-ref)
       if [[ $# -lt 2 ]]; then
         echo "Missing value for --models-ref"
@@ -747,6 +774,18 @@ if [[ "$INTEGRATION_DEV_MODE" == "1" ]]; then
   if [[ -z "$user_set_build_local_dev_images" ]]; then
     BUILD_LOCAL_DEV_IMAGES="1"
   fi
+  if [[ -z "$user_set_build_local_bc_api_image" ]]; then
+    BUILD_LOCAL_BC_API_IMAGE="1"
+  fi
+  if [[ -z "$user_set_build_local_workflows_image" ]]; then
+    BUILD_LOCAL_WORKFLOWS_IMAGE="1"
+  fi
+  if [[ -z "$user_set_build_local_marva_image" ]]; then
+    BUILD_LOCAL_MARVA_IMAGE="1"
+  fi
+  if [[ -z "$user_set_build_local_marva_middleware_image" ]]; then
+    BUILD_LOCAL_MARVA_MIDDLEWARE_IMAGE="1"
+  fi
   if [[ -z "$user_set_keep_stack_up" ]]; then
     KEEP_STACK_UP="1"
   fi
@@ -764,17 +803,32 @@ if [[ "$INTEGRATION_DEV_MODE" == "1" ]]; then
   fi
 fi
 
-if [[ "$INTEGRATION_DEV_MODE" == "1" && -f "$ROOT_DIR/$DEV_LIVE_CODE_OVERRIDE_FILE" ]]; then
+if [[ "$INTEGRATION_DEV_MODE" == "1" && "$BUILD_LOCAL_DEV_IMAGES" == "1" && -f "$ROOT_DIR/$DEV_LIVE_CODE_OVERRIDE_FILE" ]]; then
   compose_args+=(-f "$DEV_LIVE_CODE_OVERRIDE_FILE")
   if [[ "$COMPACT_LOG_OUTPUT" == "1" ]]; then
     echo "Dev mode live-code mounts enabled via $DEV_LIVE_CODE_OVERRIDE_FILE"
   fi
 fi
 
-if [[ -n "$api_ref" || -n "$workflows_ref" || -n "$models_ref" ]]; then
+if [[ -n "$api_ref" || -n "$workflows_ref" || -n "$marva_ref" || -n "$models_ref" ]]; then
   if ! command -v git >/dev/null 2>&1; then
-    echo "git is required when using --api-ref/--workflows-ref/--models-ref."
+    echo "git is required when using --api-ref/--workflows-ref/--marva-ref/--models-ref."
     exit 1
+  fi
+
+  # In ref-driven mode, only build components explicitly selected by --*-ref
+  # unless the developer explicitly forced a build flag via environment vars.
+  if [[ -z "$user_set_build_local_bc_api_image" ]]; then
+    BUILD_LOCAL_BC_API_IMAGE="0"
+  fi
+  if [[ -z "$user_set_build_local_workflows_image" ]]; then
+    BUILD_LOCAL_WORKFLOWS_IMAGE="0"
+  fi
+  if [[ -z "$user_set_build_local_marva_image" ]]; then
+    BUILD_LOCAL_MARVA_IMAGE="0"
+  fi
+  if [[ -z "$user_set_build_local_marva_middleware_image" ]]; then
+    BUILD_LOCAL_MARVA_MIDDLEWARE_IMAGE="0"
   fi
 
   log_banner "📥 Preparing external ref checkouts"
@@ -800,6 +854,20 @@ if [[ -n "$api_ref" || -n "$workflows_ref" || -n "$models_ref" ]]; then
     fi
   fi
 
+  if [[ -n "$marva_ref" ]]; then
+    checkout_repo_ref "marva_editor" "$MARVA_REPO_URL" "$marva_ref" "$EXTERNAL_CHECKOUT_ROOT/marva_editor"
+    BUILD_LOCAL_DEV_IMAGES="1"
+    BUILD_LOCAL_MARVA_IMAGE="1"
+    BUILD_LOCAL_MARVA_MIDDLEWARE_IMAGE="1"
+    LOCAL_MARVA_DIR="$EXTERNAL_CHECKOUT_ROOT/marva_editor"
+    if [[ -z "$user_marva_image" ]]; then
+      effective_marva_image="marva:$(sanitize_tag_component "$marva_ref")"
+    fi
+    if [[ -z "$user_marva_middleware_image" ]]; then
+      effective_marva_middleware_image="marva-keycloak-middleware:$(sanitize_tag_component "$marva_ref")"
+    fi
+  fi
+
   if [[ -n "$api_ref" && -z "$workflows_ref" && -z "$user_set_build_local_workflows_image" ]]; then
     BUILD_LOCAL_WORKFLOWS_IMAGE="0"
   fi
@@ -807,15 +875,30 @@ if [[ -n "$api_ref" || -n "$workflows_ref" || -n "$models_ref" ]]; then
     BUILD_LOCAL_BC_API_IMAGE="0"
   fi
 
-  if [[ -n "$models_ref" ]]; then
-    checkout_repo_ref "bluecore-models" "$BLUECORE_MODELS_REPO_URL" "$models_ref" "$EXTERNAL_CHECKOUT_ROOT/bluecore-models"
+  auto_models_ref=""
+  if [[ "$APPLY_MODELS_MIGRATIONS" == "1" && -z "$user_set_models_dir" && -z "$models_ref" ]]; then
+    if [[ -n "${INTEGRATION_MODELS_REF:-}" ]]; then
+      auto_models_ref="$INTEGRATION_MODELS_REF"
+    else
+      auto_models_ref="$(resolve_latest_release_tag "$BLUECORE_MODELS_REPO_URL")"
+    fi
+    if [[ -z "$auto_models_ref" ]]; then
+      auto_models_ref="main"
+    fi
+  fi
+
+  selected_models_ref="${models_ref:-$auto_models_ref}"
+  if [[ -n "$selected_models_ref" && -z "$user_set_models_dir" ]]; then
+    checkout_repo_ref "bluecore-models" "$BLUECORE_MODELS_REPO_URL" "$selected_models_ref" "$EXTERNAL_CHECKOUT_ROOT/bluecore-models"
     MODELS_DIR="$EXTERNAL_CHECKOUT_ROOT/bluecore-models"
-    MODELS_SOURCE_LABEL="bluecore-models@$models_ref"
+    MODELS_SOURCE_LABEL="bluecore-models@$selected_models_ref"
+    models_ref="$selected_models_ref"
   fi
 fi
 
 effective_api_ref="${api_ref:-${INTEGRATION_API_REF:-}}"
 effective_workflows_ref="${workflows_ref:-${INTEGRATION_WORKFLOWS_REF:-}}"
+effective_marva_ref="${marva_ref:-${INTEGRATION_MARVA_REF:-}}"
 effective_models_ref="${models_ref:-${INTEGRATION_MODELS_REF:-}}"
 if [[ -z "$effective_models_ref" && "$MODELS_SOURCE_LABEL" == bluecore-models@* ]]; then
   effective_models_ref="${MODELS_SOURCE_LABEL#bluecore-models@}"
@@ -932,10 +1015,10 @@ if [[ "$AUTO_START_STACK" == "1" ]]; then
     if [[ "$BUILD_LOCAL_WORKFLOWS_IMAGE" == "1" && -z "$user_bluecore_workflows_image" && -z "$effective_workflows_ref" ]]; then
       effective_bluecore_workflows_image="bluecore_workflows:${LOCAL_IMAGE_TAG}"
     fi
-    if [[ "$BUILD_LOCAL_MARVA_IMAGE" == "1" && -z "$user_marva_image" ]]; then
+    if [[ "$BUILD_LOCAL_MARVA_IMAGE" == "1" && -z "$user_marva_image" && -z "$effective_marva_ref" ]]; then
       effective_marva_image="marva:${LOCAL_IMAGE_TAG}"
     fi
-    if [[ "$BUILD_LOCAL_MARVA_MIDDLEWARE_IMAGE" == "1" && -z "$user_marva_middleware_image" ]]; then
+    if [[ "$BUILD_LOCAL_MARVA_MIDDLEWARE_IMAGE" == "1" && -z "$user_marva_middleware_image" && -z "$effective_marva_ref" ]]; then
       effective_marva_middleware_image="marva-keycloak-middleware:${LOCAL_IMAGE_TAG}"
     fi
     compose_env+=(
@@ -1037,6 +1120,7 @@ echo "Models source: $MODELS_SOURCE_LABEL"
 echo "Models dir: $MODELS_DIR"
 echo "API ref: ${effective_api_ref:-<none>}"
 echo "Workflows ref: ${effective_workflows_ref:-<none>}"
+echo "Marva ref: ${effective_marva_ref:-<none>}"
 echo "Models ref: ${effective_models_ref:-<none>}"
 echo "Airflow UID: $AIRFLOW_UID"
 echo "Keycloak token URL: $default_keycloak_token_url"
