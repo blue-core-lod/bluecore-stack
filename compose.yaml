@@ -18,18 +18,19 @@ services:
       - start
       - --import-realm
     volumes:
-      - /home/ubuntu/keycloak-export/bluecore-realm.json:/opt/keycloak/data/import/realm.json
-      - /home/ubuntu/keycloak-export:/opt/keycloak/data/export
-
+      - /home/bluecore/bluecore-stack/keycloak-export/bluecore-realm.json:/opt/keycloak/data/import/realm.json
+      - /home/bluecore/bluecore-stack/keycloak-export:/opt/keycloak/data/export
 
   nginx:
     image: nginx:1.27.4-alpine
     ports:
-      - "443:80"
+      - "80:80"
+      - "443:443"
     depends_on:
       - keycloak
       - airflow-apiserver
     volumes:
+      - /etc/letsencrypt:/etc/letsencrypt:ro
       - ./nginx/bluecore.conf:/etc/nginx/conf.d/default.conf
       - ./nginx:/var/www/html
     restart: always
