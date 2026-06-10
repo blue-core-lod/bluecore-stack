@@ -51,7 +51,7 @@ services:
       - keycloak
       - airflow-apiserver
     volumes:
-      - ./nginx/bluecore.conf:/etc/nginx/conf.d/default.conf
+      - ./nginx/bluecore-dev.conf:/etc/nginx/conf.d/default.conf
       - ./nginx:/var/www/html
     restart: always
 
