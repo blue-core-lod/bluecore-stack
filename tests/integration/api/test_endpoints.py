@@ -699,9 +699,11 @@ def test_instance_unsupported_format_and_accept_fall_back_to_json(
 
 
 # ========================================================================
-# Verify known ingested URI can be fetched from /resources/?uri=...
+# Verify URI lookup on /resources/?uri=... 404s for a referenced-only URI.
+# The sample batch references vocabulary URIs (e.g. the French language)
+# but does not describe them, so they are not stored as OtherResources.
 # ------------------------------------------------------------------------
-def test_resources_uri_lookup_returns_known_ingested_resource(
+def test_resources_uri_lookup_unknown_uri_returns_404(
     config,
     request_context: APIRequestContext,
     keycloak_access_token,
@@ -720,14 +722,43 @@ def test_resources_uri_lookup_returns_known_ingested_resource(
         request_timeout=config.request_timeout,
         params={"uri": SAMPLE_LANGUAGE_URI},
     )
+    assert response.status == 404, response.text()
+    assert SAMPLE_LANGUAGE_URI in response.json()["detail"]
+
+
+# ========================================================================
+# Verify a known ingested resource exposes its minted Blue Core URI.
+# The sample batch ingests Works/Instances (not OtherResources), each
+# assigned a Blue Core URI that ends with the resource's UUID.
+# ------------------------------------------------------------------------
+def test_work_lookup_returns_known_ingested_uri(
+    config,
+    request_context: APIRequestContext,
+    keycloak_access_token,
+    airflow_access_token,
+) -> None:
+    work_uuid, _ = ingest_sample_batch_and_wait_for_resources(
+        config=config,
+        request_context=request_context,
+        keycloak_access_token=keycloak_access_token,
+        airflow_access_token=airflow_access_token,
+    )
+    response = send_request(
+        request_context,
+        "GET",
+        f"{config.base_url}/works/{work_uuid}",
+        request_timeout=config.request_timeout,
+    )
     assert response.status == 200, response.text()
     payload = response.json()
-    assert payload.get("uri") == SAMPLE_LANGUAGE_URI
+    assert payload.get("uuid") == work_uuid
+    assert payload.get("uri", "").endswith(f"/works/{work_uuid}")
     assert "data" in payload
 
 
 # ========================================================================
-# Verify /resources pagination shape and links after ingest.
+# Verify /resources pagination shape and links after ingest. The sample
+# batch yields only Works and Instances, so no OtherResources are stored.
 # ------------------------------------------------------------------------
 def test_resources_pagination_links_after_ingest(
     config,
@@ -754,8 +785,10 @@ def test_resources_pagination_links_after_ingest(
     assert "resources" in first_page
     assert "total" in first_page
     assert "links" in first_page
+    assert isinstance(first_page["resources"], list)
     assert len(first_page["resources"]) <= 2
-    assert first_page["total"] >= 2
+    assert first_page["total"] == 0
+    assert first_page["resources"] == []
     assert first_page["links"]["first"].endswith("/api/resources/?limit=2&offset=0")
 
     second_page_response = send_request(
