@@ -21,6 +21,7 @@ from tests.integration.support.logging import log_header
 
 SAMPLE_SEARCH_QUERY = "24042045"
 SAMPLE_LANGUAGE_URI = "http://id.loc.gov/vocabulary/languages/fre"
+JSONLD_HEADERS = {"Accept": "application/ld+json"}
 
 log_header("Testing Bluecore API Endpoints")
 
@@ -43,7 +44,6 @@ def test_openapi_contains_expected_bluecore_routes(
         "/": {"get"},
         "/batches/": {"post"},
         "/batches/upload/": {"post"},
-        "/cbd/{instance_uuid}": {"get"},
         "/change_documents/instances/feed": {"get"},
         "/change_documents/instances/page/{id}": {"get"},
         "/change_documents/works/feed": {"get"},
@@ -81,7 +81,6 @@ def test_openapi_contains_expected_bluecore_routes(
         ("GET", "/resources/999999", {}, 404),
         ("GET", "/works/00000000-0000-0000-0000-000000000001", {}, 404),
         ("GET", "/instances/00000000-0000-0000-0000-000000000002", {}, 404),
-        ("GET", "/cbd/00000000-0000-0000-0000-000000000003", {}, 404),
         ("GET", "/change_documents/works/feed", {}, 200),
         ("GET", "/change_documents/works/page/1", {}, 200),
         ("GET", "/change_documents/instances/feed", {}, 200),
@@ -97,7 +96,6 @@ def test_openapi_contains_expected_bluecore_routes(
         "resource-id-missing => 404",
         "work-uuid-missing => 404",
         "instance-uuid-missing => 404",
-        "cbd-instance-missing => 404",
         "work-change-feed => 200",
         "work-change-page-1 => 200",
         "instance-change-feed => 200",
@@ -399,9 +397,10 @@ def test_ingested_batch_contains_expected_processed_fields(
         "GET",
         f"{config.base_url}/works/{work_uuid}",
         request_timeout=config.request_timeout,
+        headers=JSONLD_HEADERS,
     )
     assert work_response.status == 200, work_response.text()
-    work_data = work_response.json().get("data", {})
+    work_data = work_response.json()
     assert_payload_contains(
         work_data,
         {
@@ -416,9 +415,10 @@ def test_ingested_batch_contains_expected_processed_fields(
         "GET",
         f"{config.base_url}/instances/{instance_uuid}",
         request_timeout=config.request_timeout,
+        headers=JSONLD_HEADERS,
     )
     assert instance_response.status == 200, instance_response.text()
-    instance_data = instance_response.json().get("data", {})
+    instance_data = instance_response.json()
     assert_payload_contains(
         instance_data,
         {
@@ -535,7 +535,7 @@ def test_cbd_returns_expected_serializations_after_ingest(
     rdf_response = send_request(
         request_context,
         "GET",
-        f"{config.base_url}/cbd/{instance_uuid}.rdf",
+        f"{config.base_url}/instances/{instance_uuid}.cbd.xml",
         request_timeout=config.request_timeout,
     )
     assert rdf_response.status == 200, rdf_response.text()
@@ -545,7 +545,7 @@ def test_cbd_returns_expected_serializations_after_ingest(
     jsonld_response = send_request(
         request_context,
         "GET",
-        f"{config.base_url}/cbd/{instance_uuid}.jsonld",
+        f"{config.base_url}/instances/{instance_uuid}.cbd.jsonld",
         request_timeout=config.request_timeout,
     )
     assert jsonld_response.status == 200, jsonld_response.text()
@@ -555,7 +555,7 @@ def test_cbd_returns_expected_serializations_after_ingest(
 
 
 # ========================================================================
-# Verify /instances format=cbdjsonld returns CBD JSON-LD serialization.
+# Verify /instances .cbd.jsonld extension returns CBD JSON-LD serialization.
 # ------------------------------------------------------------------------
 def test_instance_format_cbdjsonld_returns_jsonld_after_ingest(
     config,
@@ -573,9 +573,8 @@ def test_instance_format_cbdjsonld_returns_jsonld_after_ingest(
     response = send_request(
         request_context,
         "GET",
-        f"{config.base_url}/instances/{instance_uuid}",
+        f"{config.base_url}/instances/{instance_uuid}.cbd.jsonld",
         request_timeout=config.request_timeout,
-        params={"format": "cbdjsonld"},
     )
     assert response.status == 200, response.text()
     assert "application/ld+json" in response.headers.get("content-type", "")
@@ -639,7 +638,7 @@ def test_instance_accept_cbd_jsonld_returns_jsonld_after_ingest(
 
 
 # ========================================================================
-# Verify format query param wins over Accept header when both are present.
+# Verify path-extension format wins over Accept header when both are present.
 # ------------------------------------------------------------------------
 def test_instance_format_precedence_over_accept_for_cbd_serialization(
     config,
@@ -657,9 +656,8 @@ def test_instance_format_precedence_over_accept_for_cbd_serialization(
     response = send_request(
         request_context,
         "GET",
-        f"{config.base_url}/instances/{instance_uuid}",
+        f"{config.base_url}/instances/{instance_uuid}.cbd.xml",
         request_timeout=config.request_timeout,
-        params={"format": "cbdxml"},
         headers={"Accept": "application/cbd+jsonld"},
     )
     assert response.status == 200, response.text()
@@ -667,9 +665,111 @@ def test_instance_format_precedence_over_accept_for_cbd_serialization(
 
 
 # ========================================================================
-# Verify unsupported format/Accept falls back to normal instance JSON.
+# Verify an unrecognized extension is ignored and the response is decided by
+# Accept-header content negotiation. The default view is HTML, so:
+#   - a non-HTML, unregistered Accept     -> default HTML view
+#   - Accept: text/html (e.g. a browser)  -> HTML view
+#   - Accept: application/ld+json         -> JSON-LD (explicit negotiation wins)
 # ------------------------------------------------------------------------
-def test_instance_unsupported_format_and_accept_fall_back_to_json(
+def test_instance_unsupported_extension_defers_to_accept_negotiation(
+    config,
+    request_context: APIRequestContext,
+    keycloak_access_token,
+    airflow_access_token,
+) -> None:
+    _, instance_uuid = ingest_sample_batch_and_wait_for_resources(
+        config=config,
+        request_context=request_context,
+        keycloak_access_token=keycloak_access_token,
+        airflow_access_token=airflow_access_token,
+    )
+
+    # Non-HTML, unregistered Accept -> nothing matches -> default HTML view.
+    default_response = send_request(
+        request_context,
+        "GET",
+        f"{config.base_url}/instances/{instance_uuid}.not-a-real-format",
+        request_timeout=config.request_timeout,
+        headers={"Accept": "application/not-real"},
+    )
+    assert default_response.status == 200, default_response.text()
+    assert "text/html" in default_response.headers.get("content-type", "")
+
+    # Same unsupported extension, but Accept: text/html (a browser) -> HTML view.
+    html_response = send_request(
+        request_context,
+        "GET",
+        f"{config.base_url}/instances/{instance_uuid}.not-a-real-format",
+        request_timeout=config.request_timeout,
+        headers={"Accept": "text/html"},
+    )
+    assert html_response.status == 200, html_response.text()
+    assert "text/html" in html_response.headers.get("content-type", "")
+
+    # Explicit Accept: application/ld+json still wins despite extension.
+    jsonld_response = send_request(
+        request_context,
+        "GET",
+        f"{config.base_url}/instances/{instance_uuid}.not-a-real-format",
+        request_timeout=config.request_timeout,
+        headers=JSONLD_HEADERS,
+    )
+    assert jsonld_response.status == 200, jsonld_response.text()
+    assert "application/ld+json" in jsonld_response.headers.get("content-type", "")
+    assert jsonld_response.json().get("@id", "").endswith(f"/instances/{instance_uuid}")
+
+
+@pytest.mark.parametrize(
+    ("extension", "expected_content_type"),
+    [
+        (".jsonld", "application/ld+json"),
+        (".rdf", "application/rdf+xml"),
+        (".nt", "application/n-triples"),
+        (".ttl", "text/turtle"),
+        (".cbd.xml", "application/rdf+xml"),
+        (".cbd.jsonld", "application/ld+json"),
+    ],
+    ids=[
+        "jsonld => ld+json",
+        "rdf => rdf+xml",
+        "nt => n-triples",
+        "ttl => turtle",
+        "cbd.xml => rdf+xml",
+        "cbd.jsonld => ld+json",
+    ],
+)
+# ========================================================================
+# Verify instance path-extension serializers return the expected media type.
+# ------------------------------------------------------------------------
+def test_instance_serialization_extensions_after_ingest(
+    config,
+    request_context: APIRequestContext,
+    keycloak_access_token,
+    airflow_access_token,
+    extension: str,
+    expected_content_type: str,
+) -> None:
+    _, instance_uuid = ingest_sample_batch_and_wait_for_resources(
+        config=config,
+        request_context=request_context,
+        keycloak_access_token=keycloak_access_token,
+        airflow_access_token=airflow_access_token,
+    )
+
+    response = send_request(
+        request_context,
+        "GET",
+        f"{config.base_url}/instances/{instance_uuid}{extension}",
+        request_timeout=config.request_timeout,
+    )
+    assert response.status == 200, response.text()
+    assert expected_content_type in response.headers.get("content-type", "")
+
+
+# ========================================================================
+# Verify the .vnd.sinopia.json extension returns the full resource.
+# ------------------------------------------------------------------------
+def test_instance_vnd_sinopia_json_returns_envelope_after_ingest(
     config,
     request_context: APIRequestContext,
     keycloak_access_token,
@@ -685,17 +785,49 @@ def test_instance_unsupported_format_and_accept_fall_back_to_json(
     response = send_request(
         request_context,
         "GET",
-        f"{config.base_url}/instances/{instance_uuid}",
+        f"{config.base_url}/instances/{instance_uuid}.vnd.sinopia.json",
         request_timeout=config.request_timeout,
-        params={"format": "not-a-real-format"},
-        headers={"Accept": "application/not-real"},
     )
     assert response.status == 200, response.text()
-    assert "application/json" in response.headers.get("content-type", "")
     payload = response.json()
-    assert isinstance(payload, dict)
     assert payload.get("uuid") == instance_uuid
-    assert "data" in payload
+    assert str(payload.get("uri", "")).endswith(f"/instances/{instance_uuid}")
+    assert payload.get("is_expanded") is False
+    assert isinstance(payload.get("data"), dict)
+
+
+@pytest.mark.parametrize(
+    "resource_kind",
+    ["works", "instances"],
+)
+# ========================================================================
+# Verify Accept: text/html serves the HTML resource view.
+# ------------------------------------------------------------------------
+def test_resource_accept_html_returns_html_view_after_ingest(
+    config,
+    request_context: APIRequestContext,
+    keycloak_access_token,
+    airflow_access_token,
+    resource_kind: str,
+) -> None:
+    work_uuid, instance_uuid = ingest_sample_batch_and_wait_for_resources(
+        config=config,
+        request_context=request_context,
+        keycloak_access_token=keycloak_access_token,
+        airflow_access_token=airflow_access_token,
+    )
+    resource_uuid = work_uuid if resource_kind == "works" else instance_uuid
+
+    response = send_request(
+        request_context,
+        "GET",
+        f"{config.base_url}/{resource_kind}/{resource_uuid}",
+        request_timeout=config.request_timeout,
+        headers={"Accept": "text/html"},
+    )
+    assert response.status == 200, response.text()
+    assert "text/html" in response.headers.get("content-type", "")
+    assert resource_uuid in response.text()
 
 
 # ========================================================================
@@ -748,12 +880,12 @@ def test_work_lookup_returns_known_ingested_uri(
         "GET",
         f"{config.base_url}/works/{work_uuid}",
         request_timeout=config.request_timeout,
+        headers=JSONLD_HEADERS,
     )
     assert response.status == 200, response.text()
     payload = response.json()
-    assert payload.get("uuid") == work_uuid
-    assert payload.get("uri", "").endswith(f"/works/{work_uuid}")
-    assert "data" in payload
+    assert payload.get("@id", "").endswith(f"/works/{work_uuid}")
+    assert payload.get("@type")
 
 
 # ========================================================================
@@ -764,14 +896,24 @@ def test_resources_pagination_links_after_ingest(
     config,
     request_context: APIRequestContext,
     keycloak_access_token,
-    airflow_access_token,
 ) -> None:
-    ingest_sample_batch_and_wait_for_resources(
-        config=config,
-        request_context=request_context,
-        keycloak_access_token=keycloak_access_token,
-        airflow_access_token=airflow_access_token,
-    )
+    # The /resources/ endpoint lists OtherResource rows only (not works/instances),
+    # so seed a few directly to give pagination something to page through.
+    for _ in range(3):
+        marker = uuid4().hex
+        seed_response = send_request(
+            request_context,
+            "POST",
+            f"{config.base_url}/resources/",
+            request_timeout=config.request_timeout,
+            headers={"Authorization": f"Bearer {keycloak_access_token}"},
+            json={
+                "uri": f"https://example.org/resources/{marker}",
+                "is_profile": True,
+                "data": json.dumps({"label": f"pagination-seed-{marker}"}),
+            },
+        )
+        assert seed_response.status == 201, seed_response.text()
 
     first_page_response = send_request(
         request_context,
@@ -787,8 +929,7 @@ def test_resources_pagination_links_after_ingest(
     assert "links" in first_page
     assert isinstance(first_page["resources"], list)
     assert len(first_page["resources"]) <= 2
-    assert first_page["total"] == 0
-    assert first_page["resources"] == []
+    assert first_page["total"] >= 2
     assert first_page["links"]["first"].endswith("/api/resources/?limit=2&offset=0")
 
     second_page_response = send_request(
@@ -805,7 +946,7 @@ def test_resources_pagination_links_after_ingest(
 
 
 # ========================================================================
-# Verify expand=true on works returns expanded payload and is_expanded=true.
+# Verify expand=true on works returns expanded JSON-LD payload.
 # ------------------------------------------------------------------------
 def test_work_expand_true_returns_expanded_payload(
     config,
@@ -825,6 +966,7 @@ def test_work_expand_true_returns_expanded_payload(
         "GET",
         f"{config.base_url}/works/{work_uuid}",
         request_timeout=config.request_timeout,
+        headers=JSONLD_HEADERS,
     )
     assert regular_response.status == 200, regular_response.text()
     regular_payload = regular_response.json()
@@ -835,18 +977,17 @@ def test_work_expand_true_returns_expanded_payload(
         f"{config.base_url}/works/{work_uuid}",
         request_timeout=config.request_timeout,
         params={"expand": "true"},
+        headers=JSONLD_HEADERS,
     )
     assert expanded_response.status == 200, expanded_response.text()
     expanded_payload = expanded_response.json()
-    assert regular_payload.get("is_expanded") is False
-    assert expanded_payload.get("is_expanded") is True
-    assert len(json.dumps(expanded_payload.get("data", {}))) >= len(
-        json.dumps(regular_payload.get("data", {}))
-    )
+    assert isinstance(regular_payload, dict)
+    assert isinstance(expanded_payload, dict)
+    assert len(json.dumps(expanded_payload)) >= len(json.dumps(regular_payload))
 
 
 # ========================================================================
-# Verify expand=true on instances returns expanded payload and flag.
+# Verify expand=true on instances returns expanded JSON-LD payload.
 # ------------------------------------------------------------------------
 def test_instance_expand_true_returns_expanded_payload(
     config,
@@ -866,6 +1007,7 @@ def test_instance_expand_true_returns_expanded_payload(
         "GET",
         f"{config.base_url}/instances/{instance_uuid}",
         request_timeout=config.request_timeout,
+        headers=JSONLD_HEADERS,
     )
     assert regular_response.status == 200, regular_response.text()
     regular_payload = regular_response.json()
@@ -876,14 +1018,13 @@ def test_instance_expand_true_returns_expanded_payload(
         f"{config.base_url}/instances/{instance_uuid}",
         request_timeout=config.request_timeout,
         params={"expand": "true"},
+        headers=JSONLD_HEADERS,
     )
     assert expanded_response.status == 200, expanded_response.text()
     expanded_payload = expanded_response.json()
-    assert regular_payload.get("is_expanded") is False
-    assert expanded_payload.get("is_expanded") is True
-    assert len(json.dumps(expanded_payload.get("data", {}))) >= len(
-        json.dumps(regular_payload.get("data", {}))
-    )
+    assert isinstance(regular_payload, dict)
+    assert isinstance(expanded_payload, dict)
+    assert len(json.dumps(expanded_payload)) >= len(json.dumps(regular_payload))
 
 
 # ========================================================================
@@ -1112,12 +1253,13 @@ def test_work_create_and_readback_with_auth(
         "GET",
         f"{config.base_url}/works/{work_uuid}",
         request_timeout=config.request_timeout,
+        headers=JSONLD_HEADERS,
     )
     assert readback_response.status == 200, readback_response.text()
     readback = readback_response.json()
-    assert readback.get("uuid") == work_uuid
+    assert readback.get("@id", "").endswith(f"/works/{work_uuid}")
     assert_payload_contains(
-        readback.get("data", {}),
+        readback,
         {"work marker": marker},
     )
 
@@ -1149,12 +1291,13 @@ def test_instance_create_and_readback_with_auth(
         "GET",
         f"{config.base_url}/instances/{instance_uuid}",
         request_timeout=config.request_timeout,
+        headers=JSONLD_HEADERS,
     )
     assert readback_response.status == 200, readback_response.text()
     readback = readback_response.json()
-    assert readback.get("uuid") == instance_uuid
+    assert readback.get("@id", "").endswith(f"/instances/{instance_uuid}")
     assert_payload_contains(
-        readback.get("data", {}),
+        readback,
         {"instance marker": marker},
     )
 
@@ -1179,9 +1322,10 @@ def test_work_update_readback_with_auth(
         "GET",
         f"{config.base_url}/works/{work_uuid}",
         request_timeout=config.request_timeout,
+        headers=JSONLD_HEADERS,
     )
     assert work_response.status == 200, work_response.text()
-    updated_work_data = dict(work_response.json()["data"])
+    updated_work_data = dict(work_response.json())
     marker = f"work-update-{uuid4().hex}"
     updated_work_data["integration_update_marker"] = marker
 
@@ -1200,9 +1344,10 @@ def test_work_update_readback_with_auth(
         "GET",
         f"{config.base_url}/works/{work_uuid}",
         request_timeout=config.request_timeout,
+        headers=JSONLD_HEADERS,
     )
     assert readback_response.status == 200, readback_response.text()
-    assert readback_response.json()["data"].get("integration_update_marker") == marker
+    assert readback_response.json().get("integration_update_marker") == marker
 
 
 # ========================================================================
@@ -1225,9 +1370,10 @@ def test_instance_update_readback_with_auth(
         "GET",
         f"{config.base_url}/instances/{instance_uuid}",
         request_timeout=config.request_timeout,
+        headers=JSONLD_HEADERS,
     )
     assert instance_response.status == 200, instance_response.text()
-    updated_instance_data = dict(instance_response.json()["data"])
+    updated_instance_data = dict(instance_response.json())
     marker = f"instance-update-{uuid4().hex}"
     updated_instance_data["integration_update_marker"] = marker
 
@@ -1246,9 +1392,10 @@ def test_instance_update_readback_with_auth(
         "GET",
         f"{config.base_url}/instances/{instance_uuid}",
         request_timeout=config.request_timeout,
+        headers=JSONLD_HEADERS,
     )
     assert readback_response.status == 200, readback_response.text()
-    assert readback_response.json()["data"].get("integration_update_marker") == marker
+    assert readback_response.json().get("integration_update_marker") == marker
 
 
 # ========================================================================
@@ -1325,13 +1472,15 @@ def test_change_documents_include_newly_ingested_resources(
         "GET",
         f"{config.base_url}/works/{work_uuid}",
         request_timeout=config.request_timeout,
-    ).json()["uri"]
+        headers=JSONLD_HEADERS,
+    ).json()["@id"]
     instance_uri = send_request(
         request_context,
         "GET",
         f"{config.base_url}/instances/{instance_uuid}",
         request_timeout=config.request_timeout,
-    ).json()["uri"]
+        headers=JSONLD_HEADERS,
+    ).json()["@id"]
 
     works_feed_response = send_request(
         request_context,

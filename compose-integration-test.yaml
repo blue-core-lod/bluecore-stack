@@ -22,6 +22,9 @@ services:
 
   marva-keycloak-middleware:
     profiles: ["integration-full"]
+    environment:
+      # Overrides MARVA_UTIL_PATH from .env instead of proxying to a live external upstream (e.g. bibframe.org).
+      MARVA_UTIL_PATH: ""
 
   airflow-triggerer:
     profiles: ["disabled"]
