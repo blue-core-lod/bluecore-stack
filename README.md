@@ -76,13 +76,21 @@ MARVA_REDIRECT_BASE=http://localhost/marva/
 BLUECORE_STACK_KEYCLOAK_REDIRECT_URI=http://localhost/marva/util/auth/callback
 KEYCLOAK_MIDDLEWARE_BASE=http://marva-keycloak-middleware:9401/marva/util
 CORS_ORIGIN=*
-# MARVA_UTIL_PATH= #TODO: will need to be configured with marva backend for additional Marva features
+MARVA_UTIL_PATH=https://bibframe.org # => Upstream base for Marva "additional features" (events, myrecords, version, ...).
 
 # ---------------------------------------------------------
 # Env Values already assigned in "Keycloak Clients" section
 # ---------------------------------------------------------
 # KEYCLOAK_INTERNAL_URL=http://keycloak:8080/keycloak/
 # KEYCLOAK_EXTERNAL_URL=http://localhost/keycloak/
+
+################################################-----------
+##  Bluecore API HTML Redirect Configuration  ##
+################################################
+# "Load to Marva/Sinopia" links in the bluecore_api HTML views (Localy).
+# Add these for local development only, production path set when not present
+MARVA_BASE_URL=http://localhost/marva/
+SINOPIA_BASE_URL=http://localhost/sinopia/
 ```
 
 ## 🛠️ Setup Airflow (Blue Core Workflows)
