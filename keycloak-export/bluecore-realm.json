@@ -704,7 +704,7 @@
     "enabled" : true,
     "alwaysDisplayInConsole" : false,
     "clientAuthenticatorType" : "client-secret",
-    "redirectUris" : [ "http://localhost/marva/util/auth/callback", "http://localhost/api/oauth-authorized/keycloak", "http://localhost:8080/oauth-authorized/keycloak" ],
+    "redirectUris" : [ "http://localhost/marva/util/auth/callback", "http://localhost/api/oauth-authorized/keycloak", "http://localhost:8080/oauth-authorized/keycloak", "http://localhost/sinopia", "http://localhost/sinopia/*", "http://localhost:8888", "http://localhost:8888/*" ],
     "webOrigins" : [ "/*" ],
     "notBefore" : 0,
     "bearerOnly" : false,
