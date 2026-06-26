@@ -1343,6 +1343,7 @@ def test_work_update_readback_with_auth(
     )
     assert work_response.status == 200, work_response.text()
     updated_work_data = dict(work_response.json())
+    updated_work_data.pop("@context", None)
     marker = f"work-update-{uuid4().hex}"
     updated_work_data["integration_update_marker"] = marker
 
@@ -1391,6 +1392,7 @@ def test_instance_update_readback_with_auth(
     )
     assert instance_response.status == 200, instance_response.text()
     updated_instance_data = dict(instance_response.json())
+    updated_instance_data.pop("@context", None)
     marker = f"instance-update-{uuid4().hex}"
     updated_instance_data["integration_update_marker"] = marker
 
