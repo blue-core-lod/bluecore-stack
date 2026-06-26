@@ -382,6 +382,44 @@ ensure_ci_bind_mount_permissions() {
   chmod -R a+rwX "$ROOT_DIR/logs" "$ROOT_DIR/uploads" "$ROOT_DIR/config" || true
 }
 
+cleanup_milvus_bind_mount_data() {
+  if [[ "${GITHUB_ACTIONS:-}" == "true" ]]; then
+    return 0
+  fi
+
+  if [[ "$CLEAN_BIND_MOUNT_ARTIFACTS_ON_EXIT" != "1" ]]; then
+    return 0
+  fi
+
+  local milvus_root="$ROOT_DIR/milvus"
+  local path
+  local removed_any="0"
+  local cleanup_paths=(
+    "$milvus_root/etcd"
+    "$milvus_root/minio"
+    "$milvus_root/milvus"
+  )
+
+  for path in "${cleanup_paths[@]}"; do
+    if [[ "$path" != "$milvus_root/"* ]]; then
+      echo "Skipping unsafe cleanup path: $path"
+      continue
+    fi
+    if [[ -L "$path" ]]; then
+      echo "Skipping symlink during cleanup: $path"
+      continue
+    fi
+    if [[ -e "$path" ]]; then
+      rm -rf "$path" || true
+      removed_any="1"
+    fi
+  done
+
+  if [[ "$removed_any" == "1" && "$COMPACT_LOG_OUTPUT" == "1" ]]; then
+    echo "Removed Milvus bind-mount artifacts under $milvus_root."
+  fi
+}
+
 is_workflows_service() {
   local service="$1"
   case "$service" in
@@ -914,6 +952,8 @@ if [[ "$INTEGRATION_DEV_MODE_STOP" == "1" ]]; then
   echo "Compose project name: $COMPOSE_PROJECT_NAME"
   echo "Compose files: $COMPOSE_FILE, $LOCAL_OVERRIDE_FILE${ARM64_OVERRIDE_FILE:+, $ARM64_OVERRIDE_FILE}"
   run_compose_compact down -v --remove-orphans --rmi all || true
+  CLEAN_BIND_MOUNT_ARTIFACTS_ON_EXIT="1"
+  cleanup_milvus_bind_mount_data
   if [[ "$COMPACT_LOG_OUTPUT" == "1" ]]; then
     echo "Dev-mode stack cleanup complete."
   fi
@@ -965,6 +1005,7 @@ if [[ "$AUTO_START_STACK" == "1" ]]; then
   if [[ "$RESET_STACK_BEFORE_UP" == "1" ]]; then
     log_banner "🧹  Resetting integration stack state..."
     run_compose_compact down -v --remove-orphans >/dev/null 2>&1 || true
+    cleanup_milvus_bind_mount_data
   fi
   ensure_ci_bind_mount_permissions
   if [[ "$BUILD_LOCAL_DEV_IMAGES" == "1" ]]; then
@@ -1054,6 +1095,7 @@ cleanup() {
     log_banner "🧹 Stopping stack..."
     if [[ "$REMOVE_VOLUMES_ON_EXIT" == "1" ]]; then
       run_compose_compact down -v --remove-orphans
+      cleanup_milvus_bind_mount_data
     else
       run_compose_compact down
     fi
@@ -1084,6 +1126,7 @@ echo "Airflow UID: $AIRFLOW_UID"
 echo "Keycloak token URL: $default_keycloak_token_url"
 echo "Bluecore API image: $effective_bluecore_api_image"
 echo "Bluecore Workflows image: $effective_bluecore_workflows_image"
+echo "Vector backend required: $default_require_vector_backend"
 echo "------------------------------"
 set +e
 (cd "$ROOT_DIR" && INTEGRATION_FULL_STACK="$INTEGRATION_FULL_STACK" COMPOSE_PROFILES="${compose_profiles_value:-}" INTEGRATION_KEYCLOAK_TOKEN_URL="$default_keycloak_token_url" INTEGRATION_AIRFLOW_BASE_URL="$default_airflow_base_url" INTEGRATION_REQUIRE_VECTOR_BACKEND="$default_require_vector_backend" "$PYTHON_BIN" -m pytest "${pytest_targets[@]}" --ignore=external -v -s --color=yes "${pytest_args[@]}")

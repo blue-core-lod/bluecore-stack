@@ -194,6 +194,7 @@ Tests use Playwright's `APIRequestContext` (HTTP-only, no browser UI).
 - Auth contract for API write endpoints.
 - Keycloak-authenticated DAG triggers (`resource_loader`, `monitor_institutions_exports`).
 - Ingest + processed readback checks.
+- Embedding create/read behavior when vector backend is enabled.
 
 ### Which script to use
 - `./scripts/integration-tests.sh`: normal local test runner (recommended for daily dev).
@@ -259,6 +260,7 @@ BUILD_LOCAL_DEV_IMAGES=1 ./scripts/integration-tests.sh
 
 CI Notes:
 - Apple Silicon: `compose-arm64-workflows.yaml` is added automatically.
+- GitHub Actions: Milvus bind-mount cleanup is skipped by default to avoid container file permission noise.
 
 ## 🧪 Workflow Parity Runner (`workflow-tests.sh`)
 Use this when you want local execution that matches `.github/workflows/manual-integration-test.yml`.
