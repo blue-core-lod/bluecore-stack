@@ -38,30 +38,6 @@ on:
         required: false
         default: "latest"
         type: string
-      # Optional: Use a prebuilt API image instead of latest/branch build.
-      api_image:
-        description: "bluecore_api — optional image override (e.g. ghcr.io/blue-core-lod/bluecore_api:pr-123)"
-        required: false
-        default: ""
-        type: string
-      # Optional: Use a prebuilt Workflows image.
-      workflows_image:
-        description: "bluecore-workflows — optional image override (e.g. ghcr.io/blue-core-lod/bluecore-workflows:pr-123)"
-        required: false
-        default: ""
-        type: string
-      # Optional: Use a prebuilt Marva image.
-      marva_image:
-        description: "marva_editor — optional image override (e.g. ghcr.io/blue-core-lod/marva:pr-123)"
-        required: false
-        default: ""
-        type: string
-      # Optional: Use a prebuilt Marva middleware image.
-      marva_middleware_image:
-        description: "marva-keycloak-middleware — optional image override (e.g. ghcr.io/blue-core-lod/marva-keycloak-middleware:pr-123)"
-        required: false
-        default: ""
-        type: string
       # Optional pytest file/test selector to run a smaller targeted test set.
       pytest_target:
         description: "Optional pytest target (default runs full tests/integration suite)"
@@ -198,10 +174,6 @@ jobs:
           # ====================================================================
           # Set workflow inputs into shell variables.
           # --------------------------------------------------------------------
-          api_image_input="${{ inputs.api_image }}"
-          workflows_image_input="${{ inputs.workflows_image }}"
-          marva_image_input="${{ inputs.marva_image }}"
-          marva_middleware_image_input="${{ inputs.marva_middleware_image }}"
           api_ref_input="${{ inputs.api_ref }}"
           workflows_ref_input="${{ inputs.workflows_ref }}"
           marva_ref_input="${{ inputs.marva_ref }}"
@@ -241,66 +213,48 @@ jobs:
             api_checkout_ref="$api_ref"
           fi
 
-          # Build from source automatically when a real ref is given (not "latest")
-          # and no explicit image override is set.
+          # Build from source automatically when a real ref is given (not "latest").
           build_api_image="false"
           build_workflows_image="false"
           build_marva_image="false"
           build_marva_middleware_image="false"
-          if [[ "$api_ref" != "latest" && -z "$api_image_input" ]]; then
+          if [[ "$api_ref" != "latest" ]]; then
             build_api_image="true"
           fi
-          if [[ "$workflows_ref" != "latest" && -z "$workflows_image_input" ]]; then
+          if [[ "$workflows_ref" != "latest" ]]; then
             build_workflows_image="true"
           fi
-          if [[ "$marva_ref" != "latest" && -z "$marva_image_input" ]]; then
+          if [[ "$marva_ref" != "latest" ]]; then
             build_marva_image="true"
-          fi
-          if [[ "$marva_ref" != "latest" && -z "$marva_middleware_image_input" ]]; then
             build_marva_middleware_image="true"
           fi
 
           # ====================================================================
-          # Start with explicit image overrides (if provided) before choosing defaults.
+          # Image per service: a branch-build tag when building, else the
+          # published GHCR :latest image.
           # --------------------------------------------------------------------
-          api_image="$api_image_input"
-          workflows_image="$workflows_image_input"
-          marva_image="$marva_image_input"
-          marva_middleware_image="$marva_middleware_image_input"
-
-          # ====================================================================
-          # If no image was provided, pick a local build tag or the default GHCR image.
-          # --------------------------------------------------------------------
-          if [[ -z "$api_image" ]]; then
-            if [[ "$build_api_image" == "true" ]]; then
-              api_image="bluecore_api:${api_ref_tag}-gha-${{ github.run_id }}-${{ github.run_attempt }}"
-            else
-              api_image="ghcr.io/blue-core-lod/bluecore_api:latest"
-            fi
+          if [[ "$build_api_image" == "true" ]]; then
+            api_image="bluecore_api:${api_ref_tag}-gha-${{ github.run_id }}-${{ github.run_attempt }}"
+          else
+            api_image="ghcr.io/blue-core-lod/bluecore_api:latest"
           fi
 
-          if [[ -z "$workflows_image" ]]; then
-            if [[ "$build_workflows_image" == "true" ]]; then
-              workflows_image="bluecore_workflows:${workflows_ref_tag}-gha-${{ github.run_id }}-${{ github.run_attempt }}"
-            else
-              workflows_image="ghcr.io/blue-core-lod/bluecore-workflows:latest"
-            fi
+          if [[ "$build_workflows_image" == "true" ]]; then
+            workflows_image="bluecore_workflows:${workflows_ref_tag}-gha-${{ github.run_id }}-${{ github.run_attempt }}"
+          else
+            workflows_image="ghcr.io/blue-core-lod/bluecore-workflows:latest"
           fi
 
-          if [[ -z "$marva_image" ]]; then
-            if [[ "$build_marva_image" == "true" ]]; then
-              marva_image="marva:${marva_ref_tag}-gha-${{ github.run_id }}-${{ github.run_attempt }}"
-            else
-              marva_image="ghcr.io/blue-core-lod/marva:latest"
-            fi
+          if [[ "$build_marva_image" == "true" ]]; then
+            marva_image="marva:${marva_ref_tag}-gha-${{ github.run_id }}-${{ github.run_attempt }}"
+          else
+            marva_image="ghcr.io/blue-core-lod/marva:latest"
           fi
 
-          if [[ -z "$marva_middleware_image" ]]; then
-            if [[ "$build_marva_middleware_image" == "true" ]]; then
-              marva_middleware_image="marva-keycloak-middleware:${marva_ref_tag}-gha-${{ github.run_id }}-${{ github.run_attempt }}"
-            else
-              marva_middleware_image="ghcr.io/blue-core-lod/marva-keycloak-middleware:latest"
-            fi
+          if [[ "$build_marva_middleware_image" == "true" ]]; then
+            marva_middleware_image="marva-keycloak-middleware:${marva_ref_tag}-gha-${{ github.run_id }}-${{ github.run_attempt }}"
+          else
+            marva_middleware_image="ghcr.io/blue-core-lod/marva-keycloak-middleware:latest"
           fi
 
           # ====================================================================
