@@ -38,33 +38,33 @@ on:
         required: false
         default: "latest"
         type: string
-      # Optional pytest file/test selector to run a smaller targeted test set.
-      pytest_target:
-        description: "Optional pytest target (default runs full tests/integration suite)"
-        required: false
-        default: ""
-        type: string
-      # Optional: Use a prebuilt API image.
+      # Optional: Use a prebuilt API image instead of latest/branch build.
       api_image:
-        description: "Optional API image override (e.g. ghcr.io/blue-core-lod/bluecore_api:pr-123)"
+        description: "bluecore_api — optional image override (e.g. ghcr.io/blue-core-lod/bluecore_api:pr-123)"
         required: false
         default: ""
         type: string
       # Optional: Use a prebuilt Workflows image.
       workflows_image:
-        description: "Optional Workflows image override (e.g. ghcr.io/blue-core-lod/bluecore-workflows:pr-123)"
+        description: "bluecore-workflows — optional image override (e.g. ghcr.io/blue-core-lod/bluecore-workflows:pr-123)"
         required: false
         default: ""
         type: string
       # Optional: Use a prebuilt Marva image.
       marva_image:
-        description: "Optional Marva image override (e.g. ghcr.io/blue-core-lod/marva:pr-123)"
+        description: "marva_editor — optional image override (e.g. ghcr.io/blue-core-lod/marva:pr-123)"
         required: false
         default: ""
         type: string
       # Optional: Use a prebuilt Marva middleware image.
       marva_middleware_image:
-        description: "Optional Marva middleware image override (e.g. ghcr.io/blue-core-lod/marva-keycloak-middleware:pr-123)"
+        description: "marva-keycloak-middleware — optional image override (e.g. ghcr.io/blue-core-lod/marva-keycloak-middleware:pr-123)"
+        required: false
+        default: ""
+        type: string
+      # Optional pytest file/test selector to run a smaller targeted test set.
+      pytest_target:
+        description: "Optional pytest target (default runs full tests/integration suite)"
         required: false
         default: ""
         type: string
