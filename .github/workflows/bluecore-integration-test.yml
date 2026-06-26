@@ -16,27 +16,27 @@ on:
     inputs:
       # API git ref-branch used for API builds and API fixture/CLI checkout.
       api_ref:
-        description: "bluecore_api git ref (non-main builds image from branch-ref)"
+        description: "'latest' = test the published image; a branch/ref (e.g. main) builds & tests that branch"
         required: false
-        default: "main"
+        default: "latest"
         type: string
       # Workflows git ref-branch used when building bluecore-workflows.
       workflows_ref:
-        description: "bluecore-workflows git ref (non-main builds image from branch-ref)"
+        description: "'latest' = test the published image; a branch/ref (e.g. main) builds & tests that branch"
         required: false
-        default: "main"
+        default: "latest"
         type: string
       # Marva git ref-branch used when building marva + middleware images.
       marva_ref:
-        description: "marva_editor git ref (non-main builds image from branch-ref)"
+        description: "'latest' = test the published image; a branch/ref builds & tests that branch"
         required: false
-        default: "bluecore-dev-mvp"
+        default: "latest"
         type: string
-      # Models git ref to use for database migrations during the test run.
+      # Models ref for DB migrations (no image). 'latest' = latest released tag.
       models_ref:
-        description: "bluecore-models git ref used for DB migrations"
+        description: "'latest' = latest released models tag for migrations; or a branch/ref (e.g. main)"
         required: false
-        default: "main"
+        default: "latest"
         type: string
       # Optional pytest file/test selector to run a smaller targeted test set.
       pytest_target:
@@ -211,10 +211,12 @@ jobs:
           # ====================================================================
           # Set empty inputs to defaults, Assign values if present.
           # --------------------------------------------------------------------
-          api_ref="${api_ref_input:-main}"
-          workflows_ref="${workflows_ref_input:-main}"
-          marva_ref="${marva_ref_input:-bluecore-dev-mvp}"
-          models_ref="${models_ref_input:-main}"
+          # "latest" is the sentinel meaning "use the published image / latest
+          # released tag; don't build". Any other value is a git ref to build/test.
+          api_ref="${api_ref_input:-latest}"
+          workflows_ref="${workflows_ref_input:-latest}"
+          marva_ref="${marva_ref_input:-latest}"
+          models_ref="${models_ref_input:-latest}"
           compose_project_name="terraform_integration_ci"
           integration_db_name="bluecore_integration_test"
           keycloak_image="quay.io/keycloak/keycloak:26.1.2"
@@ -223,21 +225,38 @@ jobs:
           workflows_ref_tag="$(sanitize_tag_component "$workflows_ref")"
           marva_ref_tag="$(sanitize_tag_component "$marva_ref")"
 
-          # Build from source refs automatically when ref is non-main and no image override is set.
+          # bluecore-models has no image: "latest" resolves to the most recent
+          # released tag (vX.Y.Z) for migrations; any other value is used as-is.
+          if [[ "$models_ref" == "latest" ]]; then
+            models_ref="$(git ls-remote --tags --refs https://github.com/blue-core-lod/bluecore-models.git 'v*' 2>/dev/null \
+              | sed -E 's#^.*refs/tags/##' | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | tail -n1)"
+            models_ref="${models_ref:-main}"
+          fi
+
+          # The API source is always checked out (for the CLI/fixtures), so the
+          # "latest" sentinel — which isn't a git ref — maps to main for checkout.
+          if [[ "$api_ref" == "latest" ]]; then
+            api_checkout_ref="main"
+          else
+            api_checkout_ref="$api_ref"
+          fi
+
+          # Build from source automatically when a real ref is given (not "latest")
+          # and no explicit image override is set.
           build_api_image="false"
           build_workflows_image="false"
           build_marva_image="false"
           build_marva_middleware_image="false"
-          if [[ "$api_ref" != "main" && -z "$api_image_input" ]]; then
+          if [[ "$api_ref" != "latest" && -z "$api_image_input" ]]; then
             build_api_image="true"
           fi
-          if [[ "$workflows_ref" != "main" && -z "$workflows_image_input" ]]; then
+          if [[ "$workflows_ref" != "latest" && -z "$workflows_image_input" ]]; then
             build_workflows_image="true"
           fi
-          if [[ "$marva_ref" != "bluecore-dev-mvp" && -z "$marva_image_input" ]]; then
+          if [[ "$marva_ref" != "latest" && -z "$marva_image_input" ]]; then
             build_marva_image="true"
           fi
-          if [[ "$marva_ref" != "bluecore-dev-mvp" && -z "$marva_middleware_image_input" ]]; then
+          if [[ "$marva_ref" != "latest" && -z "$marva_middleware_image_input" ]]; then
             build_marva_middleware_image="true"
           fi
 
@@ -306,6 +325,7 @@ jobs:
             echo "build_marva_image=$build_marva_image"
             echo "build_marva_middleware_image=$build_marva_middleware_image"
             echo "api_ref=$api_ref"
+            echo "api_checkout_ref=$api_checkout_ref"
             echo "workflows_ref=$workflows_ref"
             echo "marva_ref=$marva_ref"
             echo "models_ref=$models_ref"
@@ -324,7 +344,7 @@ jobs:
         with:
           repository: blue-core-lod/bluecore_api
           token: ${{ env.CHECKOUT_TOKEN }}
-          ref: ${{ steps.resolve.outputs.api_ref }}
+          ref: ${{ steps.resolve.outputs.api_checkout_ref }}
           path: external/bluecore_api
           fetch-depth: 1
 
@@ -337,7 +357,7 @@ jobs:
         with:
           repository: blue-core-lod/bluecore_api
           token: ${{ env.CHECKOUT_TOKEN }}
-          ref: ${{ steps.resolve.outputs.api_ref }}
+          ref: ${{ steps.resolve.outputs.api_checkout_ref }}
           path: external/bluecore_api
           fetch-depth: 1
 
