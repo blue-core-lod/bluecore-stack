@@ -1,0 +1,57 @@
+#!/usr/bin/env bash
+#
+# load-data — upload a Bibframe JSON-LD document URL to the local bluecore stack.
+#
+# Usage:
+#   ./load-data <url>     upload the given Bibframe JSON-LD URL
+#   ./load-data           prompt to load the default dev dataset
+#
+# Points the bluecore CLI at the nginx-fronted stack (localhost/api,
+# localhost/keycloak) instead of the direct dev server on :3000, so it works
+# while `bluecore-stack` is up. The CLI itself lives in the sibling bluecore_api
+# project; we run it there (via `uv run --directory`) so its .env — which holds
+# the dev credentials — is picked up regardless of where you invoke this script.
+
+set -euo pipefail
+
+# Default dev dataset loaded when no URL is supplied (and the user confirms).
+DEFAULT_DEV_DATA_URL="https://raw.githubusercontent.com/blue-core-lod/bluecore_api/refs/heads/main/sample/batch.jsonld"
+
+if [ "$#" -gt 1 ]; then
+  echo "Usage: $(basename "$0") [url]" >&2
+  exit 1
+fi
+
+if [ "$#" -eq 1 ]; then
+  url="$1"
+else
+  # No URL given — offer to load the default dev data.
+  echo "No URL provided. Default dev data:" >&2
+  echo "  $DEFAULT_DEV_DATA_URL" >&2
+  read -r -p "Load the default dev data? [Y/n] " reply
+  case "${reply:-Y}" in
+    [Yy]*) url="$DEFAULT_DEV_DATA_URL" ;;
+    *) echo "Aborted." >&2; exit 0 ;;
+  esac
+fi
+
+# This script lives in bluecore-stack/scripts; the CLI lives in bluecore_api,
+# a sibling of bluecore-stack (two levels up from this script).
+script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+api_project="${BLUECORE_API_DIR:-$script_dir/../../bluecore_api}"
+
+if [ ! -d "$api_project" ]; then
+  echo "bluecore_api project not found at: $api_project" >&2
+  echo "Set BLUECORE_API_DIR to its location and re-run." >&2
+  exit 1
+fi
+
+# Host the stack is served on; override with BLUECORE_STACK_URL if not localhost.
+host="${BLUECORE_STACK_URL:-http://localhost}"
+host="${host%/}"
+
+uv run --directory "$api_project" bluecore --verbose \
+  --bluecore-url "$host" \
+  --api-url "$host/api" \
+  --keycloak-url "$host/keycloak" \
+  load-url "$url"

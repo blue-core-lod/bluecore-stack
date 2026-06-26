@@ -179,10 +179,70 @@ Dev Docker compose file needs to be specified when starting the container servic
 docker compose -f compose-dev.yaml up
 ```
 
-### 🚧 Using Local code in Blue Stack
-📝 Note: Blue Stack deploys locally with images pulled from GitHub. 
-<br/>
-In order to `deploy from your local code` to see any development changes [See This Guide](https://github.com/blue-core-lod/bluecore_info/wiki/Building-and-using-local-images-inside-Terraform-and-Blue%E2%80%90stack).
+### 🚧 Using Local code in Blue Stack (live reload)
+`./scripts/start-dev.sh` brings up the full dev stack and lets you choose between
+the GitHub-published images and **your local checkouts with live code reload**.
+
+```bash
+./scripts/start-dev.sh            # LOCAL mode (default): build from your checkouts, live reload
+./scripts/start-dev.sh --image    # IMAGE mode: pull & run the GHCR-published images
+```
+
+Two compose files that support this (the script picks the right one):
+
+| File | Used by | What it runs |
+|---|---|---|
+| `compose-dev.yaml` | `--image` | Full dev stack on the GHCR images |
+| `compose-local-dev.yaml` | default | Same stack, but Blue Core services are **built from your local repos** with source bind-mounted |
+
+#### Prerequisites
+- A `.env` in the repo root (see [Configuration](#️-configuration)).
+- [`uv`](https://docs.astral.sh/uv/) installed (used by the API and the `load-data` helper).
+- Local checkouts of the repos you want to edit. By default they're expected as
+  siblings of `bluecore-stack`:
+  - `../bluecore_api`
+  - `../bluecore-workflows`
+  - `../marva_editor`
+  - `../sinopia_editor`
+
+#### Pointing at your checkouts
+The four repo paths are defined in **one place** — the top of `scripts/start-dev.sh`.
+Edit them there if your layout differs:
+
+```bash
+export LOCAL_BLUECORE_API_DIR="$ROOT_DIR/../bluecore_api"
+export LOCAL_BLUECORE_WORKFLOWS_DIR="$ROOT_DIR/../bluecore-workflows"
+export LOCAL_MARVA_DIR="$ROOT_DIR/../marva_editor"
+export LOCAL_SINOPIA_DIR="$ROOT_DIR/../sinopia_editor"
+```
+
+#### What hot-reloads in LOCAL mode
+| Service | URL | Live reload |
+|---|---|---|
+| Blue Core API | http://localhost/api | ✅ `fastapi dev` autoreload (mounts `src/`) |
+| Workflows (Airflow) | http://localhost/workflows | ✅ DAG/task code (`ils_middleware` mounted) |
+| Marva | http://localhost/marva/ | ✅ Vite HMR |
+| Marva middleware | (internal) | ✅ `node --watch` |
+| Sinopia | http://localhost/sinopia/ | ✅ webpack-dev-server (served through Nginx via `nginx/local-dev.conf`) |
+
+The first LOCAL run builds images and runs `npm install` for the frontends, so it
+takes a few minutes; later runs are fast.
+
+### 📥 Loading data
+`./scripts/load-data` ingests a Bibframe JSON-LD document into the running stack
+(it drives the `bluecore` CLI from the sibling `bluecore_api` project, pointed at
+the Nginx-fronted stack so it works while the stack is up).
+
+```bash
+# Load a specific JSON-LD URL
+./scripts/load-data https://example.org/some/batch.jsonld
+
+# No URL → prompt to load the bundled sample dev dataset
+./scripts/load-data
+```
+
+Notes:
+- The stack must be running (`./scripts/start-dev.sh`) before loading data.
 
 
 ## 🧪 Integration Test Suite
