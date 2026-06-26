@@ -19,7 +19,7 @@ from tests.integration.support.sample_data import (
 from tests.integration.support.http import assert_status, send_request
 from tests.integration.support.logging import log_header
 
-SAMPLE_SEARCH_QUERY = "24042045"
+SAMPLE_SEARCH_QUERY = "joli"
 SAMPLE_LANGUAGE_URI = "http://id.loc.gov/vocabulary/languages/fre"
 JSONLD_HEADERS = {"Accept": "application/ld+json"}
 
@@ -1081,7 +1081,7 @@ def test_search_type_and_pagination_after_ingest(
     assert first_page["total"] >= 2
     assert "first" in first_page["links"]
     assert first_page["links"]["first"].endswith(
-        "/api/search/?limit=1&offset=0&q=24042045&type=all"
+        f"/api/search/?limit=1&offset=0&q={SAMPLE_SEARCH_QUERY}&type=all"
     )
     assert "next" in first_page["links"]
 
