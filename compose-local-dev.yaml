@@ -42,17 +42,12 @@ services:
     build:
       context: ${LOCAL_BLUECORE_API_DIR}
     command:
-      - uv
-      - run
-      - fastapi
-      - dev
-      - src/bluecore_api/app/main.py
-      - --host
-      - 0.0.0.0
-      - --port
-      - "8100"
-      - --root-path
-      - /api
+      - sh
+      - -c
+      - >
+        uv run alembic upgrade head &&
+        uv run fastapi dev src/bluecore_api/app/main.py
+        --host 0.0.0.0 --port 8100 --root-path /api
     # Browser-facing URLs baked into the HTML view's "Load to Marva/Sinopia"
     # links (and internal-link detection). Without these the API falls back to
     # its dev.bcld.info defaults; point them at the local Nginx routes instead.
