@@ -196,18 +196,17 @@ def test_write_endpoint_expected_results_without_auth(
 
 
 # ========================================================================
-# Verify the MCP GET endpoint requires authentication.
+# Verify the MCP GET endpoint is public (no authentication required).
 # ------------------------------------------------------------------------
-def test_mcp_get_requires_auth(config, request_context: APIRequestContext) -> None:
+def test_mcp_get_is_public(config, request_context: APIRequestContext) -> None:
     response = request_context.get(
         f"{config.base_url}/mcp",
         timeout=max(1, int(config.request_timeout * 1000)),
     )
-    assert_status(response, 401)
-
+    assert_status(response, 406)
 
 # ========================================================================
-# Verify authenticated MCP requests are not rejected as unauthorized.
+# Verify MCP requests are not rejected as unauthorized.
 # ------------------------------------------------------------------------
 def test_mcp_post_with_auth_is_not_unauthorized(
     config,
@@ -222,7 +221,25 @@ def test_mcp_post_with_auth_is_not_unauthorized(
         headers={"Authorization": f"Bearer {keycloak_access_token}"},
         json={"jsonrpc": "2.0", "method": "tools/list", "params": {}, "id": 2},
     )
-    assert response.status not in {401, 403}, response.text()
+    assert_status(response, 406)
+
+
+# ========================================================================
+# Verify unauthenticated MCP requests are rejected.
+# ------------------------------------------------------------------------
+def test_mcp_post_with_incorrect_auth_is_not_unauthorized(
+    config,
+    request_context: APIRequestContext,
+) -> None:
+    response = send_request(
+        request_context,
+        "POST",
+        f"{config.base_url}/mcp",
+        request_timeout=config.request_timeout,
+        headers={"Authorization": f"Bearer unauthorized-token-1234-567"},
+        json={"jsonrpc": "2.0", "method": "tools/list", "params": {}, "id": 2},
+    )
+    assert_status(response, 401)
 
 
 # ========================================================================
