@@ -16,31 +16,31 @@ on:
     inputs:
       # API git ref-branch used for API builds and API fixture/CLI checkout.
       api_ref:
-        description: "bluecore_api — 'latest' tests the published image; a branch/ref (e.g. main) builds & tests it"
+        description: "bluecore_api — Default tests ':latest' release image | Enter branch (e.g. main) to build & test it"
         required: false
         default: "latest"
         type: string
       # Workflows git ref-branch used when building bluecore-workflows.
       workflows_ref:
-        description: "bluecore-workflows — 'latest' tests the published image; a branch/ref (e.g. main) builds & tests it"
+        description: "bluecore-workflows — Default tests ':latest' release image | Enter branch (e.g. main) to build & test it"
         required: false
         default: "latest"
         type: string
       # Marva git ref-branch used when building marva + middleware images.
       marva_ref:
-        description: "marva_editor — 'latest' tests the published image; a branch/ref builds & tests it"
+        description: "marva_editor — Default tests ':latest' release image | Enter branch (e.g. main) to build & test it"
         required: false
         default: "latest"
         type: string
       # Models ref for DB migrations (no image). 'latest' = latest released tag.
       models_ref:
-        description: "bluecore-models — 'latest' = latest released tag for migrations; or a branch/ref (e.g. main)"
+        description: "bluecore-models — Default tests ':latest' release image | Enter branch (e.g. main) to build & test it"
         required: false
         default: "latest"
         type: string
       # Optional pytest file/test selector to run a smaller targeted test set.
       pytest_target:
-        description: "Optional pytest target (default runs full tests/integration suite)"
+        description: "Optional pytest target test — blank runs the full suite | e.g. tests/integration/api/test_endpoints.py::test_mcp_get_is_public  (or 'tests/integration/api -k search')"
         required: false
         default: ""
         type: string
