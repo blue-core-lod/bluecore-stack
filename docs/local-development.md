@@ -18,19 +18,23 @@ By default, local source mode expects sibling repositories:
 
 ```text
 <bluecore-repos-directory>
-|-- bluecore-stack/
-|-- bluecore_api/
-|-- bluecore-workflows/
-|-- bluecore-models/
-|-- marva_editor/
-`-- sinopia_editor/
+  |-- bluecore-stack/
+  |-- bluecore_api/
+  |-- bluecore-workflows/
+  |-- bluecore-models/
+  |-- marva_editor/
+  |-- sinopia_editor/
 ```
+
+`bluecore-models` is included because the local API and workflows import it directly. 
+See [bluecore-models.md](bluecore-models.md) for model-code reload behavior and migrations.
 
 If your layout differs, edit the path exports at the top of `scripts/start-dev.sh`:
 
 ```bash
 export LOCAL_BLUECORE_API_DIR="$ROOT_DIR/../bluecore_api"
 export LOCAL_BLUECORE_WORKFLOWS_DIR="$ROOT_DIR/../bluecore-workflows"
+export LOCAL_BLUECORE_MODELS_DIR="$ROOT_DIR/../bluecore-models"
 export LOCAL_MARVA_DIR="$ROOT_DIR/../marva_editor"
 export LOCAL_SINOPIA_DIR="$ROOT_DIR/../sinopia_editor"
 ```

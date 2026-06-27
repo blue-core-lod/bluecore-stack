@@ -17,6 +17,7 @@ set -euo pipefail
 ##   ./scripts/start-dev.sh --marva --sinopia   # combine as needed
 ##
 ## No subset flag = everything. Subset flags are ignored in --image mode.
+## bluecore-models is mounted into the local API and Airflow services automatically.
 ################################################################################
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -27,6 +28,7 @@ cd "$ROOT_DIR"
 # ==============================================================================
 export LOCAL_BLUECORE_API_DIR="$ROOT_DIR/../bluecore_api"
 export LOCAL_BLUECORE_WORKFLOWS_DIR="$ROOT_DIR/../bluecore-workflows"
+export LOCAL_BLUECORE_MODELS_DIR="$ROOT_DIR/../bluecore-models"
 export LOCAL_MARVA_DIR="$ROOT_DIR/../marva_editor"
 export LOCAL_SINOPIA_DIR="$ROOT_DIR/../sinopia_editor"
 export AIRFLOW_UID=50000

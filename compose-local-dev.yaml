@@ -13,13 +13,14 @@
 ##
 ##   LOCAL_BLUECORE_API_DIR        -> bluecore_api repo
 ##   LOCAL_BLUECORE_WORKFLOWS_DIR  -> bluecore-workflows repo
+##   LOCAL_BLUECORE_MODELS_DIR     -> bluecore-models repo
 ##   LOCAL_MARVA_DIR               -> marva_editor repo
 ##   LOCAL_SINOPIA_DIR             -> sinopia_editor repo
 ##
 ## *** Define them in ONE place: the top of scripts/start-dev.sh ***, which is
 ## the intended entrypoint (it also picks this file vs compose-dev.yaml --image).
 ## To run `docker compose -f compose-local-dev.yaml up --build` directly instead,
-## set those four vars yourself (env or a .env file in this directory).
+## set those five vars yourself (env or a .env file in this directory).
 ################################################################################
 
 
@@ -43,8 +44,10 @@ x-workflows-local: &workflows-local
   environment:
     AIRFLOW__API_AUTH__JWT_SECRET: bluecore-dev-jwt-secret
     AIRFLOW__API__SECRET_KEY: bluecore-dev-flask-secret
+    PYTHONPATH: /bluecore_models/src:/opt/airflow
   volumes:
     - ${LOCAL_BLUECORE_WORKFLOWS_DIR}/ils_middleware:/opt/airflow/ils_middleware
+    - ${LOCAL_BLUECORE_MODELS_DIR}/src:/bluecore_models/src
 
 services:
   # --- Python: build the local Dockerfile (for deps), mount src, run autoreload ---
@@ -60,8 +63,9 @@ services:
       - -c
       - >
         uv run alembic upgrade head &&
-        uv run fastapi dev src/bluecore_api/app/main.py
+        uv run uvicorn bluecore_api.app.main:application
         --host 0.0.0.0 --port 8100 --root-path /api
+        --reload --reload-dir /bluecore_api/src --reload-dir /bluecore_models/src
     # Browser-facing URLs baked into the HTML view's "Load to Marva/Sinopia"
     # links (and internal-link detection). Without these the API falls back to
     # its dev.bcld.info defaults; point them at the local Nginx routes instead.
@@ -70,10 +74,12 @@ services:
       BLUECORE_URL: http://localhost/
       MARVA_BASE_URL: http://localhost/marva/
       SINOPIA_BASE_URL: http://localhost/sinopia/
+      PYTHONPATH: /bluecore_models/src:/bluecore_api/src
     volumes:
       - ${LOCAL_BLUECORE_API_DIR}/src:/bluecore_api/src
       - ${LOCAL_BLUECORE_API_DIR}/pyproject.toml:/bluecore_api/pyproject.toml:ro
       - ${LOCAL_BLUECORE_API_DIR}/uv.lock:/bluecore_api/uv.lock:ro
+      - ${LOCAL_BLUECORE_MODELS_DIR}/src:/bluecore_models/src
 
   airflow-apiserver:     { <<: *workflows-local }
   airflow-scheduler:     { <<: *workflows-local }
