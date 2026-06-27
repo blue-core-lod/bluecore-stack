@@ -1,4 +1,4 @@
-# Developing bluecore-models
+# 🧱 Developing bluecore-models
 
 `bluecore-models` is source code used by the API, Airflow/workflows tasks, and 
 Alembic migrations. It is not a standalone service.
@@ -6,13 +6,13 @@ Alembic migrations. It is not a standalone service.
 In local source mode, `scripts/start-dev.sh` mounts the sibling `../bluecore-models`
 checkout into the API and Airflow containers.
 
-## Live Code Changes
+## 🔁 Live Code Changes
 
 - API: model-code changes reload live.
 - Workflows/Airflow: imports local model code, but restart the local stack after 
 model-code changes so Airflow processes pick them up.
 
-## Migrations
+## 🗄️ Migrations
 
 When you change SQLAlchemy models and need a migration, keep the stack running 
 so Postgres is available, then run:
@@ -32,7 +32,7 @@ Then restart the API so startup applies the new local migration:
 
 ```bash
 ./scripts/start-dev.sh
-#OR
+# OR
 ./scripts/start-dev.sh --api
 ```
 

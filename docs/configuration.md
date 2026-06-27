@@ -1,4 +1,4 @@
-# Configuration
+# ⚙️ Configuration
 
 Create a `.env` file in the `bluecore-stack` repository root before starting the stack.
 
@@ -84,7 +84,7 @@ MARVA_BASE_URL=http://localhost/marva/
 SINOPIA_BASE_URL=http://localhost/sinopia/
 ```
 
-## Airflow Database Connection
+## 🗄️ Airflow Database Connection
 
 Some DAGs require a `bluecore_db` Postgres connection. Setting `AIRFLOW_CONN_BLUECORE_DB` in `.env` creates the connection for local development.
 
@@ -99,7 +99,7 @@ If you need to create it manually in the Airflow UI, use **Admin -> Connections*
 | Login | `airflow` |
 | Password | `airflow` |
 
-## Container Image Access
+## 📦 Container Image Access
 
 The compose files use published images from GitHub Container Registry by default. If Docker cannot pull a private image, log in to GHCR with a token that has `read:packages`:
 

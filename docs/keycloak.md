@@ -1,8 +1,8 @@
-# Keycloak
+# 🔐 Keycloak
 
 The local Keycloak container imports the Blue Core realm from `keycloak-export/bluecore-realm.json` when it starts.
 
-## Airflow Login
+## 🌬️ Airflow Login
 
 Open Airflow at:
 
@@ -28,7 +28,7 @@ Additional local users use the same password:
 | `dev_user` | Standard user |
 | `dev_viewer` | Viewer |
 
-## Keycloak Admin Login
+## 🛡️ Keycloak Admin Login
 
 Open Keycloak at:
 
@@ -43,7 +43,7 @@ Use the master realm admin account:
 | Username | `admin` |
 | Password | `gracious-professed` |
 
-## Export Realm Configuration
+## 💾 Export Realm Configuration
 
 After changing the `bluecore` realm in the Keycloak UI, export the realm config back to `keycloak-export/bluecore-realm.json`.
 

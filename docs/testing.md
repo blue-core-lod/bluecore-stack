@@ -1,10 +1,10 @@
-# Integration Testing
+# 🧪 Integration Testing
 
 Use the integration suite to validate API, Workflows/Airflow, and Keycloak behavior before merging changes.
 
 Tests use Playwright's `APIRequestContext` for HTTP-only checks. They do not drive a browser UI.
 
-## What Is Covered
+## ✅ What Is Covered
 
 - API and Airflow endpoint reachability.
 - Auth behavior for API write endpoints.
@@ -12,7 +12,7 @@ Tests use Playwright's `APIRequestContext` for HTTP-only checks. They do not dri
 - Ingest and processed readback checks.
 - Embedding create/read behavior when the vector backend is enabled.
 
-## Local Runner
+## 🏃 Local Runner
 
 Run from the `bluecore-stack` repository root:
 
@@ -28,7 +28,7 @@ Forward pytest arguments after script options:
 
 The script creates or reuses a local test Python environment at `.venv` when needed.
 
-## Dev Mode for Fast Reruns
+## ⚡ Dev Mode for Fast Reruns
 
 Use dev mode when iterating locally. It keeps the stack running between runs and bind-mounts local API and workflow source into containers.
 
@@ -55,7 +55,7 @@ Dev mode behavior:
 
 If an older dev-mode stack was already running before a compose behavior change, run `./scripts/integration-tests.sh --dev-mode-stop` once, then restart dev mode.
 
-## Test Git Branch Refs
+## 🌿 Test Git Branch Refs
 
 `integration-tests.sh` can fetch and build branch references into `external/`.
 
@@ -76,7 +76,7 @@ Ref behavior:
 - `--workflows-ref` builds a workflows image from that ref and tags it as `bluecore_workflows:<ref>`.
 - `--models-ref` uses that models ref for migrations.
 
-## Local Source Test Mode
+## 🧩 Local Source Test Mode
 
 Build API and workflows from sibling repositories:
 
@@ -86,7 +86,7 @@ BUILD_LOCAL_DEV_IMAGES=1 ./scripts/integration-tests.sh
 
 Apple Silicon uses `compose-arm64-workflows.yaml` automatically.
 
-## Workflow Parity Runner
+## 🔁 Workflow Parity Runner
 
 Use `scripts/workflow-tests.sh` when you want local execution that mirrors `.github/workflows/bluecore-integration-test.yml`. It uses `act`.
 

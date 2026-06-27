@@ -9,7 +9,7 @@ Application source code lives in sibling repositories such as `bluecore_api`,
 those services either from published container images or from local checkouts 
 with live reload.
 
-## New Developer Quick Start
+## 🚀 New Developer Quick Start
 
 1. Clone this repository with submodules:
 
@@ -74,7 +74,7 @@ with live reload.
 
    Airflow uses the imported Keycloak realm. Use username `developer` and password `123456`. See [docs/keycloak.md](docs/keycloak.md) for all local accounts and realm export steps.
 
-## Common Tasks
+## 🛠️ Common Tasks
 
 | Task | Command or doc |
 |---|---|
@@ -88,16 +88,16 @@ with live reload.
 | Run integration tests | `./scripts/integration-tests.sh` |
 | Export local Keycloak realm config | `./scripts/export-keycloak-realm.sh` |
 
-## Documentation
+## 📚 Documentation
 
-- [Configuration](docs/configuration.md): required `.env` values and local defaults.
-- [Local development](docs/local-development.md): local-source mode, image mode, subset starts, live reload, and data loading.
-- [Developing bluecore-models](docs/bluecore-models.md): local model-code reload behavior and migrations.
-- [Keycloak](docs/keycloak.md): local users, admin login, realm import/export, and Airflow auth.
-- [Integration testing](docs/testing.md): local test runner, dev mode, branch refs, local sources, and workflow parity.
-- [Architecture](docs/architecture.md): compose files, service topology, and Nginx routing.
+- ⚙️ [Configuration](docs/configuration.md): required `.env` values and local defaults.
+- 🧑‍💻 [Local development](docs/local-development.md): local-source mode, image mode, subset starts, live reload, and data loading.
+- 🧱 [Developing bluecore-models](docs/bluecore-models.md): local model-code reload behavior and migrations.
+- 🔐 [Keycloak](docs/keycloak.md): local users, admin login, realm import/export, and Airflow auth.
+- 🧪 [Integration testing](docs/testing.md): local test runner, dev mode, branch refs, local sources, and workflow parity.
+- 🏗️ [Architecture](docs/architecture.md): compose files, service topology, and Nginx routing.
 
-## Notes
+## 📝 Notes
 
 - The first local-source run builds images and installs frontend dependencies, so it can take a few minutes.
 - If a service is disabled in subset mode, the landing page greys it out and refreshes its status periodically.

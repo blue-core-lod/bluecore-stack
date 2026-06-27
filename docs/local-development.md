@@ -1,4 +1,4 @@
-# Local Development
+# 🧑‍💻 Local Development
 
 Use `scripts/start-dev.sh` as the normal entrypoint for local development. It supports two modes:
 
@@ -7,7 +7,7 @@ Use `scripts/start-dev.sh` as the normal entrypoint for local development. It su
 | Local source mode | `./scripts/start-dev.sh` | Daily development with live reload |
 | Image mode | `./scripts/start-dev.sh --image` | Running the published stack without editing service code |
 
-## Prerequisites
+## ✅ Prerequisites
 
 - Docker with Compose support.
 - A `.env` file in the repo root. See [configuration.md](configuration.md).
@@ -39,7 +39,7 @@ export LOCAL_MARVA_DIR="$ROOT_DIR/../marva_editor"
 export LOCAL_SINOPIA_DIR="$ROOT_DIR/../sinopia_editor"
 ```
 
-## Start the Stack
+## 🚀 Start the Stack
 
 Start all local-source services:
 
@@ -57,7 +57,7 @@ Start all services from published images:
 
 Image mode runs `compose-dev.yaml`. Local source mode runs `compose-local-dev.yaml`, which extends the same dev stack with local builds and bind mounts.
 
-## Run a Subset
+## 🎚️ Run a Subset
 
 Subset mode is available only in local source mode. Postgres, Keycloak, Nginx, and the Blue Core API always start because the API runs database migrations on startup.
 
@@ -78,7 +78,7 @@ Notes:
 - Nginx tolerates absent services. Routes for disabled services return `502` instead of preventing Nginx from starting.
 - The landing page at `http://localhost/` greys out services that are not running and refreshes status periodically.
 
-## Live Reload Behavior
+## 🔁 Live Reload Behavior
 
 | Service | URL | Live reload behavior |
 |---|---|---|
@@ -88,7 +88,7 @@ Notes:
 | Marva middleware | internal | `node --watch` |
 | Sinopia | `http://localhost/sinopia/` | webpack dev server through Nginx |
 
-## Recreate Containers After Compose or Nginx Changes
+## 🔄 Recreate Containers After Compose or Nginx Changes
 
 If you change compose files or Nginx configuration, recreate the stack:
 
@@ -97,7 +97,7 @@ docker compose -f compose-local-dev.yaml down
 ./scripts/start-dev.sh <flags>
 ```
 
-## Load Data
+## 📥 Load Data
 
 `scripts/load-data` ingests a Bibframe JSON-LD document into the running local stack. It runs the `bluecore` CLI from the sibling `bluecore_api` project and points it at the Nginx-fronted local stack.
 

@@ -1,8 +1,8 @@
-# Architecture
+# 🏗️ Architecture
 
 `bluecore-stack` is an orchestration repository. Most application code is built in sibling repositories or pulled as published images.
 
-## Compose File Layout
+## 🧱 Compose File Layout
 
 | File | Purpose |
 |---|---|
@@ -14,7 +14,7 @@
 | `compose-integration-test-dev-mode.yaml` | Integration-test dev overlay with local source mounts and API autoreload |
 | `compose-arm64-workflows.yaml` | Apple Silicon override added automatically by scripts |
 
-## Service Topology
+## 🕸️ Service Topology
 
 ```text
 Nginx (:80) -> bc_api (:8100)            -> Postgres (airflow/keycloak/bluecore DBs)
@@ -31,7 +31,7 @@ Airflow uses CeleryExecutor with Redis as the broker. DAGs live in the workflows
 
 The shared Postgres container hosts the `airflow`, `keycloak`, and `bluecore` databases. Integration tests also create `bluecore_integration_test`. Database creation is handled by `scripts/init-multi-postgres-dbs.sh`.
 
-## Nginx Routing
+## 🚦 Nginx Routing
 
 All local browser traffic enters through Nginx.
 
