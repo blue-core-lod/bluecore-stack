@@ -1,381 +1,101 @@
-# Blue Core Stack with Docker
-
-## ⚒️ Initial Set-up
-To clone the repository with git: 
-
-```bash
-git clone --recurse-submodules https://github.com/blue-core-lod/bluecore-stack.git  
-```
-
-If bluecore-stack has already been cloned - use:
-
-```bash
-git submodule update --init --recursive
-```
-
-## ⚙️ Configuration
-The development Keycloak Container requires a local `.env` with the following variables:
-
-```
-###############################----------------------------
-## GitHub Container Registry ##
-###############################
-# create a "classic" GitHub token and ensure it grants permission to read:packages
-CR_PAT=YOUR_GITHUB_TOKEN
-
-###########################--------------------------------
-## Airflow Configuration ##
-###########################
-DATABASE_URL=postgresql+psycopg2://airflow:airflow@postgres/bluecore
-AIRFLOW_WWW_USER_USERNAME=airflow
-AIRFLOW_WWW_USER_PASSWORD=airflow
-AIRFLOW_EXTERNAL_URL=http://localhost/workflows/
-AIRFLOW_INTERNAL_URL=http://airflow-apiserver:8080/workflows/
-AIRFLOW_PROJ_DIR=.
-AIRFLOW_CONN_BLUECORE_DB='postgresql://airflow:airflow@postgres:5432/bluecore'
-
-######################-------------------------------------
-## Keycloak Clients ##
-######################
-# Client 1: bluecore_api
-API_KEYCLOAK_CLIENT_ID=bluecore_api
-BLUECORE_URL=http://localhost
-
-# Client 2: airflow_client
-AIRFLOW_KEYCLOAK_CLIENT_ID=bluecore_workflows
-AIRFLOW_KEYCLOAK_CLIENT_SECRET=KIu8gWa8rtjlT0Zl7zkNzsObFZGJ2IsJ
-KEYCLOAK_INTERNAL_URL=http://keycloak:8080/keycloak/
-KEYCLOAK_EXTERNAL_URL=http://localhost/keycloak/
-
-############################-------------------------------
-## Keycloak Configuration ##
-############################
-# Bluecore realm and keycloak path
-KC_HOSTNAME_STRICT=false
-KEYCLOAK_REALM=bluecore
-
-# Master realm Admin credentials
-KEYCLOAK_ADMIN=admin
-KEYCLOAK_ADMIN_PASSWORD=gracious-professed
-
-# Keycloak database connection
-KC_DB=postgres
-KC_DB_URL_HOST=postgres
-KC_DB_URL_PORT=5432
-KC_DB_URL_DATABASE=keycloak
-KC_DB_SCHEMA=public
-KC_DB_USERNAME=airflow
-KC_DB_PASSWORD=airflow
-
-# Keycloak health check enabled
-KC_HEALTH_ENABLED=true 
-
-# Keycloak HTTP and proxy access settings
-KC_PROXY_HEADERS=xforwarded
-KC_PROXY=edge
-KC_HTTP_ENABLED=true
-KC_HTTP_RELATIVE_PATH=/keycloak/
-KC_LOG_LEVEL=INFO
-# KC_HOSTNAME=https://dev.bcld.info/keycloak
-
-####################################-----------------------
-## Marva Middleware Configuration ##
-####################################
-MARVA_MW_PORT=9401
-MARVA_REDIRECT_BASE=http://localhost/marva/
-BLUECORE_STACK_KEYCLOAK_REDIRECT_URI=http://localhost/marva/util/auth/callback
-KEYCLOAK_MIDDLEWARE_BASE=http://marva-keycloak-middleware:9401/marva/util
-CORS_ORIGIN=*
-MARVA_UTIL_PATH=https://bibframe.org # => Upstream base for Marva "additional features" (events, myrecords, version, ...).
-
-# ---------------------------------------------------------
-# Env Values already assigned in "Keycloak Clients" section
-# ---------------------------------------------------------
-# KEYCLOAK_INTERNAL_URL=http://keycloak:8080/keycloak/
-# KEYCLOAK_EXTERNAL_URL=http://localhost/keycloak/
-
-################################################-----------
-##  Bluecore API HTML Redirect Configuration  ##
-################################################
-# "Load to Marva/Sinopia" links in the bluecore_api HTML views (Localy).
-# Add these for local development only, production path set when not present
-MARVA_BASE_URL=http://localhost/marva/
-SINOPIA_BASE_URL=http://localhost/sinopia/
-```
-
-## 🛠️ Setup Airflow (Blue Core Workflows)
-### Blue Core Database Connection
-Some DAGs require a `bluecore_db` Postgres Connection (In the UI from the **Admin -> Connection** menu) 
-with the following variables:
-
-- **Connection Id**: bluecore_db
-- **Connection Type**: Postgres
-- **Host**: postgres
-- **Database**: bluecore
-- **Login**: airflow
-- **Password**: airflow
-
-Setting AIRFLOW_CONN_BLUECORE_DB environment variable will achieve similar goal.
-
-## 🔐 Keycloak local development and credentials
-Keycloak will automatically import realm config located at: `keycloak-export/bluecore-realm.json` \
-when the Keycloak container starts. 
-### 🔑 Logging into Airflow using Keycloak with developer credentials
-Airflow local development URL:
->  - http://localhost/workflows
-
-This realm config contains the following:
-> - Realm: `bluecore`
-> - Client: `bluecore_workflows`
-> - Username: `developer` #admin account
-> - password: `123456`
-> 
->⚠️ **Note**: Other account names that can be used are: `dev_op`,`dev_public`,`dev_user`, and `dev_viewer` with the same password. 
-> These accounts reflect the roles associated in their name.
-### 🔑 Logging into Keycloak master realm
-You can also create a new realm and client in Keycloak by going to:
-> - http://localhost/keycloak 
-> - username: `admin` 
-> - password: `gracious-professed`
-
-###  💾 Exporting Keycloak realm config
-To export any changes of the bluecore realm config, you can use the following commands
-depending on the environment you are working in:
-###### 🚧 Local Development
-```bash
-   ./scripts/export-keycloak-realm.sh
-````
-###### 🚀 Deployed Production in EC2
-```bash
-   ./scripts/export-keycloak-realm.sh --env=production
-```
-
-This will export the realm config to the `keycloak-export` directory.
-
-
-## 📐 Blue Core Technical Stack
-```mermaid
-graph LR;
-    sinopia["Sinopia"] --> keycloak["Keycloak"]
-    marva["Marva"] --> keycloak
-    graph_toolkit["Graph Toolkit"] --> keycloak
-    notebooks@{ shape: docs, label: "Jupyter Notebooks"} --> keycloak
-
-    keycloak <--> api["Blue Core API"]
-    keycloak <--> workflows["Blue Core Workflows (Airflow)"]
-    api <--> db[("Blue Core Database")]
-    api --> workflows
-    workflows <--> db
-    db <--> vector_db[("Triples Vector Datastore")]
-    api <--> vector_db
-    workflows <--> vector_db
-    api <--> ai_agents@{ shape: procs, label: "LLM AI Agents"}
-    ai_agents <--> workflows
-    ai_agents <--> vector_db
-```
-
----
-## 🐳 Running Locally with Docker
-> ⚠️ **NOTE**: There are 2 ways to spin up the bluecore-stack locally.
-> 1. 📦 Using GitHub Released `:latest` images in Blue Stack (NO Live Reload)
-> 2.  (**Recommended**) 🚧 Using Local code in Blue Stack (Live Reload)
-
-
-### 1. 📦 Using GitHub Released `:latest` tagged images in bluecore-stack (NO Live Reload)
-Brings up the full dev stack using GitHub-published images. 
-```bash
-# IMAGE mode: pull & run the GHCR-published images
-docker compose -f compose-dev.yaml up
-# OR
-./scripts/start-dev.sh --image    
-```
-
-### 2.  🚧 Using Local code in bluecore-stack (Live Reload - **Recommended**)
-`./scripts/start-dev.sh` brings up the full dev stack and lets you choose between
-the GitHub-published images and **your local checkouts with live code reload**.
-
-```bash
-./scripts/start-dev.sh
-```
----
-
-Two compose files that support this (the script picks the right one):
-
-| File | Used by | What it runs |
-|---|---|---|
-| `compose-dev.yaml` | `--image` | Full dev stack on the GHCR images |
-| `compose-local-dev.yaml` | default | Same stack, but Blue Core services are **built from your local repos** with source bind-mounted |
-
-#### Prerequisites
-- A `.env` in the repo root (see [Configuration](#️-configuration)).
-- [`uv`](https://docs.astral.sh/uv/) installed (used by the API and the `load-data` helper).
-- Local checkouts of the repos you want to edit. By default they're expected as
-  siblings of `bluecore-stack`:
-  - `../bluecore_api`
-  - `../bluecore-workflows`
-  - `../marva_editor`
-  - `../sinopia_editor`
-
-#### Pointing at your checkouts
-The four repo paths are defined in **one place** — the top of `scripts/start-dev.sh`.
-Edit them there if your layout differs:
-
-```bash
-export LOCAL_BLUECORE_API_DIR="$ROOT_DIR/../bluecore_api"
-export LOCAL_BLUECORE_WORKFLOWS_DIR="$ROOT_DIR/../bluecore-workflows"
-export LOCAL_MARVA_DIR="$ROOT_DIR/../marva_editor"
-export LOCAL_SINOPIA_DIR="$ROOT_DIR/../sinopia_editor"
-```
-
-#### What hot-reloads in LOCAL mode
-| Service | URL | Live reload |
-|---|---|---|
-| Blue Core API | http://localhost/api | ✅ `fastapi dev` autoreload (mounts `src/`) |
-| Workflows (Airflow) | http://localhost/workflows | ✅ DAG/task code (`ils_middleware` mounted) |
-| Marva | http://localhost/marva/ | ✅ Vite HMR |
-| Marva middleware | (internal) | ✅ `node --watch` |
-| Sinopia | http://localhost/sinopia/ | ✅ webpack-dev-server (served through Nginx via `nginx/local-dev.conf`) |
-
-The first LOCAL run builds images and runs `npm install` for the frontends, so it
-takes a few minutes; later runs are fast.
-
-### 📥 Loading data
-`./scripts/load-data` ingests a Bibframe JSON-LD document into the running stack
-(it drives the `bluecore` CLI from the sibling `bluecore_api` project, pointed at
-the Nginx-fronted stack so it works while the stack is up).
-
-```bash
-# Load a specific JSON-LD URL
-./scripts/load-data https://example.org/some/batch.jsonld
-
-# No URL → prompt to load the bundled sample dev dataset
-./scripts/load-data
-```
-
-Notes:
-- The stack must be running (`./scripts/start-dev.sh`) before loading data.
-
-
-## 🧪 Integration Test Suite
-Use this suite to validate API + Workflows + Keycloak behavior before merging.
-Tests use Playwright's `APIRequestContext` (HTTP-only, no browser UI).
-
-### What is covered
-- API and Airflow endpoint reachability.
-- Auth contract for API write endpoints.
-- Keycloak-authenticated DAG triggers (`resource_loader`, `monitor_institutions_exports`).
-- Ingest + processed readback checks.
-- Embedding create/read behavior when vector backend is enabled.
-
-### Which script to use
-- `./scripts/integration-tests.sh`: normal local test runner (recommended for daily dev).
-- `./scripts/workflow-tests.sh`: GitHub Actions parity runner via `act`.
-
-### Quick start (recommended)
-From `terraform/`:
-```bash
-./scripts/integration-tests.sh
-```
-
-
-### Dev mode (fast reruns)
-Use this for iterative local development where code changes are reflected in tests.
-
-```bash
-# Start/reuse dev stack and run full integration suite (containers remain active)
-./scripts/integration-tests.sh --dev-mode
-
-# Run a targeted selection against the same stack
-./scripts/integration-tests.sh --dev-mode tests/integration/workflows/test_health.py -k airflow
-
-# Stop the dev stack and exit
-./scripts/integration-tests.sh --dev-mode-stop
-```
-
-Dev mode behavior:
-- Uses `COMPOSE_PROJECT_NAME=terraform_integration_test`.
-- Keeps stack up between runs.
-- Skips pull/reset by default.
-- If stack is already running, model migrations are skipped by default.
-- Adds a dev-only compose override that bind-mounts local API/workflows source into containers.
-- API runs in autoreload mode (`fastapi dev`) so local API code edits are reflected without rebuilding images.
-- Workflows code (`ils_middleware`) is bind-mounted into Airflow services so DAG/task code edits are visible without rebuilding images.
-
-Note:
-- If you already had a dev-mode stack running before this behavior was added, run `./scripts/integration-tests.sh --dev-mode-stop` once, then start dev mode again so containers are recreated with the new mounts/command.
-
-### Test Git branch refs directly (no manual checkout)
-`integration-tests.sh` can fetch/build branches into `terraform/external/`.
-
-```bash
-# API ref only (other services pulled from images generated from main branches)
-./scripts/integration-tests.sh --api-ref <bluecore_api branch>
-
-# API + workflows + models refs together
-./scripts/integration-tests.sh \
-  --api-ref <bluecore_api branch> \
-  --workflows-ref <bluecore-workflow branch> \
-  --models-ref <bluecore-models branch>
-```
-
-Branch ref behavior:
-- `--api-ref`: builds API image from that branch reference and tags it as `bluecore_api:<ref>`.
-- `--workflows-ref`: builds workflows image from that branch reference and tags it as `bluecore_workflows:<ref>`.
-- `--models-ref`: uses that models branch reference for migrations.
-
-### Local source mode (your local checkouts)
-```bash
-# Build API/workflows from sibling repos (../bluecore_api and ../bluecore-workflows)
-BUILD_LOCAL_DEV_IMAGES=1 ./scripts/integration-tests.sh
-```
-
-CI Notes:
-- Apple Silicon: `compose-arm64-workflows.yaml` is added automatically.
-- GitHub Actions: Milvus bind-mount cleanup is skipped by default to avoid container file permission noise.
-
-## 🧪 Workflow Parity Runner (`workflow-tests.sh`)
-Use this when you want local execution that matches `.github/workflows/manual-integration-test.yml`.
-
-### Quick commands
-```bash
-# Default parity run
-./scripts/workflow-tests.sh
-
-# Build refs through workflow-style inputs
-./scripts/workflow-tests.sh \
-  --api-ref <bluecore_api branch>  \
-  --workflows-ref <bluecore-workflow branch> \
-  --models-ref <bluecore-models branch>
-
-# Use local checkouts for api/workflows/models
-./scripts/workflow-tests.sh --local-sources
-```
-
-### Local-source options (default path set to "../\<bluecore app\>")
-```bash
-# Use only local API checkout
-./scripts/workflow-tests.sh --local-api
-
-# Use only local workflows checkout
-./scripts/workflow-tests.sh --local-workflows
-
-# Use only local models checkout for migrations
-./scripts/workflow-tests.sh --local-models
-
-# Custom local checkout paths
-./scripts/workflow-tests.sh \
-  --local-api-dir ../my-bluecore_api \
-  --local-workflows-dir ../my-bluecore-workflows \
-  --local-models-dir ../my-bluecore-models
-```
-
-### Required secrets for `act`
-Create `terraform/.secrets`:
-```bash
-GITHUB_TOKEN=ghp_or_github_pat
-BLUECORE_REPO_READ_TOKEN=ghp_or_github_pat
-```
-
-Token guidance:
-- `GITHUB_TOKEN` and `BLUECORE_REPO_READ_TOKEN` must be able to read required repos/images.
-- For private GHCR images, run `docker login ghcr.io` with a token that has `read:packages`.
+# Blue Core Stack
+
+`bluecore-stack` is the Docker Compose orchestration layer for local Blue Core 
+development and integration testing. It wires together the Blue Core API, Blue Core 
+Workflows/Airflow, Keycloak, Nginx, Postgres, Marva, Sinopia, and supporting services.
+
+Application source code lives in sibling repositories such as `bluecore_api`, 
+`bluecore-workflows`, `marva_editor`, and `sinopia_editor`. This repository starts 
+those services either from published container images or from local checkouts 
+with live reload.
+
+## New Developer Quick Start
+
+1. Clone this repository with submodules:
+
+   ```bash
+   git clone --recurse-submodules https://github.com/blue-core-lod/bluecore-stack.git
+   cd bluecore-stack
+   ```
+
+   If you already cloned without submodules, run:
+
+   ```bash
+   git submodule update --init --recursive
+   ```
+
+2. Create `.env` in the repository root.
+
+   Use the local development values in [docs/configuration.md](docs/configuration.md). These settings provide local Airflow, Keycloak, database, Marva, and redirect configuration.
+
+3. Decide how you want to run the stack.
+
+   For normal application development with live reload, keep repos organized in this structure:
+
+   ```text
+   <bluecore-repos-directory>/
+      |-- bluecore-stack/
+      |-- bluecore_api/
+      |-- bluecore-workflows/
+      |-- marva_editor/
+      |-- sinopia_editor/
+   ```
+
+   Then start the local-source stack:
+
+   ```bash
+   ./scripts/start-dev.sh
+   ```
+
+   To run the full stack from published images instead:
+
+   ```bash
+   ./scripts/start-dev.sh --image
+   ```
+
+4. Open the local landing page:
+
+   ```text
+   http://localhost/
+   ```
+
+   Nginx routes the main services under this host:
+
+   | Service | URL |
+   |---|---|
+   | Blue Core API | `http://localhost/api` |
+   | Airflow / Workflows | `http://localhost/workflows` |
+   | Keycloak | `http://localhost/keycloak` |
+   | Marva | `http://localhost/marva/` |
+   | Sinopia | `http://localhost/sinopia/` |
+
+5. Sign in with local development credentials.
+
+   Airflow uses the imported Keycloak realm. Use username `developer` and password `123456`. See [docs/keycloak.md](docs/keycloak.md) for all local accounts and realm export steps.
+
+## Common Tasks
+
+| Task | Command or doc |
+|---|---|
+| Start everything from local source with live reload | `./scripts/start-dev.sh` |
+| Start only core services and API | `./scripts/start-dev.sh --api` |
+| Start core services plus Marva | `./scripts/start-dev.sh --marva` |
+| Start core services plus Sinopia | `./scripts/start-dev.sh --sinopia` |
+| Start core services plus Airflow and Milvus | `./scripts/start-dev.sh --airflow` |
+| Start from published images | `./scripts/start-dev.sh --image` |
+| Load sample or remote JSON-LD data | `./scripts/load-data` |
+| Run integration tests | `./scripts/integration-tests.sh` |
+| Export local Keycloak realm config | `./scripts/export-keycloak-realm.sh` |
+
+## Documentation
+
+- [Configuration](docs/configuration.md): required `.env` values and local defaults.
+- [Local development](docs/local-development.md): local-source mode, image mode, subset starts, live reload, and data loading.
+- [Keycloak](docs/keycloak.md): local users, admin login, realm import/export, and Airflow auth.
+- [Integration testing](docs/testing.md): local test runner, dev mode, branch refs, local sources, and workflow parity.
+- [Architecture](docs/architecture.md): compose files, service topology, and Nginx routing.
+
+## Notes
+
+- The first local-source run builds images and installs frontend dependencies, so it can take a few minutes.
+- If a service is disabled in subset mode, the landing page greys it out and refreshes its status periodically.
