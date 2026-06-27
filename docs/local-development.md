@@ -21,6 +21,7 @@ By default, local source mode expects sibling repositories:
 |-- bluecore-stack/
 |-- bluecore_api/
 |-- bluecore-workflows/
+|-- bluecore-models/
 |-- marva_editor/
 `-- sinopia_editor/
 ```

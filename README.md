@@ -30,15 +30,16 @@ with live reload.
 
 3. Decide how you want to run the stack.
 
-   For normal application development with live reload, keep repos organized in this structure:
+   For normal application development and integration testing, keep repos organized in this structure:
 
    ```text
-   <bluecore-repos-directory>/
-      |-- bluecore-stack/
-      |-- bluecore_api/
-      |-- bluecore-workflows/
-      |-- marva_editor/
-      |-- sinopia_editor/
+   <bluecore-repos-directory>
+   |-- bluecore-stack/
+   |-- bluecore_api/
+   |-- bluecore-workflows/
+   |-- bluecore-models/
+   |-- marva_editor/
+   `-- sinopia_editor/
    ```
 
    Then start the local-source stack:
