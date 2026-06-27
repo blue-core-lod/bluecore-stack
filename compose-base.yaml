@@ -20,13 +20,6 @@ x-airflow-common:
     AIRFLOW__CORE__EXECUTION_API_SERVER_URL: 'http://airflow-apiserver:8080/workflows/execution/'
     AIRFLOW__API__AUTH_BACKEND: 'airflow.api.auth.backend.basic_auth,airflow.api.auth.backend.session'
     AIRFLOW__API__BASE_URL: ${AIRFLOW_EXTERNAL_URL:-http://localhost/workflows}
-    # Pin the JWT signing secret and Flask session secret. Without these,
-    # each apiserver gunicorn worker (and each service) generates its own
-    # random secret, so tokens signed by one worker fail verification on
-    # another -> "JWT token is not valid: Signature verification failed" and a
-    # login redirect loop. Override with real secrets in production via env/.env.
-    AIRFLOW__API_AUTH__JWT_SECRET: ${AIRFLOW__API_AUTH__JWT_SECRET:-bluecore-dev-jwt-secret-change-me}
-    AIRFLOW__API__SECRET_KEY: ${AIRFLOW__API__SECRET_KEY:-bluecore-dev-flask-secret-change-me}
     AIRFLOW__WEBSERVER__SHOW_TRIGGER_FORM_IF_NO_PARAMS: 'true'
     AIRFLOW__WEBSERVER__ALLOWED_PAYLOAD_SIZE: 250.0
     AIRFLOW_VAR_SINOPIA_ENV: ${AIRFLOW_VAR_SINOPIA_ENV:-dev}

@@ -32,6 +32,14 @@ x-workflows-local: &workflows-local
   image: bluecore_workflows:local-dev
   build:
     context: ${LOCAL_BLUECORE_WORKFLOWS_DIR}
+  # Pin Airflow's JWT signing + Flask session secrets for the LOCAL dev stack.
+  # Here the apiserver runs multiple gunicorn workers; without a shared secret
+  # each worker signs with its own random key -> "JWT token is not valid:
+  # Signature verification failed" and a /workflows login loop. Throwaway dev
+  # values; only this local stack needs them (tests/prod are unaffected).
+  environment:
+    AIRFLOW__API_AUTH__JWT_SECRET: bluecore-dev-jwt-secret
+    AIRFLOW__API__SECRET_KEY: bluecore-dev-flask-secret
   volumes:
     - ${LOCAL_BLUECORE_WORKFLOWS_DIR}/ils_middleware:/opt/airflow/ils_middleware
 
