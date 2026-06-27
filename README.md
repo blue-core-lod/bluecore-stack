@@ -173,20 +173,31 @@ graph LR;
     ai_agents <--> workflows
     ai_agents <--> vector_db
 ```
+
+---
 ## 🐳 Running Locally with Docker
-Dev Docker compose file needs to be specified when starting the container service.
+> ⚠️ **NOTE**: There are 2 ways to spin up the bluecore-stack locally.
+> 1. 📦 Using GitHub Released `:latest` images in Blue Stack (NO Live Reload)
+> 2.  (**Recommended**) 🚧 Using Local code in Blue Stack (Live Reload)
+
+
+### 1. 📦 Using GitHub Released `:latest` tagged images in bluecore-stack (NO Live Reload)
+Brings up the full dev stack using GitHub-published images. 
 ```bash
+# IMAGE mode: pull & run the GHCR-published images
 docker compose -f compose-dev.yaml up
+# OR
+./scripts/start-dev.sh --image    
 ```
 
-### 🚧 Using Local code in Blue Stack (live reload)
+### 2.  🚧 Using Local code in bluecore-stack (Live Reload - **Recommended**)
 `./scripts/start-dev.sh` brings up the full dev stack and lets you choose between
 the GitHub-published images and **your local checkouts with live code reload**.
 
 ```bash
-./scripts/start-dev.sh            # LOCAL mode (default): build from your checkouts, live reload
-./scripts/start-dev.sh --image    # IMAGE mode: pull & run the GHCR-published images
+./scripts/start-dev.sh
 ```
+---
 
 Two compose files that support this (the script picks the right one):
 
