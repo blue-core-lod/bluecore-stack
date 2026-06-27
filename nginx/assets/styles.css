@@ -154,6 +154,25 @@ body {
     box-shadow: 0 8px 30px rgba(0, 0, 0, .12)
 }
 
+/* Service not running: greyed out and not clickable (set by health.js). */
+.row.unavailable {
+    opacity: .45;
+    filter: grayscale(1);
+    pointer-events: none;
+    cursor: default;
+    box-shadow: none;
+}
+
+.row.unavailable:hover {
+    transform: none;
+    box-shadow: none;
+}
+
+.row.unavailable .sub::after {
+    content: " · offline";
+    font-style: italic;
+}
+
 .ic {
     display: grid;
     place-items: center;

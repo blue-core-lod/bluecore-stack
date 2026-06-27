@@ -30,6 +30,9 @@ include:
 # DAG/task code mount. Defined once here, merged into each service below.
 x-workflows-local: &workflows-local
   image: bluecore_workflows:local-dev
+  # Airflow is optional locally — only started when the "airflow" profile is on
+  # (start-dev.sh activates it by default; --no-airflow / subset flags skip it).
+  profiles: ["airflow"]
   build:
     context: ${LOCAL_BLUECORE_WORKFLOWS_DIR}
   # Pin Airflow's JWT signing + Flask session secrets for the LOCAL dev stack.
@@ -47,6 +50,9 @@ services:
   # --- Python: build the local Dockerfile (for deps), mount src, run autoreload ---
   bc_api:
     image: bluecore_api:local-dev
+    depends_on:
+      postgres:
+        condition: service_healthy
     build:
       context: ${LOCAL_BLUECORE_API_DIR}
     command:
@@ -78,9 +84,18 @@ services:
   airflow-cli:           { <<: *workflows-local }
   flower:                { <<: *workflows-local }
 
+  # Heavy backing services are also profile-gated so a subset run can skip them.
+  # redis is only needed by Airflow; the Milvus stack (vector
+  # store) is used by Airflow workers and the API's embedding endpoints.
+  redis:  { profiles: ["airflow"] }
+  etcd:   { profiles: ["milvus"] }
+  minio:  { profiles: ["milvus"] }
+  milvus: { profiles: ["milvus"] }
+
   # --- Frontends: run from local source on a node base image with the dev server (HMR) ---
   marva:
     image: node:23
+    profiles: ["marva"]
     working_dir: /app
     command: sh -lc "npm install && npm run dev -- --host --port 8080"
     # The GHCR image bakes these VITE_* vars in at build time; the dev server
@@ -96,6 +111,7 @@ services:
 
   marva-keycloak-middleware:
     image: node:23-alpine
+    profiles: ["marva"]
     working_dir: /app
     command: sh -lc "node --watch middleware/marva-keycloak-middleware.js"
     volumes:
@@ -112,6 +128,7 @@ services:
   # Nginx via the absolute URLs below.
   sinopia:
     image: node:24.4.0
+    profiles: ["sinopia"]
     working_dir: /app
     command: sh -lc "npm install && (test -f dist/index.html || npm run dev-build) && npm run dev-start -- --host 0.0.0.0 --allowed-hosts all --client-web-socket-url ws://localhost/ws"
     environment:
@@ -127,6 +144,12 @@ services:
 
   # Dev mode swaps in an Nginx config that serves the Sinopia dev server with
   # HMR (see nginx/local-dev.conf); everything else matches base.conf.
+  # depends_on is overridden (not merged) to drop airflow-apiserver, so Nginx
+  # can come up without Airflow; local-dev.conf resolves optional upstreams
+  # lazily so missing services just 502 instead of blocking startup.
   nginx:
+    depends_on: !override
+      - bc_api
+      - keycloak
     volumes:
       - ./nginx/local-dev.conf:/etc/nginx/conf.d/default.conf
