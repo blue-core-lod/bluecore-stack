@@ -1,15 +1,16 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Keep the Blue Core Stack repos set in sync for local development.
+# Keep the Blue Core sibling checkout set in sync for local development.
 #
 # bluecore-stack only orchestrates the stack; most service code lives in
 # adjacent repositories. This helper can clone missing siblings, check whether
 # current working branches need base-branch updates, and merge or rebase those
 # base branches into local feature branches without touching uncommitted tracked
-# changes.
+# changes. Repository paths come from scripts/local-repo-paths.sh
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+. "$ROOT_DIR/scripts/local-repo-paths.sh"
 
 strategy="merge"
 dry_run=0
@@ -77,6 +78,10 @@ Updates sibling Blue Core repositories:
   sinopia_editor        base branch: main
   marva_editor          base branch: bluecore-dev-mvp
 
+Repository paths default to the standard sibling layout and can be overridden
+with LOCAL_BLUECORE_API_DIR, LOCAL_BLUECORE_WORKFLOWS_DIR,
+LOCAL_BLUECORE_MODELS_DIR, LOCAL_MARVA_DIR, and LOCAL_SINOPIA_DIR.
+
 Behavior:
   - With --install, clone any missing sibling repositories into the expected
     directory structure and report whether the required repos are installed.
@@ -128,11 +133,11 @@ while [[ $# -gt 0 ]]; do
 done
 
 repos=(
-  "../bluecore_api:main:https://github.com/blue-core-lod/bluecore_api.git"
-  "../bluecore-models:main:https://github.com/blue-core-lod/bluecore-models.git"
-  "../bluecore-workflows:main:https://github.com/blue-core-lod/bluecore-workflows.git"
-  "../sinopia_editor:main:https://github.com/blue-core-lod/sinopia_editor.git"
-  "../marva_editor:bluecore-dev-mvp:https://github.com/blue-core-lod/marva_editor.git"
+  "$LOCAL_BLUECORE_API_DIR:main:https://github.com/blue-core-lod/bluecore_api.git"
+  "$LOCAL_BLUECORE_MODELS_DIR:main:https://github.com/blue-core-lod/bluecore-models.git"
+  "$LOCAL_BLUECORE_WORKFLOWS_DIR:main:https://github.com/blue-core-lod/bluecore-workflows.git"
+  "$LOCAL_SINOPIA_DIR:main:https://github.com/blue-core-lod/sinopia_editor.git"
+  "$LOCAL_MARVA_DIR:bluecore-dev-mvp:https://github.com/blue-core-lod/marva_editor.git"
 )
 
 updated=0
@@ -170,10 +175,9 @@ rebase_conflict_hint() {
 }
 
 install_repo_if_missing() {
-  local rel_path="$1"
+  local repo_dir="$1"
   local base_branch="$2"
   local repo_url="$3"
-  local repo_dir="$ROOT_DIR/$rel_path"
   local parent_dir
   parent_dir="$(dirname "$repo_dir")"
   local name
@@ -192,7 +196,7 @@ install_repo_if_missing() {
   fi
 
   if [[ -e "$repo_dir" ]]; then
-    err "    cannot install: $rel_path exists but is not a Git repository"
+    err "    cannot install: $repo_dir exists but is not a Git repository"
     return 1
   fi
 
@@ -206,16 +210,15 @@ install_repo_if_missing() {
 }
 
 install_only_repo() {
-  local rel_path="$1"
+  local repo_dir="$1"
   local base_branch="$2"
   local repo_url="$3"
-  local repo_dir="$ROOT_DIR/$rel_path"
   local name
   name="$(basename "$repo_dir")"
 
   echo
   info "==> $name"
-  install_repo_if_missing "$rel_path" "$base_branch" "$repo_url"
+  install_repo_if_missing "$repo_dir" "$base_branch" "$repo_url"
 }
 
 run() {
@@ -272,20 +275,19 @@ report_ahead_of_ref() {
 }
 
 check_repo() {
-  local rel_path="$1"
+  local repo_dir="$1"
   local base_branch="$2"
   local repo_url="$3"
-  local repo_dir="$ROOT_DIR/$rel_path"
   local name
   name="$(basename "$repo_dir")"
 
   echo
   info "==> $name"
 
-  install_repo_if_missing "$rel_path" "$base_branch" "$repo_url" || return 1
+  install_repo_if_missing "$repo_dir" "$base_branch" "$repo_url" || return 1
 
   if [[ ! -d "$repo_dir/.git" ]]; then
-    warn "    skipped: repository not found at $rel_path"
+    warn "    skipped: repository not found at $repo_dir"
     skipped=$((skipped + 1))
     skipped_repos+=("$name")
     return 0
@@ -328,20 +330,19 @@ check_repo() {
 }
 
 update_repo() {
-  local rel_path="$1"
+  local repo_dir="$1"
   local base_branch="$2"
   local repo_url="$3"
-  local repo_dir="$ROOT_DIR/$rel_path"
   local name
   name="$(basename "$repo_dir")"
 
   echo
   info "==> $name"
 
-  install_repo_if_missing "$rel_path" "$base_branch" "$repo_url" || return 1
+  install_repo_if_missing "$repo_dir" "$base_branch" "$repo_url" || return 1
 
   if [[ ! -d "$repo_dir/.git" ]]; then
-    warn "    skipped: repository not found at $rel_path"
+    warn "    skipped: repository not found at $repo_dir"
     skipped=$((skipped + 1))
     skipped_repos+=("$name")
     return 0
@@ -406,7 +407,7 @@ else
 fi
 
 for entry in "${repos[@]}"; do
-  IFS=: read -r rel_path base_branch repo_url <<<"$entry"
+  IFS=: read -r repo_dir base_branch repo_url <<<"$entry"
   if [[ "$install_missing" == "1" && "$check_only" != "1" ]]; then
     action=install_only_repo
   elif [[ "$check_only" == "1" ]]; then
@@ -415,10 +416,10 @@ for entry in "${repos[@]}"; do
     action=update_repo
   fi
 
-  if ! "$action" "$rel_path" "$base_branch" "$repo_url"; then
-    err "    failed: $rel_path"
+  if ! "$action" "$repo_dir" "$base_branch" "$repo_url"; then
+    err "    failed: $repo_dir"
     failed=$((failed + 1))
-    failed_repos+=("$(basename "$rel_path")")
+    failed_repos+=("$(basename "$repo_dir")")
   fi
 done
 

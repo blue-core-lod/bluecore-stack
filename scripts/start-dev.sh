@@ -24,13 +24,9 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT_DIR"
 
 # ==============================================================================
-# ################  SET YOUR LOCAL REPO PATHS HERE  ############################
+# ################  LOAD LOCAL REPO PATHS  #####################################
 # ==============================================================================
-export LOCAL_BLUECORE_API_DIR="$ROOT_DIR/../bluecore_api"
-export LOCAL_BLUECORE_WORKFLOWS_DIR="$ROOT_DIR/../bluecore-workflows"
-export LOCAL_BLUECORE_MODELS_DIR="$ROOT_DIR/../bluecore-models"
-export LOCAL_MARVA_DIR="$ROOT_DIR/../marva_editor"
-export LOCAL_SINOPIA_DIR="$ROOT_DIR/../sinopia_editor"
+. "$ROOT_DIR/scripts/local-repo-paths.sh"
 export AIRFLOW_UID=50000
 
 mode="local"
