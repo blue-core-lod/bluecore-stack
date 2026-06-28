@@ -44,6 +44,7 @@ x-workflows-local: &workflows-local
   environment:
     AIRFLOW__API_AUTH__JWT_SECRET: bluecore-dev-jwt-secret
     AIRFLOW__API__SECRET_KEY: bluecore-dev-flask-secret
+    AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: "false"
     PYTHONPATH: /bluecore_models/src:/opt/airflow
   volumes:
     - ${LOCAL_BLUECORE_WORKFLOWS_DIR}/ils_middleware:/opt/airflow/ils_middleware
@@ -55,6 +56,8 @@ services:
     image: bluecore_api:local-dev
     depends_on:
       postgres:
+        condition: service_healthy
+      keycloak:
         condition: service_healthy
     build:
       context: ${LOCAL_BLUECORE_API_DIR}
