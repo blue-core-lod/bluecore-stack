@@ -17,8 +17,8 @@
 ##   LOCAL_MARVA_DIR               -> marva_editor repo
 ##   LOCAL_SINOPIA_DIR             -> sinopia_editor repo
 ##
-## *** Define them in ONE place: the top of scripts/start-dev.sh ***, which is
-## the intended entrypoint (it also picks this file vs compose-dev.yaml --image).
+## Defaults live in scripts/dev/local-repo-paths. scripts/dev/run is the
+## intended entrypoint.
 ## To run `docker compose -f compose-local-dev.yaml up --build` directly instead,
 ## set those five vars yourself (env or a .env file in this directory).
 ################################################################################
@@ -31,8 +31,8 @@ include:
 # DAG/task code mount. Defined once here, merged into each service below.
 x-workflows-local: &workflows-local
   image: bluecore_workflows:local-dev
-  # Airflow is optional locally — only started when the "airflow" profile is on
-  # (start-dev.sh activates it by default; --no-airflow / subset flags skip it).
+  # Airflow is optional locally: scripts/dev/run enables it by default, while
+  # subset flags such as --api, --marva, or --sinopia can omit it.
   profiles: ["airflow"]
   build:
     context: ${LOCAL_BLUECORE_WORKFLOWS_DIR}

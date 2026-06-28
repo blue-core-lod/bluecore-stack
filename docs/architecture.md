@@ -7,7 +7,7 @@
 | File | Purpose |
 |---|---|
 | `compose-base.yaml` | Base Airflow cluster, Postgres, Redis, Milvus stack, Blue Core API, Sinopia, Marva, and Marva middleware |
-| `compose-dev.yaml` | Local development image stack with Keycloak in `start-dev` mode and Nginx on port 80 |
+| `compose-dev.yaml` | Local development image stack with Keycloak using its `start-dev` command and Nginx on port 80 |
 | `compose-local-dev.yaml` | Local-source overlay with builds, bind mounts, live reload, and profile-gated optional services |
 | `compose.yaml` | Production variant with Keycloak `start`, Nginx on port 443, and absolute deployment paths |
 | `compose-integration-test.yaml` | Integration test overrides, direct test ports, separate test DB, and lighter service profile defaults |

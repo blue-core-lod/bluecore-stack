@@ -3,7 +3,7 @@
 `bluecore-models` is source code used by the API, Airflow/workflows tasks, and 
 Alembic migrations. It is not a standalone service.
 
-In local source mode, `scripts/start-dev.sh` mounts the sibling `../bluecore-models`
+In local source mode, `scripts/dev/run` mounts the sibling `../bluecore-models`
 checkout into the API and Airflow containers.
 
 ## 🔁 Live Code Changes
@@ -31,10 +31,10 @@ Review the generated migration under:
 Then restart the API so startup applies the new local migration:
 
 ```bash
-./scripts/start-dev.sh
+./scripts/dev/run
 # OR
-./scripts/start-dev.sh --api
+./scripts/dev/run --api
 ```
 
-If your models checkout is somewhere else, update `LOCAL_BLUECORE_MODELS_DIR` at 
-the top of `scripts/start-dev.sh`.
+If your models checkout is somewhere else, set `LOCAL_BLUECORE_MODELS_DIR` before
+running `scripts/dev/run`, or update the default in `scripts/dev/local-repo-paths`.

@@ -562,9 +562,9 @@ jobs:
           # Run a specific pytest target when provided; otherwise run the default suite.
           # --------------------------------------------------------------------
           if [[ -n "${{ steps.resolve.outputs.pytest_target }}" ]]; then
-            ./scripts/integration-tests.sh ${{ steps.resolve.outputs.pytest_target }}
+            ./scripts/test/integration-tests.sh ${{ steps.resolve.outputs.pytest_target }}
           else
-            ./scripts/integration-tests.sh
+            ./scripts/test/integration-tests.sh
           fi
 
       # ========================================================================

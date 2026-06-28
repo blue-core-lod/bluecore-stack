@@ -4,7 +4,7 @@ set -euo pipefail
 ###########################
 ##    PATHS & ROOT DIR   ##
 ###########################
-ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "$ROOT_DIR"
 
 ###########################
@@ -163,7 +163,7 @@ detect_repo_ref() {
 # ---------------------------------------------------------------
 usage() {
   cat <<'EOF'
-Usage: ./scripts/workflow-tests.sh [options] [extra act args]
+Usage: ./scripts/test/workflow-tests.sh [options] [extra act args]
 
 Options:
   --local-sources               Use local api/workflows/models repos directly
@@ -179,18 +179,18 @@ Options:
   -h, --help                    Show this help text
 
 Examples:
-  ./scripts/workflow-tests.sh
-  ./scripts/workflow-tests.sh --local-sources
-  ./scripts/workflow-tests.sh --local-api
-  ./scripts/workflow-tests.sh --local-workflows
-  ./scripts/workflow-tests.sh --local-api --local-workflows
-  ./scripts/workflow-tests.sh --local-api --local-models
-  ./scripts/workflow-tests.sh --local-sources --local-api-dir ../bluecore_api
-  ./scripts/workflow-tests.sh --api-ref my-feature-branch
-  ./scripts/workflow-tests.sh --workflows-ref workflows-feature-branch
-  ./scripts/workflow-tests.sh --models-ref models-feature-branch
-  ./scripts/workflow-tests.sh --api-ref my-feature-branch --models-ref my-models-branch
-  ./scripts/workflow-tests.sh --api-ref my-feature-branch --workflows-ref workflows-feature-branch --models-ref my-models-branch
+  ./scripts/test/workflow-tests.sh
+  ./scripts/test/workflow-tests.sh --local-sources
+  ./scripts/test/workflow-tests.sh --local-api
+  ./scripts/test/workflow-tests.sh --local-workflows
+  ./scripts/test/workflow-tests.sh --local-api --local-workflows
+  ./scripts/test/workflow-tests.sh --local-api --local-models
+  ./scripts/test/workflow-tests.sh --local-sources --local-api-dir ../bluecore_api
+  ./scripts/test/workflow-tests.sh --api-ref my-feature-branch
+  ./scripts/test/workflow-tests.sh --workflows-ref workflows-feature-branch
+  ./scripts/test/workflow-tests.sh --models-ref models-feature-branch
+  ./scripts/test/workflow-tests.sh --api-ref my-feature-branch --models-ref my-models-branch
+  ./scripts/test/workflow-tests.sh --api-ref my-feature-branch --workflows-ref workflows-feature-branch --models-ref my-models-branch
 EOF
 }
 
@@ -310,7 +310,7 @@ if [[ "$local_api_mode" == "1" || "$local_workflows_mode" == "1" || "$local_mode
   fi
 
   cmd=(
-    ./scripts/integration-tests.sh
+    ./scripts/test/integration-tests.sh
   )
 
   if [[ ${#act_extra_args[@]} -gt 0 ]]; then

@@ -41,17 +41,19 @@ with live reload.
      |-- marva_editor/
      |-- sinopia_editor/
    ```
+   > 📝 Tip: You can run `./scripts/dev/update-stack --install` to quickly clone 
+   > any missing sibling repositories into the required default paths.
 
    Then start the local-source stack:
 
    ```bash
-   ./scripts/start-dev.sh
+   ./scripts/dev/run
    ```
 
    To run the full stack from published images instead:
 
    ```bash
-   ./scripts/start-dev.sh --image
+   ./scripts/dev/run --image
    ```
 
 4. Open the local landing page:
@@ -78,14 +80,11 @@ with live reload.
 
 | Task | Command or doc |
 |---|---|
-| Start everything from local source with live reload | `./scripts/start-dev.sh` |
-| Start only core services and API | `./scripts/start-dev.sh --api` |
-| Start core services plus Marva | `./scripts/start-dev.sh --marva` |
-| Start core services plus Sinopia | `./scripts/start-dev.sh --sinopia` |
-| Start core services plus Airflow and Milvus | `./scripts/start-dev.sh --airflow` |
-| Start from published images | `./scripts/start-dev.sh --image` |
-| Load sample or remote JSON-LD data | `./scripts/load-data` |
-| Run integration tests | `./scripts/integration-tests.sh` |
+| Run local development stack | `./scripts/dev/run` |
+| Run a subset or image mode | [Local development](docs/local-development.md#run-the-stack) |
+| Keep sibling repos current | [Local development](docs/local-development.md#keep-blue-core-repositories-current) |
+| Load sample or remote JSON-LD data | `./scripts/dev/load-data` |
+| Run integration tests | `./scripts/test/integration-tests.sh` |
 | Export local Keycloak realm config | `./scripts/export-keycloak-realm.sh` |
 
 ## 📚 Documentation

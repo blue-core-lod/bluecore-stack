@@ -7,10 +7,11 @@ set -euo pipefail
 # adjacent repositories. This helper can clone missing siblings, check whether
 # current working branches need base-branch updates, and merge or rebase those
 # base branches into local feature branches without touching uncommitted tracked
-# changes. Repository paths come from scripts/local-repo-paths.sh
+# changes. Repository paths come from scripts/dev/local-repo-paths and can be
+# overridden with LOCAL_*_DIR environment variables.
 
-ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-. "$ROOT_DIR/scripts/local-repo-paths.sh"
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+. "$ROOT_DIR/scripts/dev/local-repo-paths"
 
 strategy="merge"
 dry_run=0
@@ -69,7 +70,7 @@ colorize_command_output() {
 
 usage() {
   cat <<'EOF'
-Usage: ./scripts/update-stack [--merge|--rebase] [--check] [--install] [--dry-run]
+Usage: ./scripts/dev/update-stack [--merge|--rebase] [--check] [--install] [--dry-run]
 
 Updates sibling Blue Core repositories:
   bluecore_api          base branch: main
