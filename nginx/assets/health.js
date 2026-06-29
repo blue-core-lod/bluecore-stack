@@ -1,7 +1,7 @@
 // ####################
 // System health checks
 // --------------------
-async function checkOnce() {
+async function checkGateway() {
   const badge = document.getElementById('gw-badge');
   if (!badge) return;
 
@@ -52,8 +52,8 @@ function checkServices() {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
-  checkOnce();
+  checkGateway();
   checkServices();
-  setInterval(checkOnce, 60000);     // gateway badge: every minute
+  setInterval(checkGateway, 60000);  // gateway badge: every minute
   setInterval(checkServices, 10000); // service rows: every 10s (light up as they boot)
 });
