@@ -100,12 +100,27 @@ absent services; disabled routes return `502`, and the landing page greys them o
 | Marva middleware | internal | `node --watch` |
 | Sinopia | `http://localhost/sinopia/` | webpack dev server through Nginx |
 
+## 🛑 Bring the Stack Down
+
+Use `scripts/dev/down` to tear everything down.
+
+```bash
+./scripts/dev/down            # stop & remove all containers + the network
+./scripts/dev/down --volumes  # also delete named volumes (Postgres/Milvus data)
+```
+
+Prefer it over a bare `docker compose down`. A plain `down` defaults to 
+`compose.yaml` (not `compose-local-dev.yaml`). It also skips profile-gated services 
+(`flower`, `airflow-cli`, `Milvus`, …), leaving them running and holding the 
+network open (`Resource is still in use`). The wrapper ensures whole stack and 
+its network come down cleanly.
+
 ## 🔄 Recreate Containers After Compose or Nginx Changes
 
 If you change compose files or Nginx configuration, recreate the stack:
 
 ```bash
-docker compose -f compose-local-dev.yaml down
+./scripts/dev/down
 ./scripts/dev/run <flags>
 ```
 

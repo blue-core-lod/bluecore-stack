@@ -85,6 +85,7 @@ with live reload.
 | Task | Command or doc                                                                                                    |
 |---|-------------------------------------------------------------------------------------------------------------------|
 | Run local development stack | `./scripts/dev/run`                                                                                               |
+| Bring the stack down | `./scripts/dev/down` ([Local development](docs/local-development.md#-bring-the-stack-down))                       |
 | Run a subset | `./scripts/dev/run --sinopia` ([Local development](docs/local-development.md#run-the-stack))                      |
 | Keep sibling repos current | `./scripts/dev/update-stack` ([Local development](docs/local-development.md#keep-blue-core-repositories-current)) |
 | Load sample or remote JSON-LD data | `./scripts/dev/load-data` (**Airflow running required**)                                                          |
