@@ -131,18 +131,6 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       # ========================================================================
-      # Check out bluecore-models so migrations can run from the selected branch.
-      # ------------------------------------------------------------------------
-      - name: Checkout bluecore-models
-        uses: actions/checkout@v5
-        with:
-          repository: blue-core-lod/bluecore-models
-          token: ${{ env.CHECKOUT_TOKEN }}
-          ref: ${{ inputs.models_ref || 'main' }}
-          path: external/bluecore-models
-          fetch-depth: 1
-
-      # ========================================================================
       # Normalize workflow inputs into usable outputs for later steps.
       # Selects Docker image tags based on branch names and build flags, applies
       # defaults for any unset inputs, and writes everything to GITHUB_OUTPUT.
@@ -310,6 +298,19 @@ jobs:
             echo "pytest_target=$pytest_target"
             echo "pull_before_up=$pull_before_up"
           } >> "$GITHUB_OUTPUT"
+
+      # ========================================================================
+      # Check out bluecore-models so migrations can run from the selected branch.
+      # For the default "latest", use the resolved release tag or main.
+      # ------------------------------------------------------------------------
+      - name: Checkout bluecore-models
+        uses: actions/checkout@v5
+        with:
+          repository: blue-core-lod/bluecore-models
+          token: ${{ env.CHECKOUT_TOKEN }}
+          ref: ${{ steps.resolve.outputs.models_ref }}
+          path: external/bluecore-models
+          fetch-depth: 1
 
       # ========================================================================
       # Check out API source only when this run needs to build the API image.
