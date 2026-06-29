@@ -45,7 +45,8 @@ with live reload.
      |-- sinopia_editor/
    ```
    > 📝 Tip: You can run `./scripts/dev/update-stack --install` to quickly clone 
-   > any missing sibling repositories into the required default paths.
+   > any missing sibling repositories into the required default paths and seed each 
+   > one's local `.env` from `scripts/dev/env-templates/`. See [docs/env-templates.md ](docs/env-templates.md)
 
    Then start the local-source stack:
 

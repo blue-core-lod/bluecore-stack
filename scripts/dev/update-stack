@@ -13,6 +13,11 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 . "$ROOT_DIR/scripts/dev/local-repo-paths"
 
+# .env templates for sibling repos, seeded from a working checkout.
+# Named <repo-basename>.env; only repos with a template here get a generated
+# .env during --install (e.g. bluecore-models needs none).
+ENV_TEMPLATE_DIR="$ROOT_DIR/scripts/dev/env-templates"
+
 strategy="merge"
 dry_run=0
 check_only=0
@@ -130,6 +135,10 @@ LOCAL_BLUECORE_MODELS_DIR, LOCAL_MARVA_DIR, and LOCAL_SINOPIA_DIR.
 Behavior:
   - With --install, clone any missing sibling repositories into the expected
     directory structure and report whether the required repos are installed.
+    For every repo (newly cloned or already present) that has a template in
+    scripts/dev/env-templates/<repo>.env, generate the repo's .env from that
+    template when it is missing. Existing .env files are never overwritten;
+    repos without a template (bluecore-models) are left as-is.
     Used alone, --install does not pull, merge, or rebase existing repos.
   - If the repo is on its base branch, pull that branch with --ff-only.
   - If the repo is on another branch, update the local base branch from origin,
@@ -189,11 +198,14 @@ updated=0
 skipped=0
 failed=0
 installed=0
+env_generated=0
 updated_repos=()
 skipped_repos=()
 failed_repos=()
 installed_repos=()
 present_repos=()
+env_generated_repos=()
+env_present_repos=()
 current_repos=()
 behind_repos=()
 ahead_repos=()
@@ -220,6 +232,30 @@ rebase_conflict_hint() {
   warn "    To abort:        git -C \"$repo_dir\" rebase --abort"
 }
 
+# Drop a working .env into a sibling repo from its template when one is missing.
+# Repos without a matching template (bluecore-models) are no-ops.
+# Runs only under --install; existing repo .env files are never overwritten.
+ensure_repo_env() {
+  local repo_dir="$1"
+  local name template target
+  name="$(basename "$repo_dir")"
+  template="$ENV_TEMPLATE_DIR/$name.env"
+  target="$repo_dir/.env"
+
+  [[ -f "$template" ]] || return 0
+
+  if [[ -f "$target" ]]; then
+    ok "    .env: already present"
+    env_present_repos+=("$name")
+    return 0
+  fi
+
+  info "    .env: generating from template (${template#"$ROOT_DIR"/})"
+  run cp "$template" "$target" || return 1
+  env_generated=$((env_generated + 1))
+  env_generated_repos+=("$name")
+}
+
 install_repo_if_missing() {
   local repo_dir="$1"
   local base_branch="$2"
@@ -233,6 +269,7 @@ install_repo_if_missing() {
     if [[ "$install_missing" == "1" ]]; then
       ok "    installed: repository already present"
       present_repos+=("$name")
+      ensure_repo_env "$repo_dir" || return 1
     fi
     return 0
   fi
@@ -253,6 +290,7 @@ install_repo_if_missing() {
   run git clone --branch "$base_branch" "$repo_url" "$repo_dir" || return 1
   installed=$((installed + 1))
   installed_repos+=("$name")
+  ensure_repo_env "$repo_dir" || return 1
 }
 
 install_only_repo() {
@@ -490,6 +528,12 @@ if [[ "$install_missing" == "1" && "$check_only" != "1" ]]; then
   fi
   if [[ "${#present_repos[@]}" -gt 0 ]]; then
     ok "Already installed: ${present_repos[*]}"
+  fi
+  if [[ "${#env_generated_repos[@]}" -gt 0 ]]; then
+    ok "Generated .env: ${env_generated_repos[*]}"
+  fi
+  if [[ "${#env_present_repos[@]}" -gt 0 ]]; then
+    ok ".env already present: ${env_present_repos[*]}"
   fi
 elif [[ "$check_only" == "1" ]]; then
   info "Check complete: ${#behind_repos[@]} with new base changes, ${#diverged_repos[@]} diverged, ${#current_repos[@]} current, ${#local_changes_repos[@]} with local changes, $skipped skipped, $failed failed."
