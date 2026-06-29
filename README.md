@@ -11,6 +11,9 @@ with live reload.
 
 ## 🚀 New Developer Quick Start
 
+> ⚠️ Requires **Docker Compose v5.1.4 or newer** (`docker compose version`).
+> See [docs/local-development.md](docs/local-development.md#-prerequisites).
+
 1. Clone this repository with submodules:
 
    ```bash

@@ -4,7 +4,12 @@ Use `scripts/dev/run` as the normal entrypoint for local-source or image-based d
 
 ## ✅ Prerequisites
 
-- Docker with Compose support.
+- **Docker Compose v5.1.4 or newer** Required
+
+  ```bash
+  docker compose version   # expect v5.1.4 or greater
+  ```
+  
 - A `.env` file in the repo root. See [configuration.md](configuration.md).
 - `uv` installed for API-related helpers such as `scripts/dev/load-data`.
 - Local checkouts of the services you want to edit when using local source mode.
