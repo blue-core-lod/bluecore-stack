@@ -78,14 +78,14 @@ with live reload.
 
 ## 🛠️ Common Tasks
 
-| Task | Command or doc |
-|---|---|
-| Run local development stack | `./scripts/dev/run` |
-| Run a subset or image mode | [Local development](docs/local-development.md#run-the-stack) |
-| Keep sibling repos current | [Local development](docs/local-development.md#keep-blue-core-repositories-current) |
-| Load sample or remote JSON-LD data | `./scripts/dev/load-data` |
-| Run integration tests | `./scripts/test/integration-tests.sh` |
-| Export local Keycloak realm config | `./scripts/export-keycloak-realm.sh` |
+| Task | Command or doc                                                                                                    |
+|---|-------------------------------------------------------------------------------------------------------------------|
+| Run local development stack | `./scripts/dev/run`                                                                                               |
+| Run a subset | `./scripts/dev/run --sinopia` ([Local development](docs/local-development.md#run-the-stack))                      |
+| Keep sibling repos current | `./scripts/dev/update-stack` ([Local development](docs/local-development.md#keep-blue-core-repositories-current)) |
+| Load sample or remote JSON-LD data | `./scripts/dev/load-data` (**Airflow running required**)                                                          |
+| Run integration tests | `./scripts/test/integration-tests.sh`                                                                             |
+| Export local Keycloak realm config | `./scripts/export-keycloak-realm.sh`                                                                              |
 
 ## 📚 Documentation
 
