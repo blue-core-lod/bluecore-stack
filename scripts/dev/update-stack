@@ -56,13 +56,57 @@ muted() {
 
 colorize_command_output() {
   local line
+  local stats
   while IFS= read -r line; do
+    if [[ "$line" == *"file changed"* || "$line" == *"files changed"* ]]; then
+      if [[ "$line" == *"insertion"* && "$line" == *"deletion"* ]]; then
+        warn "    $line"
+      elif [[ "$line" == *"insertion"* ]]; then
+        ok "    $line"
+      elif [[ "$line" == *"deletion"* ]]; then
+        err "    $line"
+      else
+        ok "    $line"
+      fi
+      continue
+    fi
+
     case "$line" in
       *"Already up to date."*)
-        ok "$line"
+        ok "    ✅ $line"
+        ;;
+      "Fast-forward"|"Merge made by "*|*"Successfully rebased"*)
+        ok "   ⏩  $line"
+        ;;
+      "fatal: "*|"error: "*|"CONFLICT "*|*"Merge conflict"*)
+        err "   💀 $line"
+        ;;
+      "Updating "*|"From "*|*"-> FETCH_HEAD")
+        warn "     $line"
+        ;;
+      " create mode "*)
+        ok "   ✨ $line"
+        ;;
+      " delete mode "*)
+        err "   🔥 $line"
+        ;;
+      " rename "*)
+        warn "   🏷️ $line"
+        ;;
+      *"|"*)
+        stats="${line#*|}"
+        if [[ "$stats" == *"+"* && "$stats" == *"-"* ]]; then
+          warn "    $line"
+        elif [[ "$stats" == *"+"* ]]; then
+          ok "    $line"
+        elif [[ "$stats" == *"-"* ]]; then
+          err "    $line"
+        else
+          echo "    $line"
+        fi
         ;;
       *)
-        echo "$line"
+        echo "    $line"
         ;;
     esac
   done
@@ -154,6 +198,7 @@ current_repos=()
 behind_repos=()
 ahead_repos=()
 diverged_repos=()
+local_changes_repos=()
 
 merge_conflict_hint() {
   local repo_dir="$1"
@@ -244,6 +289,17 @@ is_dirty() {
   [[ -n "$(git -C "$1" status --porcelain --untracked-files=no)" ]]
 }
 
+report_local_changes() {
+  local repo_dir="$1"
+  local name="$2"
+  local branch="$3"
+
+  if is_dirty "$repo_dir"; then
+    warn "    🚧 local changes: worktree has tracked uncommitted changes"
+    local_changes_repos+=("$name:$branch")
+  fi
+}
+
 ensure_base_branch() {
   local repo_dir="$1"
   local base_branch="$2"
@@ -270,7 +326,7 @@ report_ahead_of_ref() {
 
   read -r ahead behind < <(git -C "$repo_dir" rev-list --left-right --count "$branch...$comparison_ref")
   if [[ "$ahead" != "0" ]]; then
-    warn "    ahead: branch is $ahead commit(s) ahead of $display_ref"
+    warn "    ⏩  ahead: branch is $ahead commit(s) ahead of $display_ref"
     ahead_repos+=("$name:$branch+$ahead")
   fi
 }
@@ -314,20 +370,22 @@ check_repo() {
   read -r ahead behind < <(git -C "$repo_dir" rev-list --left-right --count "$branch...$remote_ref")
 
   if [[ "$behind" == "0" && "$ahead" == "0" ]]; then
-    ok "    current: no new base-branch changes"
+    ok "    ✅ current: no new base-branch changes"
     current_repos+=("$name:$branch")
   elif [[ "$behind" != "0" && "$ahead" == "0" ]]; then
-    err "    behind: $behind commit(s) available from $remote_ref"
+    err "    ⏪ behind: $behind commit(s) available from $remote_ref"
     behind_repos+=("$name:$branch+$behind")
   elif [[ "$behind" == "0" && "$ahead" != "0" ]]; then
-    ok "    current: no new base-branch changes"
-    warn "    ahead: branch is $ahead commit(s) ahead of $remote_ref"
+    ok "    ✅ current: no new base-branch changes"
+    warn "    ⏩  ahead: branch is $ahead commit(s) ahead of $remote_ref"
     current_repos+=("$name:$branch")
     ahead_repos+=("$name:$branch+$ahead")
   else
-    err "    diverged: $behind base commit(s) available, branch is $ahead commit(s) ahead"
+    err "    🔀 diverged: $behind base commit(s) available, branch is $ahead commit(s) ahead"
     diverged_repos+=("$name:$branch behind=$behind ahead=$ahead")
   fi
+
+  report_local_changes "$repo_dir" "$name" "$branch"
 }
 
 update_repo() {
@@ -359,7 +417,7 @@ update_repo() {
   fi
 
   if is_dirty "$repo_dir"; then
-    warn "    skipped: worktree has tracked uncommitted changes"
+    warn "    ⚠️  skipped: worktree has tracked uncommitted changes"
     skipped=$((skipped + 1))
     skipped_repos+=("$name")
     return 0
@@ -434,12 +492,15 @@ if [[ "$install_missing" == "1" && "$check_only" != "1" ]]; then
     ok "Already installed: ${present_repos[*]}"
   fi
 elif [[ "$check_only" == "1" ]]; then
-  info "Check complete: ${#behind_repos[@]} with new base changes, ${#diverged_repos[@]} diverged, ${#current_repos[@]} current, $skipped skipped, $failed failed."
+  info "Check complete: ${#behind_repos[@]} with new base changes, ${#diverged_repos[@]} diverged, ${#current_repos[@]} current, ${#local_changes_repos[@]} with local changes, $skipped skipped, $failed failed."
   if [[ "${#behind_repos[@]}" -gt 0 ]]; then
     warn "New base changes: ${behind_repos[*]}"
   fi
   if [[ "${#diverged_repos[@]}" -gt 0 ]]; then
     err "Diverged: ${diverged_repos[*]}"
+  fi
+  if [[ "${#local_changes_repos[@]}" -gt 0 ]]; then
+    warn "Local changes: ${local_changes_repos[*]}"
   fi
   if [[ "${#ahead_repos[@]}" -gt 0 ]]; then
     warn "Ahead only: ${ahead_repos[*]}"
