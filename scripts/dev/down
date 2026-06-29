@@ -1,0 +1,30 @@
+#!/usr/bin/env bash
+set -euo pipefail
+################################################################################
+## Bring the local dev stack DOWN. Companion to scripts/dev/run.
+##
+##   ./scripts/dev/down            # stop & remove all containers + the network
+##   ./scripts/dev/down --volumes  # also delete named volumes (Postgres/Milvus data)
+##
+## Why a wrapper: a bare `docker compose down` misses things. It defaults to
+## compose.yaml (not compose-local-dev.yaml)
+################################################################################
+
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+cd "$ROOT_DIR"
+
+# Same env scripts/dev/run uses, so compose-local-dev.yaml interpolates cleanly.
+. "$ROOT_DIR/scripts/dev/local-repo-paths"
+export AIRFLOW_UID=50000
+
+extra=()
+for arg in "$@"; do
+  case "$arg" in
+    --volumes|-v) extra+=("--volumes") ;;
+    -h|--help)    sed -n '3,8p' "${BASH_SOURCE[0]}"; exit 0 ;;
+    *) echo "Unknown option: $arg" >&2; exit 1 ;;
+  esac
+done
+
+echo "🧹 Bringing the local dev stack down (all profiles, removing orphans)"
+docker compose -f compose-local-dev.yaml --profile "*" down --remove-orphans "${extra[@]+"${extra[@]}"}"

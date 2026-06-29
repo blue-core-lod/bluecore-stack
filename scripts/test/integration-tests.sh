@@ -4,7 +4,7 @@ set -euo pipefail
 ###########################
 ##  PATHS & BASE FILES   ##
 ###########################
-ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 COMPOSE_FILE="${COMPOSE_FILE:-compose-dev.yaml}"
 LOCAL_OVERRIDE_FILE="${LOCAL_OVERRIDE_FILE:-compose-integration-test.yaml}"
 ARM64_OVERRIDE_FILE="${ARM64_OVERRIDE_FILE:-compose-arm64-workflows.yaml}"
@@ -69,7 +69,7 @@ POSTGRES_READY_TIMEOUT_SECONDS="${POSTGRES_READY_TIMEOUT_SECONDS:-120}"
 BUILD_LOCAL_DEV_IMAGES="${BUILD_LOCAL_DEV_IMAGES:-0}"
 LOCAL_BLUECORE_API_DIR="${LOCAL_BLUECORE_API_DIR:-$ROOT_DIR/../bluecore_api}"
 LOCAL_BLUECORE_WORKFLOWS_DIR="${LOCAL_BLUECORE_WORKFLOWS_DIR:-$ROOT_DIR/../bluecore-workflows}"
-LOCAL_MARVA_DIR="${LOCAL_MARVA_DIR:-$ROOT_DIR/../../BLUECORE_EDITORS/marva_editor}"
+LOCAL_MARVA_DIR="${LOCAL_MARVA_DIR:-$ROOT_DIR/../marva_editor}"
 LOCAL_IMAGE_TAG="${LOCAL_IMAGE_TAG:-integration-test-local}"
 LOCAL_BUILD_PLATFORM="${LOCAL_BUILD_PLATFORM:-}"
 BUILD_LOCAL_BC_API_IMAGE="${BUILD_LOCAL_BC_API_IMAGE:-0}"
@@ -111,7 +111,7 @@ effective_marva_middleware_image="${user_marva_middleware_image:-}"
 
 usage() {
   cat <<'EOF'
-Usage: ./scripts/integration-tests.sh [runner options] [pytest args]
+Usage: ./scripts/test/integration-tests.sh [runner options] [pytest args]
 
 Runner options:
   --dev-mode             Keep stack up, skip reset/pull, default local images project name.
@@ -125,8 +125,8 @@ Runner options:
 
 All other args are forwarded to pytest.
 Example:
-  ./scripts/integration-tests.sh --api-ref 76-expand-other-resources
-  ./scripts/integration-tests.sh --dev-mode tests/integration/test_service_health.py -k airflow
+  ./scripts/test/integration-tests.sh --api-ref 76-expand-other-resources
+  ./scripts/test/integration-tests.sh --dev-mode tests/integration/test_service_health.py -k airflow
 EOF
 }
 

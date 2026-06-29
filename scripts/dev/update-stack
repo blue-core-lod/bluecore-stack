@@ -1,0 +1,573 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Keep the Blue Core sibling checkout set in sync for local development.
+#
+# bluecore-stack only orchestrates the stack; most service code lives in
+# adjacent repositories. This helper can clone missing siblings, check whether
+# current working branches need base-branch updates, and merge or rebase those
+# base branches into local feature branches without touching uncommitted tracked
+# changes. Repository paths come from scripts/dev/local-repo-paths and can be
+# overridden with LOCAL_*_DIR environment variables.
+
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+. "$ROOT_DIR/scripts/dev/local-repo-paths"
+
+# .env templates for sibling repos, seeded from a working checkout.
+# Named <repo-basename>.env; only repos with a template here get a generated
+# .env during --install (e.g. bluecore-models needs none).
+ENV_TEMPLATE_DIR="$ROOT_DIR/scripts/dev/env-templates"
+
+strategy="merge"
+dry_run=0
+check_only=0
+install_missing=0
+
+if [[ -t 1 && "${NO_COLOR:-}" == "" ]]; then
+  blue=$'\033[1;34m'
+  green=$'\033[1;32m'
+  yellow=$'\033[1;33m'
+  red=$'\033[1;31m'
+  dim=$'\033[2m'
+  reset=$'\033[0m'
+else
+  blue=""
+  green=""
+  yellow=""
+  red=""
+  dim=""
+  reset=""
+fi
+
+info() {
+  echo "${blue}$*${reset}"
+}
+
+ok() {
+  echo "${green}$*${reset}"
+}
+
+warn() {
+  echo "${yellow}$*${reset}"
+}
+
+err() {
+  echo "${red}$*${reset}"
+}
+
+muted() {
+  echo "${dim}$*${reset}"
+}
+
+colorize_command_output() {
+  local line
+  local stats
+  while IFS= read -r line; do
+    if [[ "$line" == *"file changed"* || "$line" == *"files changed"* ]]; then
+      if [[ "$line" == *"insertion"* && "$line" == *"deletion"* ]]; then
+        warn "    $line"
+      elif [[ "$line" == *"insertion"* ]]; then
+        ok "    $line"
+      elif [[ "$line" == *"deletion"* ]]; then
+        err "    $line"
+      else
+        ok "    $line"
+      fi
+      continue
+    fi
+
+    case "$line" in
+      *"Already up to date."*)
+        ok "    ✅ $line"
+        ;;
+      "Fast-forward"|"Merge made by "*|*"Successfully rebased"*)
+        ok "   ⏩  $line"
+        ;;
+      "fatal: "*|"error: "*|"CONFLICT "*|*"Merge conflict"*)
+        err "   💀 $line"
+        ;;
+      "Updating "*|"From "*|*"-> FETCH_HEAD")
+        warn "     $line"
+        ;;
+      " create mode "*)
+        ok "   ✨ $line"
+        ;;
+      " delete mode "*)
+        err "   🔥 $line"
+        ;;
+      " rename "*)
+        warn "   🏷️ $line"
+        ;;
+      *"|"*)
+        stats="${line#*|}"
+        if [[ "$stats" == *"+"* && "$stats" == *"-"* ]]; then
+          warn "    $line"
+        elif [[ "$stats" == *"+"* ]]; then
+          ok "    $line"
+        elif [[ "$stats" == *"-"* ]]; then
+          err "    $line"
+        else
+          echo "    $line"
+        fi
+        ;;
+      *)
+        echo "    $line"
+        ;;
+    esac
+  done
+}
+
+usage() {
+  cat <<'EOF'
+Usage: ./scripts/dev/update-stack [--merge|--rebase] [--check] [--install] [--dry-run]
+
+Updates sibling Blue Core repositories:
+  bluecore_api          base branch: main
+  bluecore-models       base branch: main
+  bluecore-workflows    base branch: main
+  sinopia_editor        base branch: main
+  marva_editor          base branch: bluecore-dev-mvp
+
+Repository paths default to the standard sibling layout and can be overridden
+with LOCAL_BLUECORE_API_DIR, LOCAL_BLUECORE_WORKFLOWS_DIR,
+LOCAL_BLUECORE_MODELS_DIR, LOCAL_MARVA_DIR, and LOCAL_SINOPIA_DIR.
+
+Behavior:
+  - With --install, clone any missing sibling repositories into the expected
+    directory structure and report whether the required repos are installed.
+    For every repo (newly cloned or already present) that has a template in
+    scripts/dev/env-templates/<repo>.env, generate the repo's .env from that
+    template when it is missing. Existing .env files are never overwritten;
+    repos without a template (bluecore-models) are left as-is.
+    Used alone, --install does not pull, merge, or rebase existing repos.
+  - If the repo is on its base branch, pull that branch with --ff-only.
+  - If the repo is on another branch, update the local base branch from origin,
+    then merge or rebase that base branch into the current branch.
+  - With --check, fetch origin and report whether each current branch has new
+    base-branch changes available. No local branch is updated.
+  - Repos with tracked uncommitted changes are skipped.
+  - Untracked files do not block updates.
+
+Default strategy for non-base branches: --merge.
+EOF
+}
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --merge)
+      strategy="merge"
+      shift
+      ;;
+    --rebase)
+      strategy="rebase"
+      shift
+      ;;
+    --dry-run)
+      dry_run=1
+      shift
+      ;;
+    --check)
+      check_only=1
+      shift
+      ;;
+    --install)
+      install_missing=1
+      shift
+      ;;
+    -h|--help)
+      usage
+      exit 0
+      ;;
+    *)
+      echo "Unknown option: $1" >&2
+      usage >&2
+      exit 1
+      ;;
+  esac
+done
+
+repos=(
+  "$LOCAL_BLUECORE_API_DIR:main:https://github.com/blue-core-lod/bluecore_api.git"
+  "$LOCAL_BLUECORE_MODELS_DIR:main:https://github.com/blue-core-lod/bluecore-models.git"
+  "$LOCAL_BLUECORE_WORKFLOWS_DIR:main:https://github.com/blue-core-lod/bluecore-workflows.git"
+  "$LOCAL_SINOPIA_DIR:main:https://github.com/blue-core-lod/sinopia_editor.git"
+  "$LOCAL_MARVA_DIR:bluecore-dev-mvp:https://github.com/blue-core-lod/marva_editor.git"
+)
+
+updated=0
+skipped=0
+failed=0
+installed=0
+env_generated=0
+updated_repos=()
+skipped_repos=()
+failed_repos=()
+installed_repos=()
+present_repos=()
+env_generated_repos=()
+env_present_repos=()
+current_repos=()
+behind_repos=()
+ahead_repos=()
+diverged_repos=()
+local_changes_repos=()
+
+merge_conflict_hint() {
+  local repo_dir="$1"
+  local branch="$2"
+  local base_branch="$3"
+  err "    merge failed for $branch <- $base_branch"
+  err "    Resolve conflicts in: $repo_dir"
+  warn "    After resolving: git -C \"$repo_dir\" add <files> && git -C \"$repo_dir\" commit"
+  warn "    To abort:        git -C \"$repo_dir\" merge --abort"
+}
+
+rebase_conflict_hint() {
+  local repo_dir="$1"
+  local branch="$2"
+  local base_branch="$3"
+  err "    rebase failed for $branch onto $base_branch"
+  err "    Resolve conflicts in: $repo_dir"
+  warn "    After resolving: git -C \"$repo_dir\" add <files> && git -C \"$repo_dir\" rebase --continue"
+  warn "    To abort:        git -C \"$repo_dir\" rebase --abort"
+}
+
+# Drop a working .env into a sibling repo from its template when one is missing.
+# Repos without a matching template (bluecore-models) are no-ops.
+# Runs only under --install; existing repo .env files are never overwritten.
+ensure_repo_env() {
+  local repo_dir="$1"
+  local name template target
+  name="$(basename "$repo_dir")"
+  template="$ENV_TEMPLATE_DIR/$name.env"
+  target="$repo_dir/.env"
+
+  [[ -f "$template" ]] || return 0
+
+  if [[ -f "$target" ]]; then
+    ok "    .env: already present"
+    env_present_repos+=("$name")
+    return 0
+  fi
+
+  info "    .env: generating from template (${template#"$ROOT_DIR"/})"
+  run cp "$template" "$target" || return 1
+  env_generated=$((env_generated + 1))
+  env_generated_repos+=("$name")
+}
+
+install_repo_if_missing() {
+  local repo_dir="$1"
+  local base_branch="$2"
+  local repo_url="$3"
+  local parent_dir
+  parent_dir="$(dirname "$repo_dir")"
+  local name
+  name="$(basename "$repo_dir")"
+
+  if [[ -d "$repo_dir/.git" ]]; then
+    if [[ "$install_missing" == "1" ]]; then
+      ok "    installed: repository already present"
+      present_repos+=("$name")
+      ensure_repo_env "$repo_dir" || return 1
+    fi
+    return 0
+  fi
+
+  if [[ "$install_missing" != "1" ]]; then
+    return 0
+  fi
+
+  if [[ -e "$repo_dir" ]]; then
+    err "    cannot install: $repo_dir exists but is not a Git repository"
+    return 1
+  fi
+
+  info "    installing missing repo: $name"
+  muted "    clone url: $repo_url"
+  muted "    branch:    $base_branch"
+  run mkdir -p "$parent_dir" || return 1
+  run git clone --branch "$base_branch" "$repo_url" "$repo_dir" || return 1
+  installed=$((installed + 1))
+  installed_repos+=("$name")
+  ensure_repo_env "$repo_dir" || return 1
+}
+
+install_only_repo() {
+  local repo_dir="$1"
+  local base_branch="$2"
+  local repo_url="$3"
+  local name
+  name="$(basename "$repo_dir")"
+
+  echo
+  info "==> $name"
+  install_repo_if_missing "$repo_dir" "$base_branch" "$repo_url"
+}
+
+run() {
+  if [[ "$dry_run" == "1" ]]; then
+    printf '    %sDRY RUN:%s' "$dim" "$reset"
+    printf ' %q' "$@"
+    printf '\n'
+  else
+    set +e
+    "$@" 2>&1 | colorize_command_output
+    local status=${PIPESTATUS[0]}
+    set -e
+    return "$status"
+  fi
+}
+
+current_branch() {
+  git -C "$1" branch --show-current
+}
+
+is_dirty() {
+  [[ -n "$(git -C "$1" status --porcelain --untracked-files=no)" ]]
+}
+
+report_local_changes() {
+  local repo_dir="$1"
+  local name="$2"
+  local branch="$3"
+
+  if is_dirty "$repo_dir"; then
+    warn "    🚧 local changes: worktree has tracked uncommitted changes"
+    local_changes_repos+=("$name:$branch")
+  fi
+}
+
+ensure_base_branch() {
+  local repo_dir="$1"
+  local base_branch="$2"
+
+  if git -C "$repo_dir" show-ref --verify --quiet "refs/heads/$base_branch"; then
+    run git -C "$repo_dir" fetch origin "$base_branch:$base_branch" || return 1
+  else
+    run git -C "$repo_dir" fetch origin "$base_branch" || return 1
+    run git -C "$repo_dir" branch --track "$base_branch" "origin/$base_branch" || return 1
+  fi
+}
+
+report_ahead_of_ref() {
+  local repo_dir="$1"
+  local name="$2"
+  local branch="$3"
+  local comparison_ref="$4"
+  local display_ref="$5"
+  local ahead behind
+
+  if ! git -C "$repo_dir" rev-parse --verify --quiet "$comparison_ref^{commit}" >/dev/null; then
+    return 0
+  fi
+
+  read -r ahead behind < <(git -C "$repo_dir" rev-list --left-right --count "$branch...$comparison_ref")
+  if [[ "$ahead" != "0" ]]; then
+    warn "    ⏩  ahead: branch is $ahead commit(s) ahead of $display_ref"
+    ahead_repos+=("$name:$branch+$ahead")
+  fi
+}
+
+check_repo() {
+  local repo_dir="$1"
+  local base_branch="$2"
+  local repo_url="$3"
+  local name
+  name="$(basename "$repo_dir")"
+
+  echo
+  info "==> $name"
+
+  install_repo_if_missing "$repo_dir" "$base_branch" "$repo_url" || return 1
+
+  if [[ ! -d "$repo_dir/.git" ]]; then
+    warn "    skipped: repository not found at $repo_dir"
+    skipped=$((skipped + 1))
+    skipped_repos+=("$name")
+    return 0
+  fi
+
+  local branch
+  branch="$(current_branch "$repo_dir")"
+  if [[ -z "$branch" ]]; then
+    warn "    skipped: detached HEAD"
+    skipped=$((skipped + 1))
+    skipped_repos+=("$name")
+    return 0
+  fi
+
+  muted "    current branch: $branch"
+  muted "    base branch:    $base_branch"
+  muted "    checking origin/$base_branch"
+
+  run git -C "$repo_dir" fetch origin "$base_branch" || return 1
+
+  local remote_ref="origin/$base_branch"
+  local ahead behind
+  read -r ahead behind < <(git -C "$repo_dir" rev-list --left-right --count "$branch...$remote_ref")
+
+  if [[ "$behind" == "0" && "$ahead" == "0" ]]; then
+    ok "    ✅ current: no new base-branch changes"
+    current_repos+=("$name:$branch")
+  elif [[ "$behind" != "0" && "$ahead" == "0" ]]; then
+    err "    ⏪ behind: $behind commit(s) available from $remote_ref"
+    behind_repos+=("$name:$branch+$behind")
+  elif [[ "$behind" == "0" && "$ahead" != "0" ]]; then
+    ok "    ✅ current: no new base-branch changes"
+    warn "    ⏩  ahead: branch is $ahead commit(s) ahead of $remote_ref"
+    current_repos+=("$name:$branch")
+    ahead_repos+=("$name:$branch+$ahead")
+  else
+    err "    🔀 diverged: $behind base commit(s) available, branch is $ahead commit(s) ahead"
+    diverged_repos+=("$name:$branch behind=$behind ahead=$ahead")
+  fi
+
+  report_local_changes "$repo_dir" "$name" "$branch"
+}
+
+update_repo() {
+  local repo_dir="$1"
+  local base_branch="$2"
+  local repo_url="$3"
+  local name
+  name="$(basename "$repo_dir")"
+
+  echo
+  info "==> $name"
+
+  install_repo_if_missing "$repo_dir" "$base_branch" "$repo_url" || return 1
+
+  if [[ ! -d "$repo_dir/.git" ]]; then
+    warn "    skipped: repository not found at $repo_dir"
+    skipped=$((skipped + 1))
+    skipped_repos+=("$name")
+    return 0
+  fi
+
+  local branch
+  branch="$(current_branch "$repo_dir")"
+  if [[ -z "$branch" ]]; then
+    warn "    skipped: detached HEAD"
+    skipped=$((skipped + 1))
+    skipped_repos+=("$name")
+    return 0
+  fi
+
+  if is_dirty "$repo_dir"; then
+    warn "    ⚠️  skipped: worktree has tracked uncommitted changes"
+    skipped=$((skipped + 1))
+    skipped_repos+=("$name")
+    return 0
+  fi
+
+  muted "    current branch: $branch"
+  muted "    base branch:    $base_branch"
+
+  if [[ "$branch" == "$base_branch" ]]; then
+    info "    updating $base_branch from origin/$base_branch"
+    run git -C "$repo_dir" pull --ff-only origin "$base_branch" || return 1
+    report_ahead_of_ref "$repo_dir" "$name" "$branch" "origin/$base_branch" "origin/$base_branch"
+    updated=$((updated + 1))
+    updated_repos+=("$name:$base_branch")
+    return 0
+  fi
+
+  info "    updating local $base_branch from origin/$base_branch"
+  ensure_base_branch "$repo_dir" "$base_branch" || return 1
+
+  if [[ "$strategy" == "rebase" ]]; then
+    info "    rebasing $branch onto $base_branch"
+    if ! run git -C "$repo_dir" rebase "$base_branch"; then
+      rebase_conflict_hint "$repo_dir" "$branch" "$base_branch"
+      return 1
+    fi
+  else
+    info "    merging $base_branch into $branch"
+    if ! run git -C "$repo_dir" merge --no-edit "$base_branch"; then
+      merge_conflict_hint "$repo_dir" "$branch" "$base_branch"
+      return 1
+    fi
+  fi
+
+  updated=$((updated + 1))
+  updated_repos+=("$name:$branch")
+  report_ahead_of_ref "$repo_dir" "$name" "$branch" "$base_branch" "$base_branch"
+}
+
+if [[ "$install_missing" == "1" && "$check_only" != "1" ]]; then
+  info "Installing missing Blue Core sibling repositories"
+elif [[ "$check_only" == "1" ]]; then
+  info "Checking Blue Core sibling repositories for new base-branch changes"
+else
+  info "Updating Blue Core sibling repositories using strategy: $strategy"
+fi
+
+for entry in "${repos[@]}"; do
+  IFS=: read -r repo_dir base_branch repo_url <<<"$entry"
+  if [[ "$install_missing" == "1" && "$check_only" != "1" ]]; then
+    action=install_only_repo
+  elif [[ "$check_only" == "1" ]]; then
+    action=check_repo
+  else
+    action=update_repo
+  fi
+
+  if ! "$action" "$repo_dir" "$base_branch" "$repo_url"; then
+    err "    failed: $repo_dir"
+    failed=$((failed + 1))
+    failed_repos+=("$(basename "$repo_dir")")
+  fi
+done
+
+echo
+if [[ "$install_missing" == "1" && "$check_only" != "1" ]]; then
+  info "Install complete: $installed installed, ${#present_repos[@]} already present, $failed failed."
+  if [[ "${#installed_repos[@]}" -gt 0 ]]; then
+    ok "Installed: ${installed_repos[*]}"
+  fi
+  if [[ "${#present_repos[@]}" -gt 0 ]]; then
+    ok "Already installed: ${present_repos[*]}"
+  fi
+  if [[ "${#env_generated_repos[@]}" -gt 0 ]]; then
+    ok "Generated .env: ${env_generated_repos[*]}"
+  fi
+  if [[ "${#env_present_repos[@]}" -gt 0 ]]; then
+    ok ".env already present: ${env_present_repos[*]}"
+  fi
+elif [[ "$check_only" == "1" ]]; then
+  info "Check complete: ${#behind_repos[@]} with new base changes, ${#diverged_repos[@]} diverged, ${#current_repos[@]} current, ${#local_changes_repos[@]} with local changes, $skipped skipped, $failed failed."
+  if [[ "${#behind_repos[@]}" -gt 0 ]]; then
+    warn "New base changes: ${behind_repos[*]}"
+  fi
+  if [[ "${#diverged_repos[@]}" -gt 0 ]]; then
+    err "Diverged: ${diverged_repos[*]}"
+  fi
+  if [[ "${#local_changes_repos[@]}" -gt 0 ]]; then
+    warn "Local changes: ${local_changes_repos[*]}"
+  fi
+  if [[ "${#ahead_repos[@]}" -gt 0 ]]; then
+    warn "Ahead only: ${ahead_repos[*]}"
+  fi
+  if [[ "${#current_repos[@]}" -gt 0 ]]; then
+    ok "Current: ${current_repos[*]}"
+  fi
+else
+  info "Update complete: $updated branch(es) updated, $skipped skipped, $failed failed."
+  if [[ "${#updated_repos[@]}" -gt 0 ]]; then
+    ok "Updated: ${updated_repos[*]}"
+  fi
+  if [[ "${#ahead_repos[@]}" -gt 0 ]]; then
+    warn "Ahead only: ${ahead_repos[*]}"
+  fi
+fi
+if [[ "${#skipped_repos[@]}" -gt 0 ]]; then
+  warn "Skipped: ${skipped_repos[*]}"
+fi
+if [[ "${#failed_repos[@]}" -gt 0 ]]; then
+  err "Failed: ${failed_repos[*]}"
+fi
+
+if [[ "$failed" -gt 0 ]]; then
+  exit 1
+fi

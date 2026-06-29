@@ -16,55 +16,37 @@ on:
     inputs:
       # API git ref-branch used for API builds and API fixture/CLI checkout.
       api_ref:
-        description: "bluecore_api git ref (non-main builds image from branch-ref)"
+        description: "bluecore_api — Default tests ':latest' release image | Enter branch (e.g. main) to build & test it"
         required: false
-        default: "main"
+        default: "latest"
         type: string
       # Workflows git ref-branch used when building bluecore-workflows.
       workflows_ref:
-        description: "bluecore-workflows git ref (non-main builds image from branch-ref)"
+        description: "bluecore-workflows — Default tests ':latest' release image | Enter branch (e.g. main) to build & test it"
         required: false
-        default: "main"
+        default: "latest"
         type: string
       # Marva git ref-branch used when building marva + middleware images.
       marva_ref:
-        description: "marva_editor git ref (non-main builds image from branch-ref)"
+        description: "marva_editor — Default tests ':latest' release image | Enter branch (e.g. main) to build & test it"
         required: false
-        default: "bluecore-dev-mvp"
+        default: "latest"
         type: string
-      # Models git ref to use for database migrations during the test run.
-      models_ref:
-        description: "bluecore-models git ref used for DB migrations"
+      # Sinopia git ref-branch used when building the sinopia image.
+      sinopia_ref:
+        description: "sinopia_editor — Default tests ':latest' release image | Enter branch (e.g. main) to build & test it"
         required: false
-        default: "main"
+        default: "latest"
+        type: string
+      # Models ref for DB migrations (no image). 'latest' = latest released tag.
+      models_ref:
+        description: "bluecore-models — Default tests ':latest' release image | Enter branch (e.g. main) to build & test it"
+        required: false
+        default: "latest"
         type: string
       # Optional pytest file/test selector to run a smaller targeted test set.
       pytest_target:
-        description: "Optional pytest target (default runs full tests/integration suite)"
-        required: false
-        default: ""
-        type: string
-      # Optional: Use a prebuilt API image.
-      api_image:
-        description: "Optional API image override (e.g. ghcr.io/blue-core-lod/bluecore_api:pr-123)"
-        required: false
-        default: ""
-        type: string
-      # Optional: Use a prebuilt Workflows image.
-      workflows_image:
-        description: "Optional Workflows image override (e.g. ghcr.io/blue-core-lod/bluecore-workflows:pr-123)"
-        required: false
-        default: ""
-        type: string
-      # Optional: Use a prebuilt Marva image.
-      marva_image:
-        description: "Optional Marva image override (e.g. ghcr.io/blue-core-lod/marva:pr-123)"
-        required: false
-        default: ""
-        type: string
-      # Optional: Use a prebuilt Marva middleware image.
-      marva_middleware_image:
-        description: "Optional Marva middleware image override (e.g. ghcr.io/blue-core-lod/marva-keycloak-middleware:pr-123)"
+        description: "Optional pytest target test — blank runs the full suite | e.g. tests/integration/api/test_endpoints.py::test_mcp_get_is_public  (or 'tests/integration/api -k search')"
         required: false
         default: ""
         type: string
@@ -149,18 +131,6 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       # ========================================================================
-      # Check out bluecore-models so migrations can run from the selected branch.
-      # ------------------------------------------------------------------------
-      - name: Checkout bluecore-models
-        uses: actions/checkout@v5
-        with:
-          repository: blue-core-lod/bluecore-models
-          token: ${{ env.CHECKOUT_TOKEN }}
-          ref: ${{ inputs.models_ref || 'main' }}
-          path: external/bluecore-models
-          fetch-depth: 1
-
-      # ========================================================================
       # Normalize workflow inputs into usable outputs for later steps.
       # Selects Docker image tags based on branch names and build flags, applies
       # defaults for any unset inputs, and writes everything to GITHUB_OUTPUT.
@@ -198,23 +168,23 @@ jobs:
           # ====================================================================
           # Set workflow inputs into shell variables.
           # --------------------------------------------------------------------
-          api_image_input="${{ inputs.api_image }}"
-          workflows_image_input="${{ inputs.workflows_image }}"
-          marva_image_input="${{ inputs.marva_image }}"
-          marva_middleware_image_input="${{ inputs.marva_middleware_image }}"
           api_ref_input="${{ inputs.api_ref }}"
           workflows_ref_input="${{ inputs.workflows_ref }}"
           marva_ref_input="${{ inputs.marva_ref }}"
+          sinopia_ref_input="${{ inputs.sinopia_ref }}"
           models_ref_input="${{ inputs.models_ref }}"
           pytest_target_input="${{ inputs.pytest_target }}"
 
           # ====================================================================
           # Set empty inputs to defaults, Assign values if present.
           # --------------------------------------------------------------------
-          api_ref="${api_ref_input:-main}"
-          workflows_ref="${workflows_ref_input:-main}"
-          marva_ref="${marva_ref_input:-bluecore-dev-mvp}"
-          models_ref="${models_ref_input:-main}"
+          # "latest" - meaning "use the published image released tag; don't build". 
+          # Any other value is a git ref (branch) which builds then tests.
+          api_ref="${api_ref_input:-latest}"
+          workflows_ref="${workflows_ref_input:-latest}"
+          marva_ref="${marva_ref_input:-latest}"
+          sinopia_ref="${sinopia_ref_input:-latest}"
+          models_ref="${models_ref_input:-latest}"
           compose_project_name="terraform_integration_ci"
           integration_db_name="bluecore_integration_test"
           keycloak_image="quay.io/keycloak/keycloak:26.1.2"
@@ -222,73 +192,83 @@ jobs:
           api_ref_tag="$(sanitize_tag_component "$api_ref")"
           workflows_ref_tag="$(sanitize_tag_component "$workflows_ref")"
           marva_ref_tag="$(sanitize_tag_component "$marva_ref")"
+          sinopia_ref_tag="$(sanitize_tag_component "$sinopia_ref")"
 
-          # Build from source refs automatically when ref is non-main and no image override is set.
+          # bluecore-models has no image: "latest" resolves to the most recent
+          # released tag (vX.Y.Z) for migrations; any other value is used as-is.
+          if [[ "$models_ref" == "latest" ]]; then
+            models_ref="$(git ls-remote --tags --refs https://github.com/blue-core-lod/bluecore-models.git 'v*' 2>/dev/null \
+              | sed -E 's#^.*refs/tags/##' | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | tail -n1)"
+            models_ref="${models_ref:-main}"
+          fi
+
+          # The API source is always checked out (for the CLI/fixtures), so the
+          # "latest" sentinel — which isn't a git ref — maps to main for checkout.
+          if [[ "$api_ref" == "latest" ]]; then
+            api_checkout_ref="main"
+          else
+            api_checkout_ref="$api_ref"
+          fi
+
+          # Build from source automatically when a real ref is given (not "latest").
           build_api_image="false"
           build_workflows_image="false"
           build_marva_image="false"
           build_marva_middleware_image="false"
-          if [[ "$api_ref" != "main" && -z "$api_image_input" ]]; then
+          build_sinopia_image="false"
+          if [[ "$api_ref" != "latest" ]]; then
             build_api_image="true"
           fi
-          if [[ "$workflows_ref" != "main" && -z "$workflows_image_input" ]]; then
+          if [[ "$workflows_ref" != "latest" ]]; then
             build_workflows_image="true"
           fi
-          if [[ "$marva_ref" != "bluecore-dev-mvp" && -z "$marva_image_input" ]]; then
+          if [[ "$marva_ref" != "latest" ]]; then
             build_marva_image="true"
-          fi
-          if [[ "$marva_ref" != "bluecore-dev-mvp" && -z "$marva_middleware_image_input" ]]; then
             build_marva_middleware_image="true"
           fi
+          if [[ "$sinopia_ref" != "latest" ]]; then
+            build_sinopia_image="true"
+          fi
 
           # ====================================================================
-          # Start with explicit image overrides (if provided) before choosing defaults.
+          # Image per service: a branch-build tag when building, else the
+          # published GHCR :latest image.
           # --------------------------------------------------------------------
-          api_image="$api_image_input"
-          workflows_image="$workflows_image_input"
-          marva_image="$marva_image_input"
-          marva_middleware_image="$marva_middleware_image_input"
-
-          # ====================================================================
-          # If no image was provided, pick a local build tag or the default GHCR image.
-          # --------------------------------------------------------------------
-          if [[ -z "$api_image" ]]; then
-            if [[ "$build_api_image" == "true" ]]; then
-              api_image="bluecore_api:${api_ref_tag}-gha-${{ github.run_id }}-${{ github.run_attempt }}"
-            else
-              api_image="ghcr.io/blue-core-lod/bluecore_api:latest"
-            fi
+          if [[ "$build_api_image" == "true" ]]; then
+            api_image="bluecore_api:${api_ref_tag}-gha-${{ github.run_id }}-${{ github.run_attempt }}"
+          else
+            api_image="ghcr.io/blue-core-lod/bluecore_api:latest"
           fi
 
-          if [[ -z "$workflows_image" ]]; then
-            if [[ "$build_workflows_image" == "true" ]]; then
-              workflows_image="bluecore_workflows:${workflows_ref_tag}-gha-${{ github.run_id }}-${{ github.run_attempt }}"
-            else
-              workflows_image="ghcr.io/blue-core-lod/bluecore-workflows:latest"
-            fi
+          if [[ "$build_workflows_image" == "true" ]]; then
+            workflows_image="bluecore_workflows:${workflows_ref_tag}-gha-${{ github.run_id }}-${{ github.run_attempt }}"
+          else
+            workflows_image="ghcr.io/blue-core-lod/bluecore-workflows:latest"
           fi
 
-          if [[ -z "$marva_image" ]]; then
-            if [[ "$build_marva_image" == "true" ]]; then
-              marva_image="marva:${marva_ref_tag}-gha-${{ github.run_id }}-${{ github.run_attempt }}"
-            else
-              marva_image="ghcr.io/blue-core-lod/marva:latest"
-            fi
+          if [[ "$build_marva_image" == "true" ]]; then
+            marva_image="marva:${marva_ref_tag}-gha-${{ github.run_id }}-${{ github.run_attempt }}"
+          else
+            marva_image="ghcr.io/blue-core-lod/marva:latest"
           fi
 
-          if [[ -z "$marva_middleware_image" ]]; then
-            if [[ "$build_marva_middleware_image" == "true" ]]; then
-              marva_middleware_image="marva-keycloak-middleware:${marva_ref_tag}-gha-${{ github.run_id }}-${{ github.run_attempt }}"
-            else
-              marva_middleware_image="ghcr.io/blue-core-lod/marva-keycloak-middleware:latest"
-            fi
+          if [[ "$build_marva_middleware_image" == "true" ]]; then
+            marva_middleware_image="marva-keycloak-middleware:${marva_ref_tag}-gha-${{ github.run_id }}-${{ github.run_attempt }}"
+          else
+            marva_middleware_image="ghcr.io/blue-core-lod/marva-keycloak-middleware:latest"
+          fi
+
+          if [[ "$build_sinopia_image" == "true" ]]; then
+            sinopia_image="sinopia:${sinopia_ref_tag}-gha-${{ github.run_id }}-${{ github.run_attempt }}"
+          else
+            sinopia_image="ghcr.io/blue-core-lod/sinopia:latest"
           fi
 
           # ====================================================================
           # Skip pulls when building locally so compose does not replace fresh images.
           # --------------------------------------------------------------------
           pull_before_up="1"
-          if [[ "$build_api_image" == "true" || "$build_workflows_image" == "true" || "$build_marva_image" == "true" || "$build_marva_middleware_image" == "true" ]]; then
+          if [[ "$build_api_image" == "true" || "$build_workflows_image" == "true" || "$build_marva_image" == "true" || "$build_marva_middleware_image" == "true" || "$build_sinopia_image" == "true" ]]; then
             pull_before_up="0"
           fi
 
@@ -300,20 +280,37 @@ jobs:
             echo "workflows_image=$workflows_image"
             echo "marva_image=$marva_image"
             echo "marva_middleware_image=$marva_middleware_image"
+            echo "sinopia_image=$sinopia_image"
             echo "keycloak_image=$keycloak_image"
             echo "build_api_image=$build_api_image"
             echo "build_workflows_image=$build_workflows_image"
             echo "build_marva_image=$build_marva_image"
             echo "build_marva_middleware_image=$build_marva_middleware_image"
+            echo "build_sinopia_image=$build_sinopia_image"
             echo "api_ref=$api_ref"
+            echo "api_checkout_ref=$api_checkout_ref"
             echo "workflows_ref=$workflows_ref"
             echo "marva_ref=$marva_ref"
+            echo "sinopia_ref=$sinopia_ref"
             echo "models_ref=$models_ref"
             echo "compose_project_name=$compose_project_name"
             echo "integration_db_name=$integration_db_name"
             echo "pytest_target=$pytest_target"
             echo "pull_before_up=$pull_before_up"
           } >> "$GITHUB_OUTPUT"
+
+      # ========================================================================
+      # Check out bluecore-models so migrations can run from the selected branch.
+      # For the default "latest", use the resolved release tag or main.
+      # ------------------------------------------------------------------------
+      - name: Checkout bluecore-models
+        uses: actions/checkout@v5
+        with:
+          repository: blue-core-lod/bluecore-models
+          token: ${{ env.CHECKOUT_TOKEN }}
+          ref: ${{ steps.resolve.outputs.models_ref }}
+          path: external/bluecore-models
+          fetch-depth: 1
 
       # ========================================================================
       # Check out API source only when this run needs to build the API image.
@@ -324,7 +321,7 @@ jobs:
         with:
           repository: blue-core-lod/bluecore_api
           token: ${{ env.CHECKOUT_TOKEN }}
-          ref: ${{ steps.resolve.outputs.api_ref }}
+          ref: ${{ steps.resolve.outputs.api_checkout_ref }}
           path: external/bluecore_api
           fetch-depth: 1
 
@@ -337,7 +334,7 @@ jobs:
         with:
           repository: blue-core-lod/bluecore_api
           token: ${{ env.CHECKOUT_TOKEN }}
-          ref: ${{ steps.resolve.outputs.api_ref }}
+          ref: ${{ steps.resolve.outputs.api_checkout_ref }}
           path: external/bluecore_api
           fetch-depth: 1
 
@@ -400,6 +397,27 @@ jobs:
           docker build -f external/marva_editor/Dockerfile.middleware -t "${{ steps.resolve.outputs.marva_middleware_image }}" external/marva_editor
 
       # ========================================================================
+      # Check out Sinopia source only when this run needs to build its image.
+      # ------------------------------------------------------------------------
+      - name: Checkout sinopia_editor
+        if: ${{ steps.resolve.outputs.build_sinopia_image == 'true' }}
+        uses: actions/checkout@v5
+        with:
+          repository: blue-core-lod/sinopia_editor
+          token: ${{ env.CHECKOUT_TOKEN }}
+          ref: ${{ steps.resolve.outputs.sinopia_ref }}
+          path: external/sinopia_editor
+          fetch-depth: 1
+
+      # ========================================================================
+      # Build the Sinopia image from the selected ref when requested.
+      # ------------------------------------------------------------------------
+      - name: Build Sinopia image
+        if: ${{ steps.resolve.outputs.build_sinopia_image == 'true' }}
+        run: |
+          docker build -t "${{ steps.resolve.outputs.sinopia_image }}" external/sinopia_editor
+
+      # ========================================================================
       # Create a local .env for the integration stack if one does not exist yet.
       # ------------------------------------------------------------------------
       - name: Create integration .env
@@ -456,10 +474,12 @@ jobs:
           echo "API ref:                ${{ steps.resolve.outputs.api_ref }}"
           echo "Workflows ref:          ${{ steps.resolve.outputs.workflows_ref }}"
           echo "Marva ref:              ${{ steps.resolve.outputs.marva_ref }}"
+          echo "Sinopia ref:            ${{ steps.resolve.outputs.sinopia_ref }}"
           echo "API image:              ${{ steps.resolve.outputs.api_image }}"
           echo "Workflows image:        ${{ steps.resolve.outputs.workflows_image }}"
           echo "Marva image:            ${{ steps.resolve.outputs.marva_image }}"
           echo "Marva middleware image: ${{ steps.resolve.outputs.marva_middleware_image }}"
+          echo "Sinopia image:          ${{ steps.resolve.outputs.sinopia_image }}"
           echo "Models ref:             ${{ steps.resolve.outputs.models_ref }}"
           echo "API source label:       bluecore_api@${{ steps.resolve.outputs.api_ref }}"
           echo "WF source label:        bluecore-workflows@${{ steps.resolve.outputs.workflows_ref }}"
@@ -498,6 +518,7 @@ jobs:
           BLUECORE_WORKFLOWS_IMAGE: ${{ steps.resolve.outputs.workflows_image }}
           MARVA_IMAGE: ${{ steps.resolve.outputs.marva_image }}
           MARVA_KEYCLOAK_MIDDLEWARE_IMAGE: ${{ steps.resolve.outputs.marva_middleware_image }}
+          SINOPIA_IMAGE: ${{ steps.resolve.outputs.sinopia_image }}
           KEYCLOAK_IMAGE: ${{ steps.resolve.outputs.keycloak_image }}
         run: |
           docker compose -f compose-dev.yaml -f compose-integration-test.yaml config | grep -E "AIRFLOW__LOGGING__BASE_LOG_FOLDER|AIRFLOW__LOGGING__DAG_PROCESSOR_CHILD_PROCESS_LOG_DIRECTORY|AIRFLOW__API_AUTH__JWT_SECRET|AIRFLOW__CORE__INTERNAL_API_SECRET_KEY" || true
@@ -511,6 +532,7 @@ jobs:
           BLUECORE_WORKFLOWS_IMAGE: ${{ steps.resolve.outputs.workflows_image }}
           MARVA_IMAGE: ${{ steps.resolve.outputs.marva_image }}
           MARVA_KEYCLOAK_MIDDLEWARE_IMAGE: ${{ steps.resolve.outputs.marva_middleware_image }}
+          SINOPIA_IMAGE: ${{ steps.resolve.outputs.sinopia_image }}
           KEYCLOAK_IMAGE: ${{ steps.resolve.outputs.keycloak_image }}
           BLUECORE_API_ROOT: ${{ github.workspace }}/external/bluecore_api
           MODELS_DIR: ${{ github.workspace }}/external/bluecore-models
@@ -518,6 +540,7 @@ jobs:
           INTEGRATION_API_REF: ${{ steps.resolve.outputs.api_ref }}
           INTEGRATION_WORKFLOWS_REF: ${{ steps.resolve.outputs.workflows_ref }}
           INTEGRATION_MARVA_REF: ${{ steps.resolve.outputs.marva_ref }}
+          INTEGRATION_SINOPIA_REF: ${{ steps.resolve.outputs.sinopia_ref }}
           INTEGRATION_MODELS_REF: ${{ steps.resolve.outputs.models_ref }}
           INTEGRATION_SAMPLE_BATCH_SOURCE: ${{ github.workspace }}/external/bluecore_api/sample/batch-small.jsonld
           INTEGRATION_BATCH_JSONLD_URL: https://raw.githubusercontent.com/blue-core-lod/bluecore_api/refs/heads/main/sample/batch-small.jsonld
@@ -540,9 +563,9 @@ jobs:
           # Run a specific pytest target when provided; otherwise run the default suite.
           # --------------------------------------------------------------------
           if [[ -n "${{ steps.resolve.outputs.pytest_target }}" ]]; then
-            ./scripts/integration-tests.sh ${{ steps.resolve.outputs.pytest_target }}
+            ./scripts/test/integration-tests.sh ${{ steps.resolve.outputs.pytest_target }}
           else
-            ./scripts/integration-tests.sh
+            ./scripts/test/integration-tests.sh
           fi
 
       # ========================================================================
@@ -561,6 +584,7 @@ jobs:
           BLUECORE_WORKFLOWS_IMAGE: ${{ steps.resolve.outputs.workflows_image }}
           MARVA_IMAGE: ${{ steps.resolve.outputs.marva_image }}
           MARVA_KEYCLOAK_MIDDLEWARE_IMAGE: ${{ steps.resolve.outputs.marva_middleware_image }}
+          SINOPIA_IMAGE: ${{ steps.resolve.outputs.sinopia_image }}
           KEYCLOAK_IMAGE: ${{ steps.resolve.outputs.keycloak_image }}
         run: |
           docker compose -f compose-dev.yaml -f compose-integration-test.yaml ps -a || true

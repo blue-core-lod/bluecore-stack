@@ -19,7 +19,7 @@ from tests.integration.support.sample_data import (
 from tests.integration.support.http import assert_status, send_request
 from tests.integration.support.logging import log_header
 
-SAMPLE_SEARCH_QUERY = "24042045"
+SAMPLE_SEARCH_QUERY = "joli"
 SAMPLE_LANGUAGE_URI = "http://id.loc.gov/vocabulary/languages/fre"
 JSONLD_HEADERS = {"Accept": "application/ld+json"}
 
@@ -196,18 +196,17 @@ def test_write_endpoint_expected_results_without_auth(
 
 
 # ========================================================================
-# Verify the MCP GET endpoint requires authentication.
+# Verify the MCP GET endpoint is public (no authentication required).
 # ------------------------------------------------------------------------
-def test_mcp_get_requires_auth(config, request_context: APIRequestContext) -> None:
+def test_mcp_get_is_public(config, request_context: APIRequestContext) -> None:
     response = request_context.get(
         f"{config.base_url}/mcp",
         timeout=max(1, int(config.request_timeout * 1000)),
     )
-    assert_status(response, 401)
-
+    assert_status(response, 406)
 
 # ========================================================================
-# Verify authenticated MCP requests are not rejected as unauthorized.
+# Verify MCP requests are not rejected as unauthorized.
 # ------------------------------------------------------------------------
 def test_mcp_post_with_auth_is_not_unauthorized(
     config,
@@ -222,7 +221,25 @@ def test_mcp_post_with_auth_is_not_unauthorized(
         headers={"Authorization": f"Bearer {keycloak_access_token}"},
         json={"jsonrpc": "2.0", "method": "tools/list", "params": {}, "id": 2},
     )
-    assert response.status not in {401, 403}, response.text()
+    assert_status(response, 406)
+
+
+# ========================================================================
+# Verify unauthenticated MCP requests are rejected.
+# ------------------------------------------------------------------------
+def test_mcp_post_with_incorrect_auth_is_not_unauthorized(
+    config,
+    request_context: APIRequestContext,
+) -> None:
+    response = send_request(
+        request_context,
+        "POST",
+        f"{config.base_url}/mcp",
+        request_timeout=config.request_timeout,
+        headers={"Authorization": f"Bearer unauthorized-token-1234-567"},
+        json={"jsonrpc": "2.0", "method": "tools/list", "params": {}, "id": 2},
+    )
+    assert_status(response, 401)
 
 
 # ========================================================================
@@ -1064,7 +1081,7 @@ def test_search_type_and_pagination_after_ingest(
     assert first_page["total"] >= 2
     assert "first" in first_page["links"]
     assert first_page["links"]["first"].endswith(
-        "/api/search/?limit=1&offset=0&q=24042045&type=all"
+        f"/api/search/?limit=1&offset=0&q={SAMPLE_SEARCH_QUERY}&type=all"
     )
     assert "next" in first_page["links"]
 
@@ -1326,6 +1343,7 @@ def test_work_update_readback_with_auth(
     )
     assert work_response.status == 200, work_response.text()
     updated_work_data = dict(work_response.json())
+    updated_work_data.pop("@context", None)
     marker = f"work-update-{uuid4().hex}"
     updated_work_data["integration_update_marker"] = marker
 
@@ -1374,6 +1392,7 @@ def test_instance_update_readback_with_auth(
     )
     assert instance_response.status == 200, instance_response.text()
     updated_instance_data = dict(instance_response.json())
+    updated_instance_data.pop("@context", None)
     marker = f"instance-update-{uuid4().hex}"
     updated_instance_data["integration_update_marker"] = marker
 

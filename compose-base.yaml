@@ -77,7 +77,7 @@ services:
 
   sinopia:
     restart: always
-    image: ghcr.io/blue-core-lod/sinopia:latest
+    image: ${SINOPIA_IMAGE:-ghcr.io/blue-core-lod/sinopia:latest}
     expose:
       - 8004
     depends_on:
