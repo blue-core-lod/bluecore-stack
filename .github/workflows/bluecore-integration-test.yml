@@ -1,5 +1,11 @@
 name: Bluecore Integration Test
 
+# When a caller (e.g. the bluecore_api PR check) dispatches this workflow it
+# passes a unique "run_name"; echoing it here as the run name lets the caller
+# correlate THIS exact run by name. Other triggers (push/manual) fall back to a
+# readable default.
+run-name: ${{ inputs.run_name != '' && inputs.run_name || format('Bluecore Integration Test — {0}', github.ref_name) }}
+
 on:
   # ============================================================================
   # Run on every branch push, and also allow manual runs with custom inputs.
@@ -47,6 +53,14 @@ on:
       # Optional pytest file/test selector to run a smaller targeted test set.
       pytest_target:
         description: "Optional pytest target test — blank runs the full suite | e.g. tests/integration/api/test_endpoints.py::test_mcp_get_is_public  (or 'tests/integration/api -k search')"
+        required: false
+        default: ""
+        type: string
+      # Internal: unique run name set by callers (e.g. bluecore_api PR checks) so
+      # they can locate this run via the workflow-dispatch action's run-name match.
+      # Leave blank for manual runs.
+      run_name:
+        description: "Internal: distinct run name used by callers to correlate this run (leave blank for manual runs)"
         required: false
         default: ""
         type: string
