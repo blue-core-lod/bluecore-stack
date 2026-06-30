@@ -1146,12 +1146,11 @@ def test_search_profile_pagination_for_seeded_profiles(
         create_response = send_request(
             request_context,
             "POST",
-            f"{config.base_url}/resources/",
+            f"{config.base_url}/profiles/",
             request_timeout=config.request_timeout,
             headers=headers,
             json={
                 "uri": f"https://example.org/profiles/{marker}/{index}",
-                "is_profile": True,
                 "data": json.dumps(
                     {
                         "label": f"Integration profile {index}",
@@ -1176,7 +1175,6 @@ def test_search_profile_pagination_for_seeded_profiles(
     assert "total" in payload
     assert payload["total"] >= 2
     assert len(payload["results"]) == 1
-    assert payload["results"][0]["is_profile"] is True
     assert payload["links"]["first"].endswith(
         f"/api/search/profile/?limit=1&offset=0&q={marker}"
     )
@@ -1426,8 +1424,8 @@ def test_resource_update_readback_with_auth(
     keycloak_access_token,
 ) -> None:
     headers = {"Authorization": f"Bearer {keycloak_access_token}"}
-    marker = f"resource-update-{uuid4().hex}"
-    resource_uri = f"https://example.org/resources/{uuid4()}"
+    other_resource_uri = f"https://example.org/resources/{uuid4()}"
+    jsonld_context = {"rdfs": "http://www.w3.org/2000/01/rdf-schema#"}
 
     create_response = send_request(
         request_context,
@@ -1436,24 +1434,30 @@ def test_resource_update_readback_with_auth(
         request_timeout=config.request_timeout,
         headers=headers,
         json={
-            "uri": resource_uri,
-            "is_profile": True,
-            "data": json.dumps({"label": "Integration resource"}),
+            "uri": other_resource_uri,
+            "data": json.dumps({
+                "@context": jsonld_context,
+                "rdfs:label": "Integration resource"
+            }),
         },
     )
     assert create_response.status == 201, create_response.text()
     resource_id = create_response.json()["id"]
+    new_resource_uri = f"{config.base_url}/resources/{resource_id}"
 
     update_response = send_request(
         request_context,
         "PUT",
-        f"{config.base_url}/resources/{resource_id}",
+        new_resource_uri, # post to the bluecore URI created for the other resource
         request_timeout=config.request_timeout,
         headers=headers,
         json={
-            "uri": resource_uri,
-            "is_profile": True,
-            "data": json.dumps({"label": "Integration resource", "marker": marker}),
+            "uri": other_resource_uri,
+            "data": json.dumps({
+                "@id": other_resource_uri,
+                "@context": jsonld_context,
+                "rdfs:label": "Updated integration resource",
+            }),
         },
     )
     assert update_response.status == 200, update_response.text()
@@ -1461,13 +1465,13 @@ def test_resource_update_readback_with_auth(
     readback_response = send_request(
         request_context,
         "GET",
-        f"{config.base_url}/resources/{resource_id}",
+        new_resource_uri,
         request_timeout=config.request_timeout,
     )
     assert readback_response.status == 200, readback_response.text()
     payload = readback_response.json()
-    assert payload["uri"] == resource_uri
-    assert payload["data"].get("marker") == marker
+    assert payload["uri"] == other_resource_uri
+    assert payload["data"].get("rdfs:label") == "Updated integration resource"
 
 
 # ========================================================================
