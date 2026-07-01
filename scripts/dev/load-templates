@@ -1,0 +1,64 @@
+#!/usr/bin/env bash
+#
+# load-templates — load Sinopia Resource Templates into the local bluecore stack
+# by pulling them from a remote bluecore instance.
+#
+# In the Blue Core API a Sinopia Resource Template is stored as a "Profile"
+# (JSON-LD with a node typed sinopia:ResourceTemplate), so this wraps the
+# bluecore CLI's `load-profiles` command.
+#
+# Usage:
+#   ./scripts/dev/load-templates                      prompt to pull from the default remote
+#   ./scripts/dev/load-templates <remote-host>        pull templates from a specific remote
+#   ./scripts/dev/load-templates --dry-run            fetch and report without writing
+#   ./scripts/dev/load-templates <remote-host> --dry-run
+#
+# It fetches resource templates from <remote-host>/api/search/profile and POSTs
+# each to the local /api/profiles/, minting a local URI for each. Points the CLI
+# at the nginx-fronted local stack (localhost/api, localhost/keycloak) so it
+# works while `bluecore-stack` is up. The CLI itself lives in the sibling
+# bluecore_api project; it runs there (via `uv run --directory`) so its .env —
+# which holds the dev credentials — is picked up regardless of where you invoke
+# this script.
+#
+# The local stack must be running (API, Keycloak, and Nginx).
+
+set -euo pipefail
+
+# Remote bluecore instance resource templates are pulled from when none is supplied.
+DEFAULT_REMOTE_HOST="https://dev.bcld.info"
+
+if [ "$#" -eq 0 ]; then
+  # No arguments — offer to pull from the default remote.
+  echo "No remote host provided. Default remote to pull resource templates from:" >&2
+  echo "  $DEFAULT_REMOTE_HOST" >&2
+  read -r -p "Pull resource templates from the default remote? [Y/n] " reply
+  case "${reply:-Y}" in
+    [Yy]*) set -- "$DEFAULT_REMOTE_HOST" ;;
+    *) echo "Aborted." >&2; exit 0 ;;
+  esac
+fi
+
+# This script lives in bluecore-stack/scripts/dev. The CLI lives in the local
+# bluecore_api checkout configured by scripts/dev/local-repo-paths.
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+. "$ROOT_DIR/scripts/dev/local-repo-paths"
+api_project="${BLUECORE_API_DIR:-$LOCAL_BLUECORE_API_DIR}"
+
+if [ ! -d "$api_project" ]; then
+  echo "bluecore_api project not found at: $api_project" >&2
+  echo "Set LOCAL_BLUECORE_API_DIR or BLUECORE_API_DIR to its location and re-run." >&2
+  exit 1
+fi
+
+# Host the stack is served on; override with BLUECORE_STACK_URL if not localhost.
+host="${BLUECORE_STACK_URL:-http://localhost}"
+host="${host%/}"
+
+# Remaining args are the remote host and/or flags (e.g. --dry-run, --page-size)
+# passed straight through to the CLI's `load-profiles` command.
+uv run --directory "$api_project" bluecore --verbose \
+  --bluecore-url "$host" \
+  --api-url "$host/api" \
+  --keycloak-url "$host/keycloak" \
+  load-profiles "$@"
