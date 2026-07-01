@@ -11,6 +11,8 @@ Tests use Playwright's `APIRequestContext` for HTTP-only checks. They do not dri
 - Keycloak-authenticated DAG triggers, including `resource_loader` and `monitor_institutions_exports`.
 - Ingest and processed readback checks.
 - Embedding create/read behavior when the vector backend is enabled.
+- Sinopia interoperability: the Resource Template / Profile API behavior Sinopia
+  depends on, plus Sinopia editor reachability. See below.
 
 ## 🏃 Local Runner
 

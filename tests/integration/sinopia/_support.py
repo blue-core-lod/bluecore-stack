@@ -9,7 +9,22 @@ from typing import Any
 # stores Resource Templates as "Profiles" and identifies the template node by
 # this type when minting/re-homing its URI (see bluecore_api profiles route).
 RESOURCE_TEMPLATE_TYPE = "http://sinopia.io/vocabulary/ResourceTemplate"
+PROPERTY_TEMPLATE_TYPE = "http://sinopia.io/vocabulary/PropertyTemplate"
+HAS_RESOURCE_TEMPLATE = "http://sinopia.io/vocabulary/hasResourceTemplate"
+RDFS_LABEL = "http://www.w3.org/2000/01/rdf-schema#label"
+BF_WORK = "http://id.loc.gov/ontologies/bibframe/Work"
 SINOPIA = "http://sinopia.io/vocabulary/"
+
+
+# ========================================================================
+# The @id a Resource Template carries before the API mints a local URI.
+# ------------------------------------------------------------------------
+def original_resource_id(nonce: str) -> str:
+    return f"test:RT:bluecore:Interop:{nonce}"
+
+
+def original_resource_uri(nonce: str) -> str:
+    return f"http://localhost:3000/resource/{original_resource_id(nonce)}"
 
 
 # ========================================================================
@@ -27,18 +42,44 @@ def interop_nonce() -> str:
 # nonce lands in the label + resource id so the profile is searchable.
 # ------------------------------------------------------------------------
 def build_resource_template_jsonld(nonce: str) -> dict[str, Any]:
-    resource_id = f"test:RT:bluecore:Interop:{nonce}"
+    resource_id = original_resource_id(nonce)
     return {
         "@context": {
             "sinopia": SINOPIA,
             "rdfs": "http://www.w3.org/2000/01/rdf-schema#",
         },
-        "@id": f"http://localhost:3000/resource/{resource_id}",
+        "@id": original_resource_uri(nonce),
         "@type": "sinopia:ResourceTemplate",
         "rdfs:label": f"Blue Core Sinopia interop probe {nonce}",
         "sinopia:hasResourceId": resource_id,
-        "sinopia:hasClass": {"@id": "http://id.loc.gov/ontologies/bibframe/Work"},
+        "sinopia:hasClass": {"@id": BF_WORK},
     }
+
+
+# ========================================================================
+# Build a Resource Template plus a Property Template that references it.
+#
+# The API re-homes the ResourceTemplate node's URI and every reference to it.
+# This fixture lets a test assert the reference (object position) is rewritten
+# to the minted URI, not just the template node's own @id.
+# ------------------------------------------------------------------------
+def build_resource_template_with_reference_jsonld(nonce: str) -> list[dict[str, Any]]:
+    original = original_resource_uri(nonce)
+    return [
+        {
+            "@id": original,
+            "@type": [RESOURCE_TEMPLATE_TYPE],
+            RDFS_LABEL: [{"@value": f"Blue Core Sinopia interop probe {nonce}"}],
+            "http://sinopia.io/vocabulary/hasResourceId": [
+                {"@value": original_resource_id(nonce)}
+            ],
+        },
+        {
+            "@id": f"http://localhost:3000/resource/prop:{nonce}",
+            "@type": [PROPERTY_TEMPLATE_TYPE],
+            HAS_RESOURCE_TEMPLATE: [{"@id": original}],
+        },
+    ]
 
 
 # ========================================================================
