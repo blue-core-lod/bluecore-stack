@@ -141,3 +141,13 @@ or the legacy `BLUECORE_API_DIR` override:
 ```bash
 LOCAL_BLUECORE_API_DIR=/path/to/bluecore_api ./scripts/dev/load-data
 ```
+
+## 🧩 Load Resource Templates
+
+`scripts/dev/load-templates` loads Sinopia Resource Templates into the running 
+local stack by pulling them from a remote bluecore instance. 
+
+```bash
+./scripts/dev/load-templates                        # prompt, then pull from the default remote
+./scripts/dev/load-templates https://dev.bcld.info  # pull from a specific remote
+```
