@@ -10,3 +10,4 @@ tests/playwright/.venv/
 .secrets
 /milvus/
 /config/airflow.cfg
+/.idea/

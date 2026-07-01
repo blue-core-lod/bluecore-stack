@@ -65,6 +65,13 @@ on:
         default: ""
         type: string
 
+# Supersede an older running integration test when a newer one starts for the
+# same target.. so back-to-back pushes to the same PR cancel the prior stack run
+# instead of running both.
+concurrency:
+  group: bluecore-integration-${{ inputs.api_ref || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   integration:
     # ==========================================================================
