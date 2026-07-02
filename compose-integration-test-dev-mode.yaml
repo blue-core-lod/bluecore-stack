@@ -63,3 +63,31 @@ services:
     volumes:
       - ${LOCAL_MARVA_DIR}:/app
       - /app/node_modules
+
+  # Run Sinopia from local sinopia_editor source via the webpack dev server so
+  # code edits are picked up on rerun. The env vars bake LOCAL URLs into the
+  # bundle, so the post-login SSO redirect stays on the local stack (which lets
+  # the authenticated login/logout UI test run instead of skipping). Mirrors the
+  # sinopia service in compose-local-dev.yaml (dev server on :8888 with HMR).
+  sinopia:
+    image: node:24.4.0
+    working_dir: /app
+    command: sh -lc "npm install && (test -f dist/index.html || npm run dev-build) && npm run dev-start -- --host 0.0.0.0 --allowed-hosts all --client-web-socket-url ws://localhost/ws"
+    environment:
+      SINOPIA_URI: http://localhost/sinopia
+      SINOPIA_API_BASE_URL: http://localhost/api
+      SEARCH_HOST: http://localhost/api/search/
+      KEYCLOAK_URL: http://localhost/keycloak
+      SINOPIA_ENV: bluecore
+      USE_FIXTURES: "false"
+    volumes:
+      - ${LOCAL_SINOPIA_DIR}:/app
+      - /app/node_modules
+
+  # base.conf strips the /sinopia/ prefix and targets the published server on
+  # :8004, which does not match the dev server's /sinopia/dist/ publicPath. Swap
+  # in local-dev.conf (non-stripping /sinopia/ plus the /ws HMR route), the same
+  # config ./scripts/dev/run uses for local Sinopia.
+  nginx:
+    volumes:
+      - ./nginx/local-dev.conf:/etc/nginx/conf.d/default.conf

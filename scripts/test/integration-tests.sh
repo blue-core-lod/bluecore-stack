@@ -70,6 +70,7 @@ BUILD_LOCAL_DEV_IMAGES="${BUILD_LOCAL_DEV_IMAGES:-0}"
 LOCAL_BLUECORE_API_DIR="${LOCAL_BLUECORE_API_DIR:-$ROOT_DIR/../bluecore_api}"
 LOCAL_BLUECORE_WORKFLOWS_DIR="${LOCAL_BLUECORE_WORKFLOWS_DIR:-$ROOT_DIR/../bluecore-workflows}"
 LOCAL_MARVA_DIR="${LOCAL_MARVA_DIR:-$ROOT_DIR/../marva_editor}"
+LOCAL_SINOPIA_DIR="${LOCAL_SINOPIA_DIR:-$ROOT_DIR/../sinopia_editor}"
 LOCAL_IMAGE_TAG="${LOCAL_IMAGE_TAG:-integration-test-local}"
 LOCAL_BUILD_PLATFORM="${LOCAL_BUILD_PLATFORM:-}"
 BUILD_LOCAL_BC_API_IMAGE="${BUILD_LOCAL_BC_API_IMAGE:-0}"
@@ -239,6 +240,21 @@ ensure_integration_test_python_deps() {
   fi
 }
 
+# --------------------------------------------------------------------
+# Ensure the Playwright Chromium browser is installed.
+# Required by the real-browser UI tests under tests/ui/*. Idempotent (a fast
+# no-op once the browser is present). API tests use APIRequestContext and do
+# not need a browser, so a failure here only warns rather than aborting.
+# --------------------------------------------------------------------
+ensure_playwright_browser() {
+  if "$PYTHON_BIN" -m playwright install chromium; then
+    return 0
+  fi
+  echo "Warning: could not install the Playwright Chromium browser."
+  echo "Browser-based UI tests under tests/ui will fail until it is installed:"
+  echo "  $PYTHON_BIN -m playwright install chromium"
+}
+
 if [[ "$INTEGRATION_DEV_MODE_STOP" != "1" ]]; then
   if ! ensure_test_python_runtime; then
     exit 1
@@ -246,6 +262,7 @@ if [[ "$INTEGRATION_DEV_MODE_STOP" != "1" ]]; then
   if ! ensure_integration_test_python_deps; then
     exit 1
   fi
+  ensure_playwright_browser
 fi
 
 log_banner() {
@@ -940,6 +957,7 @@ if [[ "$INTEGRATION_DEV_MODE" == "1" ]]; then
     "LOCAL_BLUECORE_API_DIR=$LOCAL_BLUECORE_API_DIR"
     "LOCAL_BLUECORE_WORKFLOWS_DIR=$LOCAL_BLUECORE_WORKFLOWS_DIR"
     "LOCAL_MARVA_DIR=$LOCAL_MARVA_DIR"
+    "LOCAL_SINOPIA_DIR=$LOCAL_SINOPIA_DIR"
   )
 fi
 
@@ -991,7 +1009,8 @@ else
 fi
 
 # If developer passed explicit pytest targets (file/dir/nodeid), run only those.
-pytest_targets=(tests/integration)
+# The default suite runs the HTTP integration tests plus the browser UI tests.
+pytest_targets=(tests/integration tests/ui)
 if (( pytest_passthrough_count > 0 )); then
   for arg in "${pytest_passthrough_args[@]}"; do
     if [[ "$arg" == *"/"* || "$arg" == *.py || "$arg" == *"::"* ]]; then
