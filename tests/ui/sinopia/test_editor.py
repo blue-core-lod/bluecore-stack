@@ -20,6 +20,30 @@ from tests.ui._support import (
 # The runner enables it by default (INTEGRATION_FULL_STACK=1); skip cleanly when
 # a lightweight run omits Nginx/Sinopia.
 # tests/integration/sinopia cover the API surface in every mode.
+#
+# ==============================================================================
+# Why the authenticated tests skip outside dev-mode
+# ------------------------------------------------------------------------------
+# Sinopia's frontend config (including its own `sinopiaUrl`) is compiled INTO
+# the JavaScript bundle at build time.
+#
+#   * Non-dev-mode runs the PUBLISHED Sinopia image, whose bundle was built with
+#     the PRODUCTION url (https://dev.bcld.info/sinopia). After a successful
+#     Keycloak login the SSO redirect goes to `sinopiaUrl`, i.e. production, so
+#     the browser leaves the local stack and the authenticated editor never
+#     renders locally. Any test that needs a completed login (the full SSO round
+#     trip and everything using the `authenticated_page` fixture) SKIPS with a
+#     "Post-login redirect left the local stack" message.
+#
+#   * Dev-mode runs Sinopia from LOCAL source with LOCAL urls
+#     (SINOPIA_URI=http://localhost/sinopia, wired in
+#     compose-integration-test-dev-mode.yaml), so the redirect stays local and
+#     these tests RUN. Use: ./scripts/test/integration-tests.sh --dev-mode
+#     tests/ui/sinopia
+#
+# The unauthenticated tests (load, login panel, SSO redirect, OAuth params,
+# invalid credentials) run in BOTH modes because they never complete a login.
+# ------------------------------------------------------------------------------
 pytestmark = pytest.mark.skipif(
     not full_stack_enabled(),
     reason="Sinopia UI tests require the full stack (Nginx + Sinopia)",
@@ -28,6 +52,54 @@ pytestmark = pytest.mark.skipif(
 
 def _open_editor(page: Page, timeout: int) -> None:
     page.goto(f"{sinopia_url()}/", wait_until="domcontentloaded", timeout=timeout)
+
+
+def _login(page: Page, timeout: int) -> bool:
+    """
+    Run the Keycloak SSO login from the editor.
+    Returns True only if the post-login redirect returned to the LOCAL Sinopia
+    origin. Sinopia bakes its `sinopiaUrl` into the bundle at build time, so the
+    published image (used outside dev-mode) redirects to production after login
+    and this returns False. Callers use the result to skip authenticated
+    assertions that are only meaningful on the local stack. See the module
+    docstring above for the full explanation.
+    """
+    _open_editor(page, timeout)
+    page.get_by_role("button", name="Login").click()
+    page.wait_for_url(f"**{KEYCLOAK_AUTH_PATH}**", timeout=timeout)
+    page.locator("#username").fill(keycloak_username())
+    page.locator("#password").fill(keycloak_password())
+    page.locator("#kc-login").click()
+    page.wait_for_url(lambda url: KEYCLOAK_AUTH_PATH not in url, timeout=timeout)
+    return page.url.startswith(sinopia_url())
+
+
+def _enter_editor(page: Page, timeout: int) -> None:
+    """
+    From the authenticated home page, enter the app (the Dashboard).
+    The home header only exposes a "Linked Data Editor" link; the Dashboard /
+    Resource Templates tab nav appears on the in-app pages.
+    """
+    page.get_by_role("link", name="Linked Data Editor").click()
+    page.wait_for_url("**/sinopia/dashboard", timeout=timeout)
+
+
+@pytest.fixture
+def authenticated_page(page: Page, ui_timeout_ms: int) -> Page:
+    """
+    A page logged into the editor, or a skip when login left the local stack.
+    Tests using this fixture exercise the authenticated editor, so they only run
+    when Sinopia is served with local urls (dev-mode / local-source build). On
+    the published-image stack the post-login redirect goes to production, and the
+    fixture skips the test. See the module docstring for why.
+    """
+    if not _login(page, ui_timeout_ms):
+        pytest.skip(
+            f"Post-login redirect left the local stack ({page.url}); the published "
+            "Sinopia image bakes a non-local sinopiaUrl. Run Sinopia from local source "
+            "(dev-mode) to exercise the authenticated editor."
+        )
+    return page
 
 
 # ========================================================================
@@ -75,29 +147,13 @@ def test_login_redirects_to_keycloak(page: Page, ui_timeout_ms: int):
 # ------------------------------------------------------------------------
 def test_full_sso_login_and_logout(page: Page, ui_timeout_ms: int):
     log_header("Sinopia full SSO login and logout")
-    _open_editor(page, ui_timeout_ms)
-    page.get_by_role("button", name="Login").click()
-    page.wait_for_url(f"**{KEYCLOAK_AUTH_PATH}**", timeout=ui_timeout_ms)
-
-    page.locator("#username").fill(keycloak_username())
-    page.locator("#password").fill(keycloak_password())
-    page.locator("#kc-login").click()
-
-    # Keycloak processed the credentials and redirected away from its login page.
-    page.wait_for_url(
-        lambda url: KEYCLOAK_AUTH_PATH not in url, timeout=ui_timeout_ms
-    )
-    log_expected_actual("left Keycloak after login", True, KEYCLOAK_AUTH_PATH not in page.url)
-
-    # The published Sinopia image bakes its production URL into the bundle at
-    # build time, so on the local stack the post-login redirect can land on the
-    # production site. The authenticated round trip (and logout) is only
-    # verifiable when Sinopia is served with local URLs (local-source build).
-    if not page.url.startswith(sinopia_url()):
+    # The published Sinopia image bakes its production URL into the bundle, so on
+    # that stack the post-login redirect leaves the local origin; skip then. It
+    # runs fully when Sinopia is served with local URLs (local-source build).
+    if not _login(page, ui_timeout_ms):
         pytest.skip(
             f"Sinopia redirected to {page.url} after SSO instead of {sinopia_url()}; "
-            "the published image is built with a non-local sinopiaUrl. Run Sinopia "
-            "from local source to verify the authenticated editor round trip."
+            "the published image is built with a non-local sinopiaUrl."
         )
 
     # Back in the local editor and authenticated: the header exposes logout.
@@ -187,3 +243,82 @@ def test_invalid_credentials_are_rejected(page: Page, ui_timeout_ms: int):
     expect(page.locator("#password")).to_be_visible()
     log_expected_actual("still on Keycloak realm", True, "/realms/bluecore/" in page.url)
     assert "/realms/bluecore/" in page.url
+
+
+# ========================================================================
+# Authenticated shell renders: user identity, logout, and primary nav.
+# ------------------------------------------------------------------------
+def test_authenticated_header_shows_user_and_nav(
+    authenticated_page: Page, ui_timeout_ms: int
+):
+    log_header("Sinopia authenticated header and nav")
+    page = authenticated_page
+    # Authenticated home header: user identity, logout, and the app entry link.
+    expect(page.locator(".editor-header-user")).to_be_visible(timeout=ui_timeout_ms)
+    expect(page.locator(".editor-header-logout")).to_be_visible()
+    expect(page.get_by_role("link", name="Linked Data Editor")).to_be_visible()
+
+
+# ========================================================================
+# Entering the app lands on the Dashboard, which renders its content.
+# ------------------------------------------------------------------------
+def test_navigate_to_dashboard(authenticated_page: Page, ui_timeout_ms: int):
+    log_header("Sinopia navigate to Dashboard")
+    page = authenticated_page
+    _enter_editor(page, ui_timeout_ms)
+    # A fresh user sees the empty-state "Welcome to Sinopia."; an active user
+    # sees "Recent ..." sections. Match either so the test is data-independent.
+    expect(
+        page.get_by_role(
+            "heading", name=re.compile(r"Welcome to Sinopia|Recent", re.IGNORECASE)
+        ).first
+    ).to_be_visible(timeout=ui_timeout_ms)
+
+
+# ========================================================================
+# The Resource Templates page loads (the Sinopia<->Blue Core template surface).
+# ------------------------------------------------------------------------
+def test_navigate_to_resource_templates(authenticated_page: Page, ui_timeout_ms: int):
+    log_header("Sinopia navigate to Resource Templates")
+    page = authenticated_page
+    _enter_editor(page, ui_timeout_ms)
+    page.get_by_role("link", name="Resource Templates").click()
+    page.wait_for_url("**/sinopia/templates", timeout=ui_timeout_ms)
+    expect(page.locator("#resourceTemplate")).to_be_visible(timeout=ui_timeout_ms)
+    expect(
+        page.get_by_placeholder("Enter id, label, URI, remark, group, or author")
+    ).to_be_visible()
+
+
+# ========================================================================
+# Authenticated pages (more API traffic) load without JS errors or 5xx.
+# ------------------------------------------------------------------------
+def test_authenticated_pages_load_without_errors(
+    page: Page, page_signals, ui_timeout_ms: int
+):
+    log_header("Sinopia authenticated pages load without errors")
+    if not _login(page, ui_timeout_ms):
+        pytest.skip(
+            f"Post-login redirect left the local stack ({page.url}); "
+            "run Sinopia from local source (dev-mode)."
+        )
+
+    _enter_editor(page, ui_timeout_ms)
+    # A fresh user sees the empty-state "Welcome to Sinopia."; an active user
+    # sees "Recent ..." sections. Match either so the test is data-independent.
+    expect(
+        page.get_by_role(
+            "heading", name=re.compile(r"Welcome to Sinopia|Recent", re.IGNORECASE)
+        ).first
+    ).to_be_visible(timeout=ui_timeout_ms)
+
+    page.get_by_role("link", name="Resource Templates").click()
+    page.wait_for_url("**/sinopia/templates", timeout=ui_timeout_ms)
+    expect(page.locator("#resourceTemplate")).to_be_visible(timeout=ui_timeout_ms)
+
+    assert page_signals.page_errors == [], (
+        f"Uncaught browser errors on authenticated pages: {page_signals.page_errors}"
+    )
+    assert page_signals.server_errors == [], (
+        f"Server errors on authenticated pages: {page_signals.server_errors}"
+    )
