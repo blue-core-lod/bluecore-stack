@@ -2,7 +2,9 @@
 
 Use the integration suite to validate API, Workflows/Airflow, and Keycloak behavior before merging changes.
 
-Tests use Playwright's `APIRequestContext` for HTTP-only checks. They do not drive a browser UI.
+Tests use Playwright's `APIRequestContext` for HTTP-only checks. 
+Browser-driven UI tests live in [UI testing](ui-testing.md); 
+both run together under the same commands.
 
 ## ✅ What Is Covered
 
@@ -12,7 +14,8 @@ Tests use Playwright's `APIRequestContext` for HTTP-only checks. They do not dri
 - Ingest and processed readback checks.
 - Embedding create/read behavior when the vector backend is enabled.
 - Sinopia interoperability: the Resource Template / Profile API behavior Sinopia
-  depends on, plus Sinopia editor reachability. See below.
+  depends on, plus Sinopia editor reachability.
+- Sinopia browser UI flows: see [UI testing](ui-testing.md).
 
 ## 🏃 Local Runner
 
@@ -30,6 +33,7 @@ Use dev mode when iterating locally. It keeps the stack running between runs and
 ```bash
 ./scripts/test/integration-tests.sh --dev-mode
 ./scripts/test/integration-tests.sh --dev-mode tests/integration/workflows/test_health.py -k airflow
+./scripts/test/integration-tests.sh --dev-mode tests/integration/workflows/test_health.py::test_airflow_version_endpoint_is_reachable
 ./scripts/test/integration-tests.sh --dev-mode-stop
 ```
 

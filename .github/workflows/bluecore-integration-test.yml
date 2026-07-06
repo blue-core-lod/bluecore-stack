@@ -136,7 +136,10 @@ jobs:
           python -m venv --clear "$venv_dir"
           . "$venv_dir/bin/activate"
           python -m pip install --upgrade pip
-          python -m pip install uv pytest playwright
+          python -m pip install uv pytest anyio pytest-base-url playwright pytest-playwright
+          # Chromium (plus its OS libraries) for the browser UI tests under
+          # tests/ui/*. Fall back to the browser-only install if apt deps fail.
+          python -m playwright install --with-deps chromium || python -m playwright install chromium
           echo "TEST_RUNTIME_VENV=$venv_dir" >> "$GITHUB_ENV"
           echo "$venv_dir/bin" >> "$GITHUB_PATH"
 

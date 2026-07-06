@@ -13,7 +13,6 @@ from playwright.sync_api import APIResponse
 from playwright.sync_api import Error as PlaywrightError
 from playwright.sync_api import Playwright
 from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
-from playwright.sync_api import sync_playwright
 
 TERRAFORM_ROOT = Path(__file__).resolve().parents[2]
 SAMPLE_BATCH_SOURCE_CANDIDATES: tuple[Path, ...] = (
@@ -323,25 +322,6 @@ def _prepare_local_batch_upload() -> None:
 
 
 # ==============================================================================
-# Register custom pytest options for integration base URL and readiness timeout.
-# ------------------------------------------------------------------------------
-def pytest_addoption(parser: pytest.Parser) -> None:
-    parser.addoption(
-        "--integration-base-url",
-        action="store",
-        default=os.getenv("INTEGRATION_BASE_URL", "http://localhost:18100"),
-        help="Base URL for the API service under test.",
-    )
-    parser.addoption(
-        "--integration-ready-timeout",
-        action="store",
-        type=int,
-        default=int(os.getenv("INTEGRATION_READY_TIMEOUT", "300")),
-        help="Seconds to wait for stack readiness checks.",
-    )
-
-
-# ==============================================================================
 # Build session-level integration config from CLI flags and environment values.
 # ------------------------------------------------------------------------------
 @pytest.fixture(scope="session")
@@ -388,20 +368,11 @@ def config(pytestconfig: pytest.Config) -> IntegrationConfig:
 
 
 # ==============================================================================
-# Provide one Playwright runtime for the full integration test session.
-# ------------------------------------------------------------------------------
-@pytest.fixture(scope="session")
-def playwright_instance() -> Playwright:
-    with sync_playwright() as playwright:
-        yield playwright
-
-
-# ==============================================================================
 # Provide a shared Playwright API request context for HTTP calls in tests.
 # ------------------------------------------------------------------------------
 @pytest.fixture(scope="session")
-def request_context(playwright_instance: Playwright) -> APIRequestContext:
-    context = playwright_instance.request.new_context(ignore_https_errors=True)
+def request_context(playwright: Playwright) -> APIRequestContext:
+    context = playwright.request.new_context(ignore_https_errors=True)
     try:
         yield context
     finally:

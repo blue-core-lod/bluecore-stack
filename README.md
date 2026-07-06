@@ -99,7 +99,8 @@ with live reload.
 - 🧑‍💻 [Local development](docs/local-development.md): local-source mode, image mode, subset starts, live reload, and data loading.
 - 🧱 [Developing bluecore-models](docs/bluecore-models.md): local model-code reload behavior and migrations.
 - 🔐 [Keycloak](docs/keycloak.md): local users, admin login, realm import/export, and Airflow auth.
-- 🧪 [Integration testing](docs/testing.md): local test runner, dev mode, branch refs, local sources, and workflow parity.
+- 🧪 [Integration testing](docs/integration-testing.md): local test runner, dev mode, branch refs, local sources, and workflow parity.
+- 🖥️ [UI testing](docs/ui-testing.md): browser-driven tests and Playwright debugging.
 - 🏗️ [Architecture](docs/architecture.md): compose files, service topology, and Nginx routing.
 
 ## 📝 Notes
