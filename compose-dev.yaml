@@ -39,8 +39,10 @@ services:
       postgres:
         condition: service_healthy
     volumes:
-      - ./keycloak-export/bluecore-realm.json:/opt/keycloak/data/import/realm.json
-      - ./keycloak-export/:/opt/keycloak/data/export
+      # The committed development realm lives in its own folder. Mount the whole
+      # dir (not a single file) KEYCLOAK_REALM_DIR defaults to development here.
+      - ${KEYCLOAK_REALM_DIR:-./keycloak-export/development}:/opt/keycloak/data/import
+      - ${KEYCLOAK_REALM_DIR:-./keycloak-export/development}:/opt/keycloak/data/export
 
   nginx:
     image: nginx:1.27.4-alpine
