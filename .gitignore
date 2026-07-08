@@ -11,3 +11,6 @@ tests/playwright/.venv/
 /milvus/
 /config/airflow.cfg
 /.idea/
+# ignore every keycloak export except development
+/keycloak-export/*/
+!/keycloak-export/development/

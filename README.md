@@ -96,6 +96,7 @@ with live reload.
 ## 📚 Documentation
 
 - ⚙️ [Configuration](docs/configuration.md): required `.env` values and local defaults.
+- 🚀 [Deployment](docs/deploy.md): env values to change before a public-facing deploy.
 - 🧑‍💻 [Local development](docs/local-development.md): local-source mode, image mode, subset starts, live reload, and data loading.
 - 🧱 [Developing bluecore-models](docs/bluecore-models.md): local model-code reload behavior and migrations.
 - 🔐 [Keycloak](docs/keycloak.md): local users, admin login, realm import/export, and Airflow auth.
