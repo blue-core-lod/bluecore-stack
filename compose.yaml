@@ -27,7 +27,7 @@ services:
       # Set it in the server's .env for staging ( e.g. KEYCLOAK_REALM_DIR=./keycloak-export/staging).
       # An empty dir simply imports nothing. Seed <KEYCLOAK_REALM_DIR>/bluecore-realm.json beforethe first start.
       # "./scripts/export-keycloak-realm.sh --env=<env>" writes to it.
-      - ${KEYCLOAK_REALM_DIR:-./keycloak-export/production}/bluecore-realm.json:/opt/keycloak/data/import/realm.json
+      - ${KEYCLOAK_REALM_DIR:-./keycloak-export/production}:/opt/keycloak/data/import
       - ${KEYCLOAK_REALM_DIR:-./keycloak-export/production}:/opt/keycloak/data/export
 
   nginx:
