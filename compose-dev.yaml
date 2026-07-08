@@ -27,6 +27,11 @@ services:
       - 8443
     env_file:
       - ./.env
+    environment:
+      # Keycloak's DB connection is derived from the shared DATABASE_* vars
+      KC_DB_URL: jdbc:postgresql://${DATABASE_HOSTNAME:-postgres}:${DATABASE_PORT:-5432}/keycloak
+      KC_DB_USERNAME: ${DATABASE_USERNAME:-airflow}
+      KC_DB_PASSWORD: ${DATABASE_PASSWORD:-airflow}
     command:
       - start-dev
       - --import-realm
