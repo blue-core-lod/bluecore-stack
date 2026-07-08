@@ -41,7 +41,6 @@ services:
     volumes:
       # The committed development realm lives in its own folder. Mount the whole
       # dir (not a single file) KEYCLOAK_REALM_DIR defaults to development here.
-      - ${KEYCLOAK_REALM_DIR:-./keycloak-export/development}:/opt/keycloak/data/import
       - ${KEYCLOAK_REALM_DIR:-./keycloak-export/development}/bluecore-realm.json:/opt/keycloak/data/import/realm.json
       - ${KEYCLOAK_REALM_DIR:-./keycloak-export/development}:/opt/keycloak/data/export
 
