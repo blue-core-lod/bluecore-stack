@@ -11,16 +11,25 @@ The values below are local development defaults. Do not reuse these credentials 
 # Create a classic GitHub token with read:packages if you need access to private GHCR images.
 CR_PAT=YOUR_GITHUB_TOKEN
 
+##############
+## Database ##
+##############
+# The compose files build every service's DB connection (bc_api, Airflow, and Keycloak) from these four vars. They 
+# default to airflow/airflow/postgres/5432, so local dev works as-is; change them for an external DB (see docs/deploy.md).
+DATABASE_USERNAME=airflow
+DATABASE_PASSWORD=airflow
+DATABASE_HOSTNAME=postgres
+DATABASE_PORT=5432
+DATABASE_URL=postgresql+psycopg2://airflow:airflow@postgres/bluecore
+
 ###########################
 ## Airflow Configuration ##
 ###########################
-DATABASE_URL=postgresql+psycopg2://airflow:airflow@postgres/bluecore
 AIRFLOW_WWW_USER_USERNAME=airflow
 AIRFLOW_WWW_USER_PASSWORD=airflow
 AIRFLOW_EXTERNAL_URL=http://localhost/workflows/
 AIRFLOW_INTERNAL_URL=http://airflow-apiserver:8080/workflows/
 AIRFLOW_PROJ_DIR=.
-AIRFLOW_CONN_BLUECORE_DB='postgresql://airflow:airflow@postgres:5432/bluecore'
 
 ######################
 ## Keycloak Clients ##
@@ -51,8 +60,9 @@ KC_DB_URL_HOST=postgres
 KC_DB_URL_PORT=5432
 KC_DB_URL_DATABASE=keycloak
 KC_DB_SCHEMA=public
-KC_DB_USERNAME=airflow
-KC_DB_PASSWORD=airflow
+# Keycloak's DB credentials are derived from DATABASE_USERNAME / DATABASE_PASSWORD
+#KC_DB_USERNAME=airflow
+#KC_DB_PASSWORD=airflow
 
 # Keycloak health check
 KC_HEALTH_ENABLED=true
@@ -86,7 +96,7 @@ SINOPIA_BASE_URL=http://localhost/sinopia/
 
 ## 🗄️ Airflow Database Connection
 
-Some DAGs require a `bluecore_db` Postgres connection. Setting `AIRFLOW_CONN_BLUECORE_DB` in `.env` creates the connection for local development.
+Some DAGs require a `bluecore_db` Postgres connection. The compose files set `AIRFLOW_CONN_BLUECORE_DB` (built from `DATABASE_*`), which Airflow auto-registers as the `bluecore_db` connection;  you don't need to add it to `.env`.
 
 If you need to create it manually in the Airflow UI, use **Admin -> Connections**:
 
