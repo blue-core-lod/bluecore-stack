@@ -2,7 +2,8 @@
 
 # ==============================================================================
 # Exports the Keycloak realm configuration for the bluecore realm
-# Chooses dev or prod behavior based on ENV variable or --env flag
+# Chooses development, staging, or production behavior via ENV var or --env flag
+# (defaults to development).
 # ------------------------------------------------------------------------------
 
 # Color codes
@@ -31,22 +32,34 @@ done
 echo -e "${BLUE}===========================================================${NC}"
 echo -e "${BLUE}🔄 Starting export of 'bluecore' Keycloak realm...${NC}"
 
-# Choose command based on environment
-if [[ "$ENVIRONMENT" == "production" ]]; then
-  echo -e "${BLUE}Target path: /home/ubuntu/keycloak-export/bluecore-realm.json${NC}"
-  echo -e "${BLUE}Environment: production${NC}"
+# Each environment exports to its own folder under keycloak-export/:
+#   development -> compose-dev.yaml, committed   keycloak-export/development/
+#   staging     -> compose.yaml,     git-ignored keycloak-export/staging/
+#   production  -> compose.yaml,     git-ignored keycloak-export/production/
+case "$ENVIRONMENT" in
+  development)
+    COMPOSE_FILE="compose-dev.yaml"
+    ;;
+  staging|production)
+    COMPOSE_FILE="compose.yaml"
+    ;;
+  *)
+    echo -e "${RED}❌ Unknown environment: '${ENVIRONMENT}'. Use development, staging, or production.${NC}"
+    exit 1
+    ;;
+esac
 
-  docker compose -f compose.yaml run --rm \
-    -v /home/ubuntu/keycloak-export:/opt/keycloak/data/export \
-    keycloak export --dir=/opt/keycloak/data/export --realm=bluecore --users=realm_file
+EXPORT_DIR="keycloak-export/${ENVIRONMENT}"
+echo -e "${BLUE}Environment: ${ENVIRONMENT}${NC}"
+echo -e "${BLUE}Target path: ${EXPORT_DIR}/bluecore-realm.json${NC}"
 
-else
-  echo -e "${BLUE}Target path: keycloak-export/bluecore-realm.json${NC}"
-  echo -e "${BLUE}Environment: development${NC}"
+# Ensure the env folder exists, then tell compose which dir to mount for the
+# import/export volume via KEYCLOAK_REALM_DIR.
+mkdir -p "${EXPORT_DIR}"
 
-  docker compose -f compose-dev.yaml run --rm keycloak \
-    export --dir=/opt/keycloak/data/export --realm=bluecore --users=realm_file
-fi
+KEYCLOAK_REALM_DIR="./${EXPORT_DIR}" \
+  docker compose -f "${COMPOSE_FILE}" run --rm \
+  keycloak export --dir=/opt/keycloak/data/export --realm=bluecore --users=realm_file
 
 # Check result
 if [ $? -eq 0 ]; then
