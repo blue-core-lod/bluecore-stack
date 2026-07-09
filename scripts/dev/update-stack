@@ -135,6 +135,8 @@ LOCAL_BLUECORE_MODELS_DIR, LOCAL_MARVA_DIR, and LOCAL_SINOPIA_DIR.
 Behavior:
   - With --install, clone any missing sibling repositories into the expected
     directory structure and report whether the required repos are installed.
+    Also seeds bluecore-stack's own .env from
+    scripts/dev/env-templates/bluecore-stack.env when it is missing.
     For every repo (newly cloned or already present) that has a template in
     scripts/dev/env-templates/<repo>.env, generate the repo's .env from that
     template when it is missing. Existing .env files are never overwritten;
@@ -254,6 +256,31 @@ ensure_repo_env() {
   run cp "$template" "$target" || return 1
   env_generated=$((env_generated + 1))
   env_generated_repos+=("$name")
+}
+
+# Seed bluecore-stack's own .env from its template when missing. Unlike the
+# siblings, the stack is the repo we run from (not cloned), so it isn't in the
+# repos list — seed it explicitly. Uses a fixed template name so it works
+# regardless of the directory the stack was checked out into.
+ensure_stack_env() {
+  local template="$ENV_TEMPLATE_DIR/bluecore-stack.env"
+  local target="$ROOT_DIR/.env"
+
+  echo
+  info "==> bluecore-stack"
+
+  [[ -f "$template" ]] || { warn "    .env: no template at ${template#"$ROOT_DIR"/}; skipping"; return 0; }
+
+  if [[ -f "$target" ]]; then
+    ok "    .env: already present"
+    env_present_repos+=("bluecore-stack")
+    return 0
+  fi
+
+  info "    .env: generating from template (${template#"$ROOT_DIR"/})"
+  run cp "$template" "$target" || return 1
+  env_generated=$((env_generated + 1))
+  env_generated_repos+=("bluecore-stack")
 }
 
 install_repo_if_missing() {
@@ -497,6 +524,7 @@ update_repo() {
 
 if [[ "$install_missing" == "1" && "$check_only" != "1" ]]; then
   info "Installing missing Blue Core sibling repositories"
+  ensure_stack_env || { err "    failed: seeding bluecore-stack .env"; failed=$((failed + 1)); failed_repos+=("bluecore-stack"); }
 elif [[ "$check_only" == "1" ]]; then
   info "Checking Blue Core sibling repositories for new base-branch changes"
 else
