@@ -20,7 +20,6 @@ DATABASE_USERNAME=airflow
 DATABASE_PASSWORD=airflow
 DATABASE_HOSTNAME=postgres
 DATABASE_PORT=5432
-DATABASE_URL=postgresql+psycopg2://airflow:airflow@postgres/bluecore
 
 ###########################
 ## Airflow Configuration ##
