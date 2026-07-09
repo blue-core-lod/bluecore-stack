@@ -28,14 +28,14 @@ Production runs against an **external** Postgres (the `compose.yaml` stack has n
 builds **every** service's DB connection -> bc_api, all Airflow services, and Keycloak — from these four variables, which
 default to `airflow` / `airflow` / `postgres` / `5432` when unset. **Add them to `.env`:**
 
+> Both compose files build **every** DB connection from the four vars below:
+
 | Variable | Default (if unset) | Change to |
 |---|---|---|
 | `DATABASE_USERNAME` | `airflow` | Your external DB user |
 | `DATABASE_PASSWORD` | `airflow` | Your external DB password |
 | `DATABASE_HOSTNAME` | `postgres` | Your external DB host |
 | `DATABASE_PORT` | `5432` | Your external DB port |
-
-> Both compose files build the DB connection from the four vars above
 
 ---
 
@@ -53,11 +53,28 @@ Move every browser-facing URL from `localhost` to the public HTTPS origin
 | `KC_HOSTNAME_STRICT` | `false` | `true` |
 | `MARVA_REDIRECT_BASE` | `http://localhost/marva/` | `https://bcld.info/marva/` |
 | `BLUECORE_STACK_KEYCLOAK_REDIRECT_URI` | `http://localhost/marva/util/auth/callback` | `https://bcld.info/marva/util/auth/callback` |
+| `MARVA_BASE_URL` | `http://localhost/marva/` | `https://bcld.info/marva/` |
+| `SINOPIA_BASE_URL` | `http://localhost/sinopia/` | `https://bcld.info/sinopia/` |
 | `CORS_ORIGIN` | `*` | Lock to the public origin, e.g. `https://bcld.info` |
 
 > ✅ Leave the internal service URLs as-is — `KEYCLOAK_INTERNAL_URL`,
 > `KEYCLOAK_MIDDLEWARE_BASE`, and `AIRFLOW_INTERNAL_URL` use Docker service names
 > and don't change between environments.
+
+---
+
+## 🔑 Keycloak realm configuration (deployed environments)
+
+On the server, `compose.yaml` imports/exports the realm from the directory named
+by `KEYCLOAK_REALM_DIR` (a git-ignored dir holding real secrets):
+
+| Variable | Default | Set to |
+|---|---|---|
+| `KEYCLOAK_REALM_DIR` | `./keycloak-export/production` | Leave default for production; set `./keycloak-export/staging` on a staging server |
+
+Seed `<KEYCLOAK_REALM_DIR>/bluecore-realm.json` **before** the first `docker compose -f compose.yaml up`, 
+and update its public redirect URIs / web origins for the deploy host. 
+Full steps: [updating-keycloak-credentials.md](updating-keycloak-credentials.md).
 
 ---
 
