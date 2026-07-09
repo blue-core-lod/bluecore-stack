@@ -745,7 +745,7 @@
     "alwaysDisplayInConsole" : false,
     "clientAuthenticatorType" : "client-secret",
     "secret" : "KIu8gWa8rtjlT0Zl7zkNzsObFZGJ2IsJ",
-    "redirectUris" : [ "http://localhost/workflows/auth/oauth-authorized/keycloak", "http://localhost/workflows/oauth-authorized/keycloak" ],
+    "redirectUris" : [ "http://localhost/workflows/auth/oauth-authorized/keycloak", "http://localhost/workflows/oauth-authorized/keycloak", "http://localhost/workflows/auth/login_callback" ],
     "webOrigins" : [ "/*" ],
     "notBefore" : 0,
     "bearerOnly" : false,
