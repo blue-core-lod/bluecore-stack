@@ -59,6 +59,14 @@ muted() {
   echo "${dim}$*${reset}"
 }
 
+# Ask a yes/no question on the terminal. Defaults to "no".
+prompt_yes_no() {
+  local prompt="$1" reply
+  printf '%s%s [y/N] %s' "$yellow" "$prompt" "$reset" > /dev/tty
+  read -r reply < /dev/tty || return 1
+  [[ "$reply" == [Yy] || "$reply" == [Yy][Ee][Ss] ]]
+}
+
 colorize_command_output() {
   local line
   local stats
@@ -145,7 +153,10 @@ Behavior:
     then merge or rebase that base branch into the current branch.
   - With --check, fetch origin and report whether each current branch has new
     base-branch changes available. No local branch is updated.
-  - Repos with tracked uncommitted changes are skipped.
+  - Repos with tracked uncommitted changes prompt to stash the changes, update,
+    then restore them via `git stash pop`; a bare Enter skips.
+    If the update or the pop conflicts, your changes are preserved in the stash.
+    Non-interactive runs (no terminal, e.g. CI) skip such repos as before.
   - Untracked files do not block updates.
 
 Default strategy for non-base branches: --merge.
@@ -426,6 +437,43 @@ check_repo() {
   report_local_changes "$repo_dir" "$name" "$branch"
 }
 
+# Core update for a repo already known to exist and be on a named branch:
+# fast-forward pull when on the base branch, otherwise merge/rebase the base
+# branch into the current branch.
+perform_repo_update() {
+  local repo_dir="$1"
+  local base_branch="$2"
+  local branch="$3"
+  local name="$4"
+
+  if [[ "$branch" == "$base_branch" ]]; then
+    info "    updating $base_branch from origin/$base_branch"
+    run git -C "$repo_dir" pull --ff-only origin "$base_branch" || return 1
+    report_ahead_of_ref "$repo_dir" "$name" "$branch" "origin/$base_branch" "origin/$base_branch"
+    return 0
+  fi
+
+  info "    updating local $base_branch from origin/$base_branch"
+  ensure_base_branch "$repo_dir" "$base_branch" || return 1
+
+  if [[ "$strategy" == "rebase" ]]; then
+    info "    rebasing $branch onto $base_branch"
+    if ! run git -C "$repo_dir" rebase "$base_branch"; then
+      rebase_conflict_hint "$repo_dir" "$branch" "$base_branch"
+      return 1
+    fi
+  else
+    info "    merging $base_branch into $branch"
+    if ! run git -C "$repo_dir" merge --no-edit "$base_branch"; then
+      merge_conflict_hint "$repo_dir" "$branch" "$base_branch"
+      return 1
+    fi
+  fi
+
+  report_ahead_of_ref "$repo_dir" "$name" "$branch" "$base_branch" "$base_branch"
+  return 0
+}
+
 update_repo() {
   local repo_dir="$1"
   local base_branch="$2"
@@ -454,45 +502,85 @@ update_repo() {
     return 0
   fi
 
+  # If the worktree has tracked uncommitted changes, offer (interactively) to
+  # stash them, update, then restore. A bare Enter answers "no" (skip)
+  local did_stash=0
   if is_dirty "$repo_dir"; then
-    warn "    ⚠️  skipped: worktree has tracked uncommitted changes"
-    skipped=$((skipped + 1))
-    skipped_repos+=("$name")
-    return 0
+    if [[ ! -t 0 || ! -e /dev/tty ]]; then
+      warn "    ⚠️  skipped: worktree has tracked uncommitted changes (non-interactive)"
+      skipped=$((skipped + 1))
+      skipped_repos+=("$name")
+      return 0
+    fi
+    if prompt_yes_no "$name has tracked uncommitted changes. Stash them, update from $base_branch, then restore?"; then
+      info "    stashing tracked changes"
+      if ! run git -C "$repo_dir" stash push -m "update-stack: WIP before $base_branch update"; then
+        err "    stash failed; skipping $name"
+        skipped=$((skipped + 1))
+        skipped_repos+=("$name")
+        return 0
+      fi
+      did_stash=1
+    else
+      warn "    ⚠️  skipped: keeping local changes as-is"
+      skipped=$((skipped + 1))
+      skipped_repos+=("$name")
+      return 0
+    fi
   fi
 
   muted "    current branch: $branch"
   muted "    base branch:    $base_branch"
 
-  if [[ "$branch" == "$base_branch" ]]; then
-    info "    updating $base_branch from origin/$base_branch"
-    run git -C "$repo_dir" pull --ff-only origin "$base_branch" || return 1
-    report_ahead_of_ref "$repo_dir" "$name" "$branch" "origin/$base_branch" "origin/$base_branch"
-    updated=$((updated + 1))
-    updated_repos+=("$name:$base_branch")
-    return 0
+  # Remember where we started so we can undo the update if restoring the stashed changes conflicts.
+  local pre_update_sha
+  pre_update_sha="$(git -C "$repo_dir" rev-parse HEAD 2>/dev/null || echo "")"
+
+  local update_status=0
+  perform_repo_update "$repo_dir" "$base_branch" "$branch" "$name" || update_status=$?
+
+  # Restore stashed work (if we stashed). On a failed update, first abort any half-finished
+  # merge/rebase so the pop lands cleanly back on the dev's WIP.
+  if [[ "$did_stash" == "1" ]]; then
+    if [[ "$update_status" != "0" ]]; then
+      warn "    update failed — reverting so your stashed changes can be restored"
+      run git -C "$repo_dir" merge --abort >/dev/null 2>&1 || true
+      run git -C "$repo_dir" rebase --abort >/dev/null 2>&1 || true
+    fi
+    info "    restoring stashed changes (git stash pop)"
+    if ! run git -C "$repo_dir" stash pop; then
+      warn "    ⚠️  restoring your changes conflicts with the $base_branch update."
+      # The conflicted pop left the stash intact. Offer to undo the update and
+      # re-apply the stash onto the original commit, where it applies cleanly.
+      if [[ -n "$pre_update_sha" ]] \
+        && prompt_yes_no "Undo the $base_branch update and restore your original changes? (the update will NOT be applied)"; then
+        info "    undoing update (git reset --hard $pre_update_sha) and re-applying your changes"
+        if run git -C "$repo_dir" reset --hard "$pre_update_sha" >/dev/null 2>&1 \
+          && run git -C "$repo_dir" stash pop >/dev/null 2>&1; then
+          ok "    ✅ reverted: $name is back to its pre-update state with your changes restored (update NOT applied)."
+          skipped=$((skipped + 1))
+          skipped_repos+=("$name (reverted — update skipped, changes restored)")
+          return 0
+        fi
+        err "    could not undo automatically; falling back to manual steps."
+      fi
+      err "    💥 left with conflicts to resolve manually in $repo_dir:"
+      err "       • Your changes are preserved in the stash:  git -C \"$repo_dir\" stash list"
+      err "       • To undo the update and restore them:       git -C \"$repo_dir\" reset --hard $pre_update_sha && git -C \"$repo_dir\" stash pop"
+      err "       • Or keep the update, resolve the markers, then:  git -C \"$repo_dir\" stash drop"
+      failed=$((failed + 1))
+      failed_repos+=("$name (stash conflict)")
+      return 0
+    fi
   fi
 
-  info "    updating local $base_branch from origin/$base_branch"
-  ensure_base_branch "$repo_dir" "$base_branch" || return 1
-
-  if [[ "$strategy" == "rebase" ]]; then
-    info "    rebasing $branch onto $base_branch"
-    if ! run git -C "$repo_dir" rebase "$base_branch"; then
-      rebase_conflict_hint "$repo_dir" "$branch" "$base_branch"
-      return 1
-    fi
-  else
-    info "    merging $base_branch into $branch"
-    if ! run git -C "$repo_dir" merge --no-edit "$base_branch"; then
-      merge_conflict_hint "$repo_dir" "$branch" "$base_branch"
-      return 1
-    fi
+  if [[ "$update_status" != "0" ]]; then
+    # perform_repo_update already printed a conflict hint (non-stash path).
+    return 1
   fi
 
   updated=$((updated + 1))
   updated_repos+=("$name:$branch")
-  report_ahead_of_ref "$repo_dir" "$name" "$branch" "$base_branch" "$base_branch"
 }
 
 if [[ "$install_missing" == "1" && "$check_only" != "1" ]]; then
