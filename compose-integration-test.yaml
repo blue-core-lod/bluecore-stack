@@ -40,6 +40,10 @@ services:
     environment:
       # Cap JVM heap for local integration to avoid host OOM kills.
       JAVA_OPTS_KC_HEAP: "-XX:MaxRAMPercentage=30 -XX:MinRAMPercentage=10"
+      # Pin the bootstrap admin to a fixed value (overrides the .env value injected
+      # via env_file) so it matches the kcadm login in integration-tests.sh
+      KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN:-admin}
+      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-gracious-professed}
     healthcheck:
       test: [ "CMD-SHELL", "exec 3<> /dev/tcp/127.0.0.1/9000; echo -e 'GET /health/ready HTTP/1.1\\r\\nhost: http://localhost\\r\\nConnection: close\\r\\n\\r\\n' >&3; if [ $? -eq 0 ]; then echo 'Healthcheck Successful'; exit 0; else echo 'Healthcheck Failed'; exit 1; fi;" ]
       interval: 10s
@@ -60,6 +64,11 @@ services:
     environment:
       DATABASE_URL: postgresql+psycopg2://airflow:airflow@postgres:5432/${INTEGRATION_DB_NAME:-bluecore_integration_test}
       UV_CACHE_DIR: /tmp/uv-cache
+      # bc_api authenticates to Airflow's /auth/token with these to trigger DAGs.
+      # Override the .env value (injected via env_file) so it matches the FAB user
+      # airflow-init creates. Interpolated from the value the test runner exports.
+      AIRFLOW_WWW_USER_USERNAME: ${AIRFLOW_WWW_USER_USERNAME:-airflow}
+      AIRFLOW_WWW_USER_PASSWORD: ${AIRFLOW_WWW_USER_PASSWORD:-airflow}
     ports:
       - "${INTEGRATION_API_PORT:-18100}:8100"
 

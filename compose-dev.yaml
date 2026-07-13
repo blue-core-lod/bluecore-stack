@@ -5,8 +5,8 @@ services:
   postgres:
     image: postgres:16
     environment:
-      POSTGRES_USER: airflow
-      POSTGRES_PASSWORD: airflow
+      POSTGRES_USER: ${DATABASE_USERNAME:-airflow}
+      POSTGRES_PASSWORD: ${DATABASE_PASSWORD:-airflow}
       POSTGRES_MULTIPLE_DB: airflow, keycloak, bluecore
     ports:
       - ${POSTGRES_HOST_PORT:-5432}:5432
@@ -14,7 +14,7 @@ services:
       - postgres-db-volume:/var/lib/postgresql/data
       - ./scripts/init-multi-postgres-dbs.sh:/docker-entrypoint-initdb.d/init-multi-postgres-dbs.sh
     healthcheck:
-      test: ["CMD", "pg_isready", "-U", "airflow"]
+      test: ["CMD", "pg_isready", "-U", "${DATABASE_USERNAME:-airflow}"]
       interval: 10s
       retries: 5
       start_period: 5s
@@ -27,6 +27,11 @@ services:
       - 8443
     env_file:
       - ./.env
+    environment:
+      # Keycloak's DB connection is derived from the shared DATABASE_* vars
+      KC_DB_URL: jdbc:postgresql://${DATABASE_HOSTNAME:-postgres}:${DATABASE_PORT:-5432}/keycloak
+      KC_DB_USERNAME: ${DATABASE_USERNAME:-airflow}
+      KC_DB_PASSWORD: ${DATABASE_PASSWORD:-airflow}
     command:
       - start-dev
       - --import-realm
@@ -39,8 +44,10 @@ services:
       postgres:
         condition: service_healthy
     volumes:
-      - ./keycloak-export/bluecore-realm.json:/opt/keycloak/data/import/realm.json
-      - ./keycloak-export/:/opt/keycloak/data/export
+      # The committed development realm lives in its own folder. Mount the whole
+      # dir (not a single file) KEYCLOAK_REALM_DIR defaults to development here.
+      - ${KEYCLOAK_REALM_DIR:-./keycloak-export/development}:/opt/keycloak/data/import
+      - ${KEYCLOAK_REALM_DIR:-./keycloak-export/development}:/opt/keycloak/data/export
 
   nginx:
     image: nginx:1.27.4-alpine

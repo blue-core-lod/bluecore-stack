@@ -59,6 +59,19 @@ PYTHON_BIN="${PYTHON_BIN:-$DEFAULT_TERRAFORM_VENV_PYTHON}"
 ###########################
 COMPOSE_PROJECT_NAME="${COMPOSE_PROJECT_NAME:-terraform_integration}"
 INTEGRATION_DB_NAME="${INTEGRATION_DB_NAME:-bluecore_integration_test}"
+
+# Pin the DB credentials for test runs so they are independent of whatever DATABASE_* a developer has in their local .env.
+export DATABASE_USERNAME="${DATABASE_USERNAME_TEST_OVERRIDE:-airflow}"
+export DATABASE_PASSWORD="${DATABASE_PASSWORD_TEST_OVERRIDE:-airflow}"
+export DATABASE_HOSTNAME="${DATABASE_HOSTNAME_TEST_OVERRIDE:-postgres}"
+export DATABASE_PORT="${DATABASE_PORT_TEST_OVERRIDE:-5432}"
+# Pin Keycloak credentials for tests
+export KEYCLOAK_ADMIN="${KEYCLOAK_ADMIN_TEST_OVERRIDE:-admin}"
+export KEYCLOAK_ADMIN_PASSWORD="${KEYCLOAK_ADMIN_TEST_PASSWORD_OVERRIDE:-gracious-professed}"
+# Pin the Airflow admin user for tests.
+export AIRFLOW_WWW_USER_USERNAME="${AIRFLOW_WWW_USER_USERNAME_TEST_OVERRIDE:-airflow}"
+export AIRFLOW_WWW_USER_PASSWORD="${AIRFLOW_WWW_USER_PASSWORD_TEST_OVERRIDE:-airflow}"
+
 MODELS_DIR="${MODELS_DIR:-$ROOT_DIR/../bluecore-models}"
 MODELS_SOURCE_LABEL="${MODELS_SOURCE_LABEL:-bluecore-models@auto}"
 POSTGRES_READY_TIMEOUT_SECONDS="${POSTGRES_READY_TIMEOUT_SECONDS:-120}"

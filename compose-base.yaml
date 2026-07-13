@@ -24,6 +24,8 @@ x-airflow-common:
     AIRFLOW__WEBSERVER__ALLOWED_PAYLOAD_SIZE: 250.0
     AIRFLOW_VAR_SINOPIA_ENV: ${AIRFLOW_VAR_SINOPIA_ENV:-dev}
     AIRFLOW_VAR_BLUECORE_URL: ${BLUECORE_URL:-https://bcld.info}
+    KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN:-admin}
+    KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-gracious-professed}
     # yamllint disable rule:line-length
     # Use simple http server on scheduler for health checks
     # See https://airflow.apache.org/docs/apache-airflow/stable/administration-and-deployment/logging-monitoring/check-health.html#scheduler-health-check-server
@@ -289,8 +291,8 @@ services:
       <<: *airflow-common-env
       _AIRFLOW_DB_MIGRATE: 'true'
       _AIRFLOW_WWW_USER_CREATE: 'true'
-      _AIRFLOW_WWW_USER_USERNAME: ${_AIRFLOW_WWW_USER_USERNAME:-airflow}
-      _AIRFLOW_WWW_USER_PASSWORD: ${_AIRFLOW_WWW_USER_PASSWORD:-airflow}
+      _AIRFLOW_WWW_USER_USERNAME: ${AIRFLOW_WWW_USER_USERNAME:-airflow}
+      _AIRFLOW_WWW_USER_PASSWORD: ${AIRFLOW_WWW_USER_PASSWORD:-airflow}
       _PIP_ADDITIONAL_REQUIREMENTS: ''
     env_file:
       - ./.env

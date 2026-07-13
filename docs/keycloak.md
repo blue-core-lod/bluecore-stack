@@ -1,6 +1,6 @@
 # 🔐 Keycloak
 
-The local Keycloak container imports the Blue Core realm from `keycloak-export/bluecore-realm.json` when it starts.
+The local Keycloak container imports the Blue Core realm from `keycloak-export/development/bluecore-realm.json` when it starts.
 
 ## 🌬️ Airflow Login
 
@@ -45,7 +45,7 @@ Use the master realm admin account:
 
 ## 💾 Export Realm Configuration
 
-After changing the `bluecore` realm in the Keycloak UI, export the realm config back to `keycloak-export/bluecore-realm.json`.
+After changing the `bluecore` realm in the Keycloak UI, export the realm config back to `keycloak-export/development/bluecore-realm.json`.
 
 For local development:
 
@@ -53,10 +53,18 @@ For local development:
 ./scripts/export-keycloak-realm.sh
 ```
 
-For the deployed EC2 production layout:
+For deployed environments (staging or production):
 
 ```bash
+./scripts/export-keycloak-realm.sh --env=staging
 ./scripts/export-keycloak-realm.sh --env=production
 ```
 
-The production command writes to `/home/ubuntu/keycloak-export/bluecore-realm.json` through the production compose file.
+These write to `keycloak-export/staging/bluecore-realm.json` or `keycloak-export/production/bluecore-realm.json` — **git-ignored** directories so real secrets are never committed. On the server, `compose.yaml` imports the realm from the directory named by `KEYCLOAK_REALM_DIR` (defaults to `keycloak-export/production`).
+
+The export environment defaults to `development` when `--env` is omitted.
+
+## 🔑 Rotating credentials
+
+To change client secrets, user passwords, or the admin login and save them back
+to the realm export, see [updating-keycloak-credentials.md](updating-keycloak-credentials.md).
