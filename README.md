@@ -38,6 +38,7 @@ with live reload.
    ```text
    <bluecore-repos-directory>
      |-- bluecore-stack/
+     |     `-- nginx/toolbox/   <- graph-toolbox (Git submodule)
      |-- bluecore_api/
      |-- bluecore-workflows/
      |-- bluecore-models/
@@ -45,8 +46,10 @@ with live reload.
      |-- sinopia_editor/
    ```
    > 📝 Tip: You can run `./scripts/dev/update-stack --install` to quickly clone 
-   > any missing sibling repositories into the required default paths and seed each 
-   > one's local `.env` from `scripts/dev/env-templates/`. See [docs/env-templates.md ](docs/env-templates.md)
+   > any missing sibling repositories into the required default paths, initialize the 
+   > `graph-toolbox` submodule, and seed each repo's local `.env` (including this one's) 
+   > from `scripts/dev/env-templates/`. See [docs/env-templates.md](docs/env-templates.md) 
+   > and [docs/local-development.md](docs/local-development.md#-graph-toolbox-is-a-submodule-not-a-sibling).
 
    Then start the local-source stack:
 
@@ -87,7 +90,7 @@ with live reload.
 | Run local development stack | `./scripts/dev/run`                                                                                               |
 | Bring the stack down | `./scripts/dev/down` ([Local development](docs/local-development.md#-bring-the-stack-down))                       |
 | Run a subset | `./scripts/dev/run --sinopia` ([Local development](docs/local-development.md#run-the-stack))                      |
-| Keep sibling repos current | `./scripts/dev/update-stack` ([Local development](docs/local-development.md#keep-blue-core-repositories-current)) |
+| Keep sibling repos + submodule current | `./scripts/dev/update-stack` ([Local development](docs/local-development.md#-keep-blue-core-repositories-current)) |
 | Load sample or remote JSON-LD data | `./scripts/dev/load-data` (**Airflow running required**)                                                          |
 | Load Sinopia resource templates | `./scripts/dev/load-templates` ([Local development](docs/local-development.md#-load-resource-templates))            |
 | Run integration tests | `./scripts/test/integration-tests.sh`                                                                             |
