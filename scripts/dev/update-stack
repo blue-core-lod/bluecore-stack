@@ -135,10 +135,20 @@ Updates sibling Blue Core repositories:
   bluecore-workflows    base branch: main
   sinopia_editor        base branch: main
   marva_editor          base branch: bluecore-dev-mvp
+  toolbox (graph-toolbox, submodule at nginx/toolbox)
+                        base branch: main
 
 Repository paths default to the standard sibling layout and can be overridden
 with LOCAL_BLUECORE_API_DIR, LOCAL_BLUECORE_WORKFLOWS_DIR,
-LOCAL_BLUECORE_MODELS_DIR, LOCAL_MARVA_DIR, and LOCAL_SINOPIA_DIR.
+LOCAL_BLUECORE_MODELS_DIR, LOCAL_MARVA_DIR, LOCAL_SINOPIA_DIR, and
+LOCAL_GRAPH_TOOLBOX_DIR.
+
+graph-toolbox is a submodule rather than a sibling checkout, so it differs:
+  - --install initializes it (git submodule update --init), never clones it.
+  - --check compares the pinned commit against origin/main, and an
+    update checks out the base branch before pulling.
+  - Updating it moves bluecore-stack's recorded submodule pointer; commit that
+    bump here or the next `git submodule update` discards the update.
 
 Behavior:
   - With --install, clone any missing sibling repositories into the expected
@@ -205,6 +215,7 @@ repos=(
   "$LOCAL_BLUECORE_WORKFLOWS_DIR:main:https://github.com/blue-core-lod/bluecore-workflows.git"
   "$LOCAL_SINOPIA_DIR:main:https://github.com/blue-core-lod/sinopia_editor.git"
   "$LOCAL_MARVA_DIR:bluecore-dev-mvp:https://github.com/blue-core-lod/marva_editor.git"
+  "$LOCAL_GRAPH_TOOLBOX_DIR:main:https://github.com/blue-core-lod/graph-toolbox.git"
 )
 
 updated=0
@@ -224,6 +235,7 @@ behind_repos=()
 ahead_repos=()
 diverged_repos=()
 local_changes_repos=()
+submodule_bumped_repos=()
 
 merge_conflict_hint() {
   local repo_dir="$1"
@@ -294,6 +306,24 @@ ensure_stack_env() {
   env_generated_repos+=("bluecore-stack")
 }
 
+# True for any checked-out Git worktree. Submodules keep a .git *file* pointing
+# at the superproject's .git/modules/..., not a .git directory, so a plain
+# [[ -d "$repo_dir/.git" ]] test misses them.
+is_git_repo() {
+  [[ -e "$1/.git" ]] && git -C "$1" rev-parse --git-dir >/dev/null 2>&1
+}
+
+# True when repo_dir is registered as a submodule of bluecore-stack
+# (graph-toolbox at nginx/toolbox). Submodules are populated with
+# `git submodule update --init`, never cloned into place.
+is_submodule() {
+  local repo_dir="$1" rel
+  rel="${repo_dir#"$ROOT_DIR"/}"
+  [[ "$rel" != "$repo_dir" ]] || return 1
+  git -C "$ROOT_DIR" config --file "$ROOT_DIR/.gitmodules" --get-regexp '^submodule\..*\.path$' 2>/dev/null \
+    | awk '{print $2}' | grep -qx "$rel"
+}
+
 install_repo_if_missing() {
   local repo_dir="$1"
   local base_branch="$2"
@@ -303,7 +333,7 @@ install_repo_if_missing() {
   local name
   name="$(basename "$repo_dir")"
 
-  if [[ -d "$repo_dir/.git" ]]; then
+  if is_git_repo "$repo_dir"; then
     if [[ "$install_missing" == "1" ]]; then
       ok "    installed: repository already present"
       present_repos+=("$name")
@@ -313,6 +343,18 @@ install_repo_if_missing() {
   fi
 
   if [[ "$install_missing" != "1" ]]; then
+    return 0
+  fi
+
+  # A submodule's directory exists but is empty until initialized, so check for
+  # the submodule before the "exists but is not a Git repository" guard below.
+  if is_submodule "$repo_dir"; then
+    info "    initializing submodule: $name"
+    muted "    submodule path: ${repo_dir#"$ROOT_DIR"/}"
+    run git -C "$ROOT_DIR" submodule update --init --recursive "$repo_dir" || return 1
+    installed=$((installed + 1))
+    installed_repos+=("$name")
+    ensure_repo_env "$repo_dir" || return 1
     return 0
   fi
 
@@ -419,20 +461,28 @@ check_repo() {
 
   install_repo_if_missing "$repo_dir" "$base_branch" "$repo_url" || return 1
 
-  if [[ ! -d "$repo_dir/.git" ]]; then
+  if ! is_git_repo "$repo_dir"; then
     warn "    skipped: repository not found at $repo_dir"
     skipped=$((skipped + 1))
     skipped_repos+=("$name")
     return 0
   fi
 
-  local branch
+  local branch compare_ref
   branch="$(current_branch "$repo_dir")"
+  compare_ref="$branch"
   if [[ -z "$branch" ]]; then
-    warn "    skipped: detached HEAD"
-    skipped=$((skipped + 1))
-    skipped_repos+=("$name")
-    return 0
+    # A submodule pinned at a commit is detached by design.
+    # It can silently drift behind latest updates, so report it rather than skip it.
+    if is_submodule "$repo_dir"; then
+      branch="detached at $(git -C "$repo_dir" rev-parse --short HEAD) (submodule pin)"
+      compare_ref="HEAD"
+    else
+      warn "    skipped: detached HEAD"
+      skipped=$((skipped + 1))
+      skipped_repos+=("$name")
+      return 0
+    fi
   fi
 
   muted "    current branch: $branch"
@@ -443,7 +493,7 @@ check_repo() {
 
   local remote_ref="origin/$base_branch"
   local ahead behind
-  read -r ahead behind < <(git -C "$repo_dir" rev-list --left-right --count "$branch...$remote_ref")
+  read -r ahead behind < <(git -C "$repo_dir" rev-list --left-right --count "$compare_ref...$remote_ref")
 
   if [[ "$behind" == "0" && "$ahead" == "0" ]]; then
     ok "    ✅ current: no new base-branch changes"
@@ -513,7 +563,7 @@ update_repo() {
 
   install_repo_if_missing "$repo_dir" "$base_branch" "$repo_url" || return 1
 
-  if [[ ! -d "$repo_dir/.git" ]]; then
+  if ! is_git_repo "$repo_dir"; then
     warn "    skipped: repository not found at $repo_dir"
     skipped=$((skipped + 1))
     skipped_repos+=("$name")
@@ -521,12 +571,24 @@ update_repo() {
   fi
 
   local branch
+  # Set for a submodule that starts detached: Move off of pinned commit.
+  local pinned_sha=""
   branch="$(current_branch "$repo_dir")"
   if [[ -z "$branch" ]]; then
-    warn "    skipped: detached HEAD"
-    skipped=$((skipped + 1))
-    skipped_repos+=("$name")
-    return 0
+    # Submodules set to their pinned commit by default. Check the base
+    # branch out so the normal ff-only pull below applies
+    if is_submodule "$repo_dir"; then
+      pinned_sha="$(git -C "$repo_dir" rev-parse HEAD)"
+      muted "    detached at $(git -C "$repo_dir" rev-parse --short HEAD) (submodule pin)"
+      info "    checking out $base_branch"
+      run git -C "$repo_dir" checkout "$base_branch" || return 1
+      branch="$(current_branch "$repo_dir")"
+    else
+      warn "    skipped: detached HEAD"
+      skipped=$((skipped + 1))
+      skipped_repos+=("$name")
+      return 0
+    fi
   fi
 
   # If the worktree has tracked uncommitted changes, offer (interactively) to
@@ -606,6 +668,29 @@ update_repo() {
     return 1
   fi
 
+  # A pull that says "Already up to date" only speaks for the pull from main. When the repo
+  # started detached at a submodule pin, the checkout above may be what advanced
+  # HEAD, so report against the pin rather than against the pull.
+  if [[ -n "$pinned_sha" ]]; then
+    local advanced
+    advanced="$(git -C "$repo_dir" rev-list --count "$pinned_sha..HEAD" 2>/dev/null || echo 0)"
+    if [[ "$advanced" != "0" ]]; then
+      ok "    ⏩ Updated: HEAD moved $advanced commit(s) forward, from pinned ${pinned_sha:0:7} to $base_branch"
+    else
+      ok "    ✅ current: $base_branch matches the pinned commit ${pinned_sha:0:7}"
+    fi
+  fi
+
+  # Moving a submodule's HEAD changes the commit bluecore-stack has recorded.
+  if is_submodule "$repo_dir" && ! git -C "$ROOT_DIR" diff --quiet -- "$repo_dir" 2>/dev/null; then
+    ok "    ⚠️  Graph ToolBox submodule updated with most recent changes in 'origin/main'"
+    warn "    📌 Important: bluecore-stack now shows an unstaged change to ${repo_dir#"$ROOT_DIR"/}"
+    warn "       that needs to be commited for the submodule to point to the latest version"
+    warn "       of Graph ToolBox in bluecore-stack."
+    muted "       Commit changes when you're ready to bump to the latest version of toolbox"
+    submodule_bumped_repos+=("$name")
+  fi
+
   updated=$((updated + 1))
   updated_repos+=("$name:$branch")
 }
@@ -672,6 +757,9 @@ else
   info "Update complete: $updated branch(es) updated, $skipped skipped, $failed failed."
   if [[ "${#updated_repos[@]}" -gt 0 ]]; then
     ok "Updated: ${updated_repos[*]}"
+  fi
+  if [[ "${#submodule_bumped_repos[@]}" -gt 0 ]]; then
+    warn "Unstaged submodule pointer in bluecore-stack (yours to commit or discard): ${submodule_bumped_repos[*]}"
   fi
   if [[ "${#ahead_repos[@]}" -gt 0 ]]; then
     warn "Ahead only: ${ahead_repos[*]}"
