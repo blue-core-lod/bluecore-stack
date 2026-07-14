@@ -12,8 +12,13 @@
 : "${LOCAL_MARVA_DIR:=$ROOT_DIR/../marva_editor}"
 : "${LOCAL_SINOPIA_DIR:=$ROOT_DIR/../sinopia_editor}"
 
+# graph-toolbox is a submodule of this repo, not a sibling checkout, so it lives
+# under nginx/ rather than alongside bluecore-stack.
+: "${LOCAL_GRAPH_TOOLBOX_DIR:=$ROOT_DIR/nginx/toolbox}"
+
 export LOCAL_BLUECORE_API_DIR
 export LOCAL_BLUECORE_WORKFLOWS_DIR
 export LOCAL_BLUECORE_MODELS_DIR
 export LOCAL_MARVA_DIR
 export LOCAL_SINOPIA_DIR
+export LOCAL_GRAPH_TOOLBOX_DIR
