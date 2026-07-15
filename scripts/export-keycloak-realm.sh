@@ -57,6 +57,9 @@ echo -e "${BLUE}Target path: ${EXPORT_DIR}/bluecore-realm.json${NC}"
 # import/export volume via KEYCLOAK_REALM_DIR.
 mkdir -p "${EXPORT_DIR}"
 
+# disable pgBouncer database port for export to avoid connection issues
+unset DATABASE_PORT
+
 KEYCLOAK_REALM_DIR="./${EXPORT_DIR}" \
   docker compose -f "${COMPOSE_FILE}" run --user root --rm \
   keycloak export --dir=/opt/keycloak/data/export --realm=bluecore --users=realm_file
