@@ -375,7 +375,7 @@
         },
         {
           "id": "6e85ccd8-b314-418c-9714-e54589c962fb",
-          "name": "airflow_public",
+          "name": "Public",
           "description": "Pubic permissions",
           "composite": false,
           "clientRole": true,
@@ -656,7 +656,7 @@
       ],
       "clientRoles": {
         "bluecore_workflows": [
-          "airflow_public"
+          "Public"
         ]
       },
       "notBefore": 0,
