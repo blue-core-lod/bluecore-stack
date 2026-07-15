@@ -16,7 +16,7 @@ Change these to strong, unique values.
 | Variable | `.env` default | Change to |
 |---|---|---|
 | `CR_PAT` | `YOUR_GITHUB_TOKEN` | GHCR token with `read:packages` (for private image pulls) |
-| `AIRFLOW_WWW_USER_USERNAME` / `AIRFLOW_WWW_USER_PASSWORD` | `airflow` / `airflow` | Strong, unique Airflow admin login |
+| `AIRFLOW_WWW_USER_USERNAME` / `AIRFLOW_WWW_USER_PASSWORD` | `developer` / `123456` | Strong, unique Airflow admin login |
 | `KEYCLOAK_ADMIN` / `KEYCLOAK_ADMIN_PASSWORD` | `admin` / `gracious-professed` | Strong, unique Keycloak master-admin login |
 | `AIRFLOW_KEYCLOAK_CLIENT_SECRET` | `KIu8gWa8rtjlT0Zl7zkNzsObFZGJ2IsJ` | **Regenerate** in Keycloak; keep in sync with the realm export |
 
@@ -82,4 +82,10 @@ Full steps: [updating-keycloak-credentials.md](updating-keycloak-credentials.md)
 
 `AIRFLOW_KEYCLOAK_CLIENT_SECRET` is committed to the repo (in `.env` and in `keycloak-export/development/bluecore-realm.json`), 
 so treat it as **compromised**: regenerate the `bluecore_workflows` client secret in Keycloak and update both the `.env` 
-value and the realm export. Never reuse a credential that has been in version control. See [updating-keycloak-credentials.md](updating-keycloak-credentials.md).
+value and the realm export.
+
+`AIRFLOW_WWW_USER_USERNAME` / `AIRFLOW_WWW_USER_PASSWORD` is committed to the repo (in `.env` and in `keycloak-export/development/bluecore-realm.json`),
+so treat those as **compromised**: change the user credentials in Keycloak and update both the `.env` value and re-export the `bluecore` realm settings
+"Partial export" to include groups, roles, and clients. Upload the exported file to the server (do not commit to github repository).
+
+🚨 Never reuse a credential that has been in version control. See [updating-keycloak-credentials.md](updating-keycloak-credentials.md).
