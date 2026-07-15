@@ -58,7 +58,7 @@ echo -e "${BLUE}Target path: ${EXPORT_DIR}/bluecore-realm.json${NC}"
 mkdir -p "${EXPORT_DIR}"
 
 KEYCLOAK_REALM_DIR="./${EXPORT_DIR}" \
-  docker compose -f "${COMPOSE_FILE}" run --rm \
+  docker compose -f "${COMPOSE_FILE}" run --user root --rm \
   keycloak export --dir=/opt/keycloak/data/export --realm=bluecore --users=realm_file
 
 # Check result
