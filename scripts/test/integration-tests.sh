@@ -408,8 +408,8 @@ ensure_ci_bind_mount_permissions() {
     return 0
   fi
 
-  mkdir -p "$ROOT_DIR/logs" "$ROOT_DIR/uploads" "$ROOT_DIR/config"
-  chmod -R a+rwX "$ROOT_DIR/logs" "$ROOT_DIR/uploads" "$ROOT_DIR/config" || true
+  mkdir -p "$ROOT_DIR/logs" "$ROOT_DIR/uploads" "$ROOT_DIR/outputs" "$ROOT_DIR/config"
+  chmod -R a+rwX "$ROOT_DIR/logs" "$ROOT_DIR/uploads" "$ROOT_DIR/outputs" "$ROOT_DIR/config" || true
 }
 
 cleanup_milvus_bind_mount_data() {

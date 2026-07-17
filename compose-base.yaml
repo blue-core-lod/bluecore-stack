@@ -44,6 +44,7 @@ x-airflow-common:
   volumes:
     - ${AIRFLOW_PROJ_DIR:-.}/logs:/opt/airflow/logs
     - ${AIRFLOW_PROJ_DIR:-.}/uploads:/opt/airflow/uploads
+    - ${AIRFLOW_PROJ_DIR:-.}/outputs:/opt/airflow/outputs
     - ${AIRFLOW_PROJ_DIR:-.}/config:/opt/airflow/config
 
   user: "${AIRFLOW_UID:-50000}:0"
@@ -80,6 +81,7 @@ services:
       DATABASE_URL: postgresql+psycopg2://${DATABASE_USERNAME:-airflow}:${DATABASE_PASSWORD:-airflow}@${DATABASE_HOSTNAME:-postgres}:${DATABASE_PORT:-5432}/bluecore
     volumes:
        - ${AIRFLOW_PROJ_DIR:-.}/uploads:/bluecore_api/uploads
+       - ${AIRFLOW_PROJ_DIR:-.}/outputs:/bluecore_api/outputs
 
   sinopia:
     restart: always

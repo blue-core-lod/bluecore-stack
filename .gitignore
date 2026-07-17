@@ -4,6 +4,7 @@ samlapi_formauth.py
 *swp
 logs/*
 uploads/*
+outputs/*
 __pycache__/
 *.py[cod]
 tests/playwright/.venv/
