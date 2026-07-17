@@ -24,8 +24,8 @@ DATABASE_PORT=5432
 ###########################
 ## Airflow Configuration ##
 ###########################
-AIRFLOW_WWW_USER_USERNAME=airflow
-AIRFLOW_WWW_USER_PASSWORD=airflow
+AIRFLOW_WWW_USER_USERNAME=developer
+AIRFLOW_WWW_USER_PASSWORD=123456
 AIRFLOW_EXTERNAL_URL=http://localhost/workflows/
 AIRFLOW_INTERNAL_URL=http://airflow-apiserver:8080/workflows/
 AIRFLOW_PROJ_DIR=.
