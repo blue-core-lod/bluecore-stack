@@ -360,8 +360,8 @@ def config(pytestconfig: pytest.Config) -> IntegrationConfig:
         keycloak_client_secret=keycloak_client_secret,
         keycloak_username=os.getenv("INTEGRATION_KEYCLOAK_USERNAME", "developer"),
         keycloak_password=os.getenv("INTEGRATION_KEYCLOAK_PASSWORD", "123456"),
-        airflow_username=os.getenv("INTEGRATION_AIRFLOW_USERNAME", "airflow"),
-        airflow_password=os.getenv("INTEGRATION_AIRFLOW_PASSWORD", "airflow"),
+        airflow_username=os.getenv("INTEGRATION_AIRFLOW_USERNAME", "developer"),
+        airflow_password=os.getenv("INTEGRATION_AIRFLOW_PASSWORD", "123456"),
         keycloak_token_url=keycloak_token_url,
         airflow_token_url=airflow_token_url,
     )

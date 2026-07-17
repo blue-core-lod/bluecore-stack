@@ -8,7 +8,7 @@ x-airflow-common:
   environment:
     &airflow-common-env
     AIRFLOW__CORE__EXECUTOR: CeleryExecutor
-    AIRFLOW__CORE__AUTH_MANAGER: airflow.providers.fab.auth_manager.fab_auth_manager.FabAuthManager
+    AIRFLOW__CORE__AUTH_MANAGER: airflow.providers.keycloak.auth_manager.keycloak_auth_manager.KeycloakAuthManager
     AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://${DATABASE_USERNAME:-airflow}:${DATABASE_PASSWORD:-airflow}@${DATABASE_HOSTNAME:-postgres}:${DATABASE_PORT:-5432}/airflow
     AIRFLOW_CONN_BLUECORE_DB: postgresql+psycopg2://${DATABASE_USERNAME:-airflow}:${DATABASE_PASSWORD:-airflow}@${DATABASE_HOSTNAME:-postgres}:${DATABASE_PORT:-5432}/bluecore
     AIRFLOW__CELERY__RESULT_BACKEND: db+postgresql://${DATABASE_USERNAME:-airflow}:${DATABASE_PASSWORD:-airflow}@${DATABASE_HOSTNAME:-postgres}:${DATABASE_PORT:-5432}/airflow
@@ -18,8 +18,11 @@ x-airflow-common:
     AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: 'true'
     AIRFLOW__CORE__LOAD_EXAMPLES: 'false'
     AIRFLOW__CORE__EXECUTION_API_SERVER_URL: 'http://airflow-apiserver:8080/workflows/execution/'
-    AIRFLOW__API__AUTH_BACKEND: 'airflow.api.auth.backend.basic_auth,airflow.api.auth.backend.session'
     AIRFLOW__API__BASE_URL: ${AIRFLOW_EXTERNAL_URL:-http://localhost/workflows}
+    AIRFLOW__KEYCLOAK_AUTH_MANAGER__CLIENT_ID: ${AIRFLOW_KEYCLOAK_CLIENT_ID:-bluecore_workflows}
+    AIRFLOW__KEYCLOAK_AUTH_MANAGER__CLIENT_SECRET: ${AIRFLOW_KEYCLOAK_CLIENT_SECRET}
+    AIRFLOW__KEYCLOAK_AUTH_MANAGER__SERVER_URL: ${KEYCLOAK_INTERNAL_URL}
+    AIRFLOW__KEYCLOAK_AUTH_MANAGER__REALM: ${KEYCLOAK_REALM:-bluecore}
     AIRFLOW__WEBSERVER__SHOW_TRIGGER_FORM_IF_NO_PARAMS: 'true'
     AIRFLOW__WEBSERVER__ALLOWED_PAYLOAD_SIZE: 250.0
     AIRFLOW_VAR_SINOPIA_ENV: ${AIRFLOW_VAR_SINOPIA_ENV:-dev}
@@ -290,9 +293,6 @@ services:
     environment:
       <<: *airflow-common-env
       _AIRFLOW_DB_MIGRATE: 'true'
-      _AIRFLOW_WWW_USER_CREATE: 'true'
-      _AIRFLOW_WWW_USER_USERNAME: ${AIRFLOW_WWW_USER_USERNAME:-airflow}
-      _AIRFLOW_WWW_USER_PASSWORD: ${AIRFLOW_WWW_USER_PASSWORD:-airflow}
       _PIP_ADDITIONAL_REQUIREMENTS: ''
     env_file:
       - ./.env

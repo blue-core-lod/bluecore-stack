@@ -263,8 +263,16 @@
         "attributes" : { }
       } ],
       "bluecore_workflows" : [ {
+        "id" : "30dbd63e-ad82-46b1-a1d5-6369f917039b",
+        "name" : "SuperAdmin",
+        "description" : "Airflow super-admin role for Keycloak auth manager bootstrap",
+        "composite" : false,
+        "clientRole" : true,
+        "containerId" : "42a30c61-4264-491c-9f62-a5b73485ec85",
+        "attributes" : { }
+      }, {
         "id" : "0525e7a7-f287-4270-b8e1-4e765530be18",
-        "name" : "airflow_op",
+        "name" : "Op",
         "description" : "Op permissions",
         "composite" : false,
         "clientRole" : true,
@@ -280,7 +288,7 @@
         "attributes" : { }
       }, {
         "id" : "8a2d1f37-4d88-41c9-8694-4ab78bca2b54",
-        "name" : "airflow_admin",
+        "name" : "Admin",
         "description" : "",
         "composite" : false,
         "clientRole" : true,
@@ -288,7 +296,7 @@
         "attributes" : { }
       }, {
         "id" : "c888752b-30a2-4241-8711-26e9c4e72e50",
-        "name" : "airflow_viewer",
+        "name" : "Viewer",
         "description" : "Viewer permissions",
         "composite" : false,
         "clientRole" : true,
@@ -296,7 +304,7 @@
         "attributes" : { }
       }, {
         "id" : "6d43d813-1610-4368-b74c-cd5e356879db",
-        "name" : "airflow_user",
+        "name" : "User",
         "description" : "User permissions",
         "composite" : false,
         "clientRole" : true,
@@ -304,8 +312,15 @@
         "attributes" : { }
       }, {
         "id" : "6e85ccd8-b314-418c-9714-e54589c962fb",
-        "name" : "airflow_public",
+        "name" : "Public",
         "description" : "Pubic permissions",
+        "composite" : false,
+        "clientRole" : true,
+        "containerId" : "42a30c61-4264-491c-9f62-a5b73485ec85",
+        "attributes" : { }
+      }, {
+        "id" : "383af2db-3b98-48e1-b818-3d6f34677b33",
+        "name" : "uma_protection",
         "composite" : false,
         "clientRole" : true,
         "containerId" : "42a30c61-4264-491c-9f62-a5b73485ec85",
@@ -472,7 +487,7 @@
     "requiredActions" : [ ],
     "realmRoles" : [ "default-roles-bluecore", "create", "update" ],
     "clientRoles" : {
-      "bluecore_workflows" : [ "update", "airflow_admin", "create" ]
+      "bluecore_workflows" : [ "update", "Admin", "create" ]
     },
     "notBefore" : 0,
     "groups" : [ ]
@@ -498,7 +513,7 @@
     "requiredActions" : [ ],
     "realmRoles" : [ "default-roles-bluecore" ],
     "clientRoles" : {
-      "bluecore_workflows" : [ "airflow_op" ]
+      "bluecore_workflows" : [ "Op" ]
     },
     "notBefore" : 0,
     "groups" : [ ]
@@ -524,7 +539,7 @@
     "requiredActions" : [ ],
     "realmRoles" : [ "default-roles-bluecore" ],
     "clientRoles" : {
-      "bluecore_workflows" : [ "airflow_public" ]
+      "bluecore_workflows" : [ "Public" ]
     },
     "notBefore" : 0,
     "groups" : [ ]
@@ -550,7 +565,7 @@
     "requiredActions" : [ ],
     "realmRoles" : [ "default-roles-bluecore" ],
     "clientRoles" : {
-      "bluecore_workflows" : [ "airflow_user" ]
+      "bluecore_workflows" : [ "User" ]
     },
     "notBefore" : 0,
     "groups" : [ ]
@@ -576,7 +591,24 @@
     "requiredActions" : [ ],
     "realmRoles" : [ "default-roles-bluecore" ],
     "clientRoles" : {
-      "bluecore_workflows" : [ "airflow_viewer" ]
+      "bluecore_workflows" : [ "Viewer" ]
+    },
+    "notBefore" : 0,
+    "groups" : [ ]
+  }, {
+    "id" : "6b3fafe4-0477-405b-b0c9-da7be5145c2a",
+    "username" : "service-account-bluecore_workflows",
+    "emailVerified" : false,
+    "createdTimestamp" : 1784137251208,
+    "enabled" : true,
+    "totp" : false,
+    "serviceAccountClientId" : "bluecore_workflows",
+    "credentials" : [ ],
+    "disableableCredentialTypes" : [ ],
+    "requiredActions" : [ ],
+    "realmRoles" : [ "default-roles-bluecore" ],
+    "clientRoles" : {
+      "bluecore_workflows" : [ "uma_protection" ]
     },
     "notBefore" : 0,
     "groups" : [ ]
@@ -704,7 +736,7 @@
     "enabled" : true,
     "alwaysDisplayInConsole" : false,
     "clientAuthenticatorType" : "client-secret",
-    "redirectUris" : [ "http://localhost/marva/util/auth/callback", "http://localhost/api/oauth-authorized/keycloak", "http://localhost:8080/oauth-authorized/keycloak", "http://localhost/sinopia", "http://localhost/sinopia/*", "http://localhost:8888", "http://localhost:8888/*" ],
+    "redirectUris" : [ "http://localhost:8888/*", "http://localhost:8888", "http://localhost/sinopia", "http://localhost/marva/util/auth/callback", "http://localhost/api/oauth-authorized/keycloak", "http://localhost:8080/oauth-authorized/keycloak", "http://localhost/sinopia/*" ],
     "webOrigins" : [ "/*" ],
     "notBefore" : 0,
     "bearerOnly" : false,
@@ -745,7 +777,7 @@
     "alwaysDisplayInConsole" : false,
     "clientAuthenticatorType" : "client-secret",
     "secret" : "KIu8gWa8rtjlT0Zl7zkNzsObFZGJ2IsJ",
-    "redirectUris" : [ "http://localhost/workflows/auth/oauth-authorized/keycloak", "http://localhost/workflows/oauth-authorized/keycloak" ],
+    "redirectUris" : [ "http://localhost/workflows/auth/login_callback", "http://localhost/workflows/auth/oauth-authorized/keycloak", "http://localhost/workflows/oauth-authorized/keycloak" ],
     "webOrigins" : [ "/*" ],
     "notBefore" : 0,
     "bearerOnly" : false,
@@ -753,7 +785,8 @@
     "standardFlowEnabled" : true,
     "implicitFlowEnabled" : false,
     "directAccessGrantsEnabled" : true,
-    "serviceAccountsEnabled" : false,
+    "serviceAccountsEnabled" : true,
+    "authorizationServicesEnabled" : true,
     "publicClient" : false,
     "frontchannelLogout" : true,
     "protocol" : "openid-connect",
@@ -772,6 +805,21 @@
     "fullScopeAllowed" : true,
     "nodeReRegistrationTimeout" : -1,
     "protocolMappers" : [ {
+      "id" : "f7db35c4-0fad-4397-b049-61011ff06786",
+      "name" : "groups",
+      "protocol" : "openid-connect",
+      "protocolMapper" : "oidc-group-membership-mapper",
+      "consentRequired" : false,
+      "config" : {
+        "full.path" : "false",
+        "userinfo.token.claim" : "false",
+        "multivalued" : "true",
+        "id.token.claim" : "false",
+        "access.token.claim" : "true",
+        "claim.name" : "groups",
+        "jsonType.label" : "String"
+      }
+    }, {
       "id" : "3531de7e-c7d3-4a6e-ba2c-33ad62029584",
       "name" : "bluecore_workflows",
       "protocol" : "openid-connect",
@@ -786,8 +834,400 @@
         "userinfo.token.claim" : "true"
       }
     } ],
-    "defaultClientScopes" : [ "web-origins", "acr", "roles", "profile", "basic", "email" ],
-    "optionalClientScopes" : [ "address", "phone", "offline_access", "organization", "microprofile-jwt" ]
+    "defaultClientScopes" : [ "web-origins", "service_account", "acr", "roles", "profile", "basic", "email" ],
+    "optionalClientScopes" : [ "address", "phone", "offline_access", "organization", "microprofile-jwt" ],
+    "authorizationSettings" : {
+      "allowRemoteResourceManagement" : true,
+      "policyEnforcementMode" : "ENFORCING",
+      "resources" : [ {
+        "name" : "Asset",
+        "ownerManagedAccess" : false,
+        "attributes" : { },
+        "uris" : [ ],
+        "scopes" : [ {
+          "name" : "DELETE"
+        }, {
+          "name" : "GET"
+        }, {
+          "name" : "POST"
+        }, {
+          "name" : "LIST"
+        }, {
+          "name" : "PUT"
+        } ]
+      }, {
+        "name" : "AssetAlias",
+        "ownerManagedAccess" : false,
+        "attributes" : { },
+        "uris" : [ ],
+        "scopes" : [ {
+          "name" : "DELETE"
+        }, {
+          "name" : "GET"
+        }, {
+          "name" : "POST"
+        }, {
+          "name" : "LIST"
+        }, {
+          "name" : "PUT"
+        } ]
+      }, {
+        "name" : "Backfill",
+        "ownerManagedAccess" : false,
+        "attributes" : { },
+        "uris" : [ ],
+        "scopes" : [ {
+          "name" : "DELETE"
+        }, {
+          "name" : "GET"
+        }, {
+          "name" : "POST"
+        }, {
+          "name" : "LIST"
+        }, {
+          "name" : "PUT"
+        } ]
+      }, {
+        "name" : "Configuration",
+        "ownerManagedAccess" : false,
+        "attributes" : { },
+        "uris" : [ ],
+        "scopes" : [ {
+          "name" : "DELETE"
+        }, {
+          "name" : "GET"
+        }, {
+          "name" : "POST"
+        }, {
+          "name" : "LIST"
+        }, {
+          "name" : "PUT"
+        } ]
+      }, {
+        "name" : "Connection",
+        "ownerManagedAccess" : false,
+        "attributes" : { },
+        "uris" : [ ],
+        "scopes" : [ {
+          "name" : "DELETE"
+        }, {
+          "name" : "GET"
+        }, {
+          "name" : "POST"
+        }, {
+          "name" : "LIST"
+        }, {
+          "name" : "PUT"
+        } ]
+      }, {
+        "name" : "Custom",
+        "ownerManagedAccess" : false,
+        "attributes" : { },
+        "uris" : [ ],
+        "scopes" : [ {
+          "name" : "DELETE"
+        }, {
+          "name" : "GET"
+        }, {
+          "name" : "POST"
+        }, {
+          "name" : "LIST"
+        }, {
+          "name" : "PUT"
+        } ]
+      }, {
+        "name" : "Dag",
+        "ownerManagedAccess" : false,
+        "attributes" : { },
+        "uris" : [ ],
+        "scopes" : [ {
+          "name" : "DELETE"
+        }, {
+          "name" : "GET"
+        }, {
+          "name" : "POST"
+        }, {
+          "name" : "LIST"
+        }, {
+          "name" : "PUT"
+        } ]
+      }, {
+        "name" : "Menu",
+        "ownerManagedAccess" : false,
+        "attributes" : { },
+        "uris" : [ ],
+        "scopes" : [ {
+          "name" : "DELETE"
+        }, {
+          "name" : "GET"
+        }, {
+          "name" : "POST"
+        }, {
+          "name" : "LIST"
+        }, {
+          "name" : "PUT"
+        } ]
+      }, {
+        "name" : "Pool",
+        "ownerManagedAccess" : false,
+        "attributes" : { },
+        "uris" : [ ],
+        "scopes" : [ {
+          "name" : "DELETE"
+        }, {
+          "name" : "GET"
+        }, {
+          "name" : "POST"
+        }, {
+          "name" : "LIST"
+        }, {
+          "name" : "PUT"
+        } ]
+      }, {
+        "name" : "Team",
+        "ownerManagedAccess" : false,
+        "attributes" : { },
+        "uris" : [ ],
+        "scopes" : [ {
+          "name" : "DELETE"
+        }, {
+          "name" : "GET"
+        }, {
+          "name" : "POST"
+        }, {
+          "name" : "LIST"
+        }, {
+          "name" : "PUT"
+        } ]
+      }, {
+        "name" : "Variable",
+        "ownerManagedAccess" : false,
+        "attributes" : { },
+        "uris" : [ ],
+        "scopes" : [ {
+          "name" : "DELETE"
+        }, {
+          "name" : "GET"
+        }, {
+          "name" : "POST"
+        }, {
+          "name" : "LIST"
+        }, {
+          "name" : "PUT"
+        } ]
+      }, {
+        "name" : "View",
+        "ownerManagedAccess" : false,
+        "attributes" : { },
+        "uris" : [ ],
+        "scopes" : [ {
+          "name" : "DELETE"
+        }, {
+          "name" : "GET"
+        }, {
+          "name" : "POST"
+        }, {
+          "name" : "LIST"
+        }, {
+          "name" : "PUT"
+        } ]
+      }, {
+        "name" : "Required Actions",
+        "ownerManagedAccess" : false,
+        "attributes" : { },
+        "uris" : [ ],
+        "scopes" : [ {
+          "name" : "MENU"
+        } ]
+      }, {
+        "name" : "Assets",
+        "ownerManagedAccess" : false,
+        "attributes" : { },
+        "uris" : [ ],
+        "scopes" : [ {
+          "name" : "MENU"
+        } ]
+      }, {
+        "name" : "Audit Log",
+        "ownerManagedAccess" : false,
+        "attributes" : { },
+        "uris" : [ ],
+        "scopes" : [ {
+          "name" : "MENU"
+        } ]
+      }, {
+        "name" : "Config",
+        "ownerManagedAccess" : false,
+        "attributes" : { },
+        "uris" : [ ],
+        "scopes" : [ {
+          "name" : "MENU"
+        } ]
+      }, {
+        "name" : "Connections",
+        "ownerManagedAccess" : false,
+        "attributes" : { },
+        "uris" : [ ],
+        "scopes" : [ {
+          "name" : "MENU"
+        } ]
+      }, {
+        "name" : "Dags",
+        "ownerManagedAccess" : false,
+        "attributes" : { },
+        "uris" : [ ],
+        "scopes" : [ {
+          "name" : "MENU"
+        } ]
+      }, {
+        "name" : "Docs",
+        "ownerManagedAccess" : false,
+        "attributes" : { },
+        "uris" : [ ],
+        "scopes" : [ {
+          "name" : "MENU"
+        } ]
+      }, {
+        "name" : "Jobs",
+        "ownerManagedAccess" : false,
+        "attributes" : { },
+        "uris" : [ ],
+        "scopes" : [ {
+          "name" : "MENU"
+        } ]
+      }, {
+        "name" : "Plugins",
+        "ownerManagedAccess" : false,
+        "attributes" : { },
+        "uris" : [ ],
+        "scopes" : [ {
+          "name" : "MENU"
+        } ]
+      }, {
+        "name" : "Pools",
+        "ownerManagedAccess" : false,
+        "attributes" : { },
+        "uris" : [ ],
+        "scopes" : [ {
+          "name" : "MENU"
+        } ]
+      }, {
+        "name" : "Providers",
+        "ownerManagedAccess" : false,
+        "attributes" : { },
+        "uris" : [ ],
+        "scopes" : [ {
+          "name" : "MENU"
+        } ]
+      }, {
+        "name" : "Variables",
+        "ownerManagedAccess" : false,
+        "attributes" : { },
+        "uris" : [ ],
+        "scopes" : [ {
+          "name" : "MENU"
+        } ]
+      }, {
+        "name" : "XComs",
+        "ownerManagedAccess" : false,
+        "attributes" : { },
+        "uris" : [ ],
+        "scopes" : [ {
+          "name" : "MENU"
+        } ]
+      } ],
+      "policies" : [ {
+        "name" : "Allow-Viewer",
+        "type" : "role",
+        "logic" : "POSITIVE",
+        "decisionStrategy" : "UNANIMOUS",
+        "config" : {
+          "roles" : "[{\"id\":\"bluecore_workflows/Viewer\",\"required\":false}]"
+        }
+      }, {
+        "name" : "Allow-User",
+        "type" : "role",
+        "logic" : "POSITIVE",
+        "decisionStrategy" : "UNANIMOUS",
+        "config" : {
+          "roles" : "[{\"id\":\"bluecore_workflows/User\",\"required\":false}]"
+        }
+      }, {
+        "name" : "Allow-Op",
+        "type" : "role",
+        "logic" : "POSITIVE",
+        "decisionStrategy" : "UNANIMOUS",
+        "config" : {
+          "roles" : "[{\"id\":\"bluecore_workflows/Op\",\"required\":false}]"
+        }
+      }, {
+        "name" : "Allow-Admin",
+        "type" : "role",
+        "logic" : "POSITIVE",
+        "decisionStrategy" : "UNANIMOUS",
+        "config" : {
+          "roles" : "[{\"id\":\"bluecore_workflows/Admin\",\"required\":false}]"
+        }
+      }, {
+        "name" : "Allow-SuperAdmin",
+        "type" : "role",
+        "logic" : "POSITIVE",
+        "decisionStrategy" : "UNANIMOUS",
+        "config" : {
+          "roles" : "[{\"id\":\"bluecore_workflows/SuperAdmin\",\"required\":false}]"
+        }
+      }, {
+        "name" : "ReadOnly",
+        "type" : "scope",
+        "logic" : "POSITIVE",
+        "decisionStrategy" : "AFFIRMATIVE",
+        "config" : {
+          "scopes" : "[\"LIST\",\"GET\",\"MENU\"]",
+          "applyPolicies" : "[\"Allow-Op\",\"Allow-Viewer\",\"Allow-Admin\",\"Allow-User\"]"
+        }
+      }, {
+        "name" : "Admin",
+        "type" : "scope",
+        "logic" : "POSITIVE",
+        "decisionStrategy" : "AFFIRMATIVE",
+        "config" : {
+          "scopes" : "[\"LIST\",\"PUT\",\"POST\",\"GET\",\"DELETE\",\"MENU\"]",
+          "applyPolicies" : "[\"Allow-Admin\",\"Allow-SuperAdmin\"]"
+        }
+      }, {
+        "name" : "User",
+        "type" : "resource",
+        "logic" : "POSITIVE",
+        "decisionStrategy" : "UNANIMOUS",
+        "config" : {
+          "resources" : "[\"Dag\",\"Asset\"]",
+          "applyPolicies" : "[\"Allow-User\"]"
+        }
+      }, {
+        "name" : "Op",
+        "type" : "resource",
+        "logic" : "POSITIVE",
+        "decisionStrategy" : "UNANIMOUS",
+        "config" : {
+          "resources" : "[\"Backfill\",\"Pool\",\"Connection\",\"Variable\"]",
+          "applyPolicies" : "[\"Allow-Op\"]"
+        }
+      } ],
+      "scopes" : [ {
+        "name" : "GET"
+      }, {
+        "name" : "POST"
+      }, {
+        "name" : "PUT"
+      }, {
+        "name" : "DELETE"
+      }, {
+        "name" : "MENU"
+      }, {
+        "name" : "LIST"
+      } ],
+      "decisionStrategy" : "AFFIRMATIVE"
+    }
   }, {
     "id" : "add916fd-7160-49b9-8363-9f18d1d71f7d",
     "clientId" : "broker",
@@ -1549,7 +1989,7 @@
       "subType" : "authenticated",
       "subComponents" : { },
       "config" : {
-        "allowed-protocol-mapper-types" : [ "saml-user-attribute-mapper", "oidc-sha256-pairwise-sub-mapper", "oidc-address-mapper", "saml-role-list-mapper", "oidc-usermodel-property-mapper", "saml-user-property-mapper", "oidc-full-name-mapper", "oidc-usermodel-attribute-mapper" ]
+        "allowed-protocol-mapper-types" : [ "oidc-address-mapper", "saml-user-property-mapper", "saml-role-list-mapper", "oidc-full-name-mapper", "oidc-sha256-pairwise-sub-mapper", "oidc-usermodel-property-mapper", "saml-user-attribute-mapper", "oidc-usermodel-attribute-mapper" ]
       }
     }, {
       "id" : "4a3137ea-778d-437c-ab89-cea18d91032a",
@@ -1600,7 +2040,7 @@
       "subType" : "anonymous",
       "subComponents" : { },
       "config" : {
-        "allowed-protocol-mapper-types" : [ "saml-user-attribute-mapper", "saml-user-property-mapper", "oidc-address-mapper", "oidc-full-name-mapper", "saml-role-list-mapper", "oidc-usermodel-property-mapper", "oidc-sha256-pairwise-sub-mapper", "oidc-usermodel-attribute-mapper" ]
+        "allowed-protocol-mapper-types" : [ "oidc-usermodel-property-mapper", "oidc-usermodel-attribute-mapper", "saml-user-attribute-mapper", "oidc-address-mapper", "saml-user-property-mapper", "oidc-full-name-mapper", "oidc-sha256-pairwise-sub-mapper", "saml-role-list-mapper" ]
       }
     }, {
       "id" : "d2f2ccdf-b76c-4973-89c2-b852171a9d85",
