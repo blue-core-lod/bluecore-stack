@@ -67,8 +67,8 @@ services:
       # bc_api authenticates to Airflow's /auth/token with these to trigger DAGs.
       # Override the .env value (injected via env_file) so it matches the FAB user
       # airflow-init creates. Interpolated from the value the test runner exports.
-      AIRFLOW_WWW_USER_USERNAME: ${AIRFLOW_WWW_USER_USERNAME:-airflow}
-      AIRFLOW_WWW_USER_PASSWORD: ${AIRFLOW_WWW_USER_PASSWORD:-airflow}
+      AIRFLOW_WWW_USER_USERNAME: ${AIRFLOW_WWW_USER_USERNAME:-developer}
+      AIRFLOW_WWW_USER_PASSWORD: ${AIRFLOW_WWW_USER_PASSWORD:-123456}
     ports:
       - "${INTEGRATION_API_PORT:-18100}:8100"
 
