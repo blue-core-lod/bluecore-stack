@@ -81,7 +81,7 @@ services:
     volumes:
       - ${LOCAL_BLUECORE_API_DIR}/src:/bluecore_api/src
       - ${LOCAL_BLUECORE_API_DIR}/pyproject.toml:/bluecore_api/pyproject.toml:ro
-      - ${LOCAL_BLUECORE_API_DIR}/uv.lock:/bluecore_api/uv.lock:ro
+      - ${LOCAL_BLUECORE_API_DIR}/uv.lock:/bluecore_api/uv.lock
       - ${LOCAL_BLUECORE_MODELS_DIR}/src:/bluecore_models/src
 
   airflow-apiserver:     { <<: *workflows-local }
