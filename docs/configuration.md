@@ -5,6 +5,12 @@ Create a `.env` file in the `bluecore-stack` repository root before starting the
 The values below are local development defaults. Do not reuse these credentials for deployed environments.
 
 ```dotenv
+#####################
+## Bypass Keycloak ##
+#####################
+# Bypass keycloak auth for local development use cases.
+#DEVELOPER_MODE=true
+
 ###############################
 ## GitHub Container Registry ##
 ###############################
@@ -72,7 +78,8 @@ KC_PROXY=edge
 KC_HTTP_ENABLED=true
 KC_HTTP_RELATIVE_PATH=/keycloak/
 KC_LOG_LEVEL=INFO
-# KC_HOSTNAME=https://dev.bcld.info/keycloak
+KC_HOSTNAME=http://localhost/keycloak # local-dev
+# KC_HOSTNAME=https://dev.bcld.info/keycloak # deployed
 
 ####################################
 ## Marva Middleware Configuration ##
@@ -84,9 +91,9 @@ KEYCLOAK_MIDDLEWARE_BASE=http://marva-keycloak-middleware:9401/marva/util
 CORS_ORIGIN=*
 MARVA_UTIL_PATH=https://bibframe.org
 
-##############################################
+###############################################
 ## Blue Core API HTML Redirect Configuration ##
-##############################################
+###############################################
 # "Load to Marva/Sinopia" links in local Blue Core API HTML views.
 # Production paths are used when these are not present.
 MARVA_BASE_URL=http://localhost/marva/
