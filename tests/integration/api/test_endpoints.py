@@ -51,14 +51,12 @@ def test_openapi_contains_expected_bluecore_routes(
         "/export/": {"post"},
         "/instances/": {"post"},
         "/instances/{instance_uuid}": {"get", "put"},
-        "/instances/{instance_uuid}/embeddings": {"get", "post"},
         "/resources/": {"get", "post"},
         "/resources/{resource_id}": {"get", "put"},
         "/search/": {"get"},
         "/search/profile": {"get"},
         "/works/": {"post"},
         "/works/{work_uuid}": {"get", "put"},
-        "/works/{work_uuid}/embeddings": {"get", "post"},
     }
 
     for path, expected_methods in expected_methods_by_path.items():
@@ -146,12 +144,10 @@ def test_read_endpoint_expected_results(
         ),
         ("POST", "/instances/", {"json": {"data": "{}", "work_id": None}}, 401),
         ("PUT", "/instances/not-a-real-instance", {"json": {"data": "{}"}}, 401),
-        ("POST", "/instances/not-a-real-instance/embeddings", {}, 401),
         ("POST", "/resources/", {"json": {"data": "{}", "uri": "https://example.org"}}, 401),
         ("PUT", "/resources/999999", {"json": {"data": "{}"}}, 401),
         ("POST", "/works/", {"json": {"data": "{}"}}, 401),
         ("PUT", "/works/not-a-real-work", {"json": {"data": "{}"}}, 401),
-        ("POST", "/works/not-a-real-work/embeddings", {}, 401),
         (
             "POST",
             "/mcp",
@@ -165,12 +161,10 @@ def test_read_endpoint_expected_results(
         "export-post => 401",
         "instances-post => 401",
         "instances-put-missing => 401",
-        "instances-embeddings-post-missing => 401",
         "resources-post => 401",
         "resources-put-missing => 401",
         "works-post => 401",
         "works-put-missing => 401",
-        "works-embeddings-post-missing => 401",
         "mcp-post => 401",
     ],
 )
@@ -350,39 +344,6 @@ def test_write_endpoint_rejects_invalid_bearer_token(
         json={"uri": "https://example.org/batch.jsonld"},
     )
     assert_status(response, 401)
-
-
-@pytest.mark.parametrize(
-    "path",
-    [
-        "/works/00000000-0000-0000-0000-000000000001/embeddings",
-        "/instances/00000000-0000-0000-0000-000000000002/embeddings",
-    ],
-)
-# ========================================================================
-# Verify embedding read endpoints stay bounded when vector backend varies.
-# ------------------------------------------------------------------------
-def test_embedding_read_endpoints_behavior(
-    path: str,
-    config,
-    request_context: APIRequestContext,
-) -> None:
-    """
-    These endpoints depend on the vector backend. In the integration stack that
-    backend may be unavailable, which can surface as timeout/5xx. We assert the
-    endpoint exists and returns bounded behavior rather than hanging the suite.
-    """
-    try:
-        response = request_context.get(
-            f"{config.base_url}{path}",
-            timeout=max(1, int(min(config.request_timeout, 10.0) * 1000)),
-        )
-    except (PlaywrightTimeoutError, PlaywrightError):
-        pytest.xfail("Vector backend unavailable: embedding endpoint timed out")
-        return
-
-    # 404 when UUID is missing and backend is responsive; 5xx if dependency fails.
-    assert response.status in {404, 500, 502, 503, 504}, response.text()
 
 
 # ========================================================================
