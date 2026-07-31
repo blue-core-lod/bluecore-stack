@@ -2,6 +2,24 @@ include:
   - compose-base.yaml
 
 services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: ${DATABASE_USERNAME:-airflow}
+      POSTGRES_PASSWORD: ${DATABASE_PASSWORD:-airflow}
+      POSTGRES_MULTIPLE_DB: airflow, keycloak, bluecore
+    ports:
+      - ${POSTGRES_HOST_PORT:-5432}:5432
+    volumes:
+      - postgres-db-volume:/var/lib/postgresql/data
+      - ./scripts/init-multi-postgres-dbs.sh:/docker-entrypoint-initdb.d/init-multi-postgres-dbs.sh
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "${DATABASE_USERNAME:-airflow}"]
+      interval: 10s
+      retries: 5
+      start_period: 5s
+    restart: always
+
   keycloak:
     image: ${KEYCLOAK_IMAGE:-quay.io/keycloak/keycloak:26.1.2}
     expose:
@@ -45,3 +63,6 @@ services:
       - ./nginx/dev.conf:/etc/nginx/conf.d/env/server.conf
       - ./nginx:/var/www/html
     restart: always
+
+volumes:
+  postgres-db-volume:
