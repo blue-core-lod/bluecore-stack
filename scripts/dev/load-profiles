@@ -1,17 +1,18 @@
 #!/usr/bin/env bash
 #
-# load-templates — load Sinopia Resource Templates into the local bluecore stack
-# by pulling them from a remote bluecore instance.
+# load-profiles — load Sinopia Resource Templates know as "Profiles" in Blue
+# Core parlance into the local bluecore-stack by pulling them from a remote bluecore_api
+# instance.
 #
 # In the Blue Core API a Sinopia Resource Template is stored as a "Profile"
 # (JSON-LD with a node typed sinopia:ResourceTemplate), so this wraps the
 # bluecore CLI's `load-profiles` command.
 #
 # Usage:
-#   ./scripts/dev/load-templates                      prompt to pull from the default remote
-#   ./scripts/dev/load-templates <remote-host>        pull templates from a specific remote
-#   ./scripts/dev/load-templates --dry-run            fetch and report without writing
-#   ./scripts/dev/load-templates <remote-host> --dry-run
+#   ./scripts/dev/load-profiles                      prompt to pull from the default remote
+#   ./scripts/dev/load-profiles <remote-host>        pull templates from a specific remote
+#   ./scripts/dev/load-profiles --dry-run            fetch and report without writing
+#   ./scripts/dev/load-profiles <remote-host> --dry-run
 #
 # It fetches resource templates from <remote-host>/api/search/profile and POSTs
 # each to the local /api/profiles/, minting a local URI for each. Points the CLI
@@ -25,7 +26,7 @@
 
 set -euo pipefail
 
-# Remote bluecore instance resource templates are pulled from when none is supplied.
+# Remote bluecore_api instance resource templates are pulled from when none is supplied.
 DEFAULT_REMOTE_HOST="https://dev.bcld.info"
 
 if [ "$#" -eq 0 ]; then
