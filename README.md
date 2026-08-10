@@ -9,6 +9,36 @@ Application source code lives in sibling repositories such as `bluecore_api`,
 those services either from published container images or from local checkouts 
 with live reload.
 
+Blue Core is deployed in the following environments:
+- **[dev.bcld.info](https://dev.bcld.info)** Development environment running in 
+  AWS as an EC2 instance. Once the Stanford University Libraries on-premises 
+  development environment, currently hosted at [https://bluecore-dev.stanford.edu/](https://bluecore-dev.stanford.edu/) 
+  is ready, we will migrate the bcld.info top-level DNS to use the on-premises server and remove the 
+  AWS environment.
+- **[stage.bcld.info](https://stage.bcld.info)** Staging environment hosted at Stanford University
+  Libraries, currently being built but will be available early in Work Cycle two.
+- **[bcld.info](https://bcld.info)** Production Blue Core environment hosted at Stanford University
+  Libraries, will start to be be available in Work Cycle Three, with actual production use occurring
+  in the first half of 2027.
+
+## 📐 Blue Core Technical Stack
+```mermaid
+graph LR;
+    sinopia["Sinopia"] --> keycloak["Keycloak"]
+    marva["Marva"] --> keycloak
+    graph_toolkit["Graph Toolkit"] --> keycloak
+    notebooks@{ shape: docs, label: "Jupyter Notebooks"} --> keycloak
+
+    keycloak <--> api["Blue Core API"]
+    keycloak <--> workflows["Blue Core Workflows (Airflow)"]
+    api <--> db[("Blue Core Database")]
+    api --> workflows
+    workflows <--> db
+    api <--> ai_agents@{ shape: procs, label: "LLM AI Agents"}
+    ai_agents <--> workflows
+    ai_agents <--> db
+```
+
 ## 🚀 New Developer Quick Start
 
 > ⚠️ Requires **Docker Compose v5.1.4 or newer** (`docker compose version`).
