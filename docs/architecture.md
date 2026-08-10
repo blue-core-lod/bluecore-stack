@@ -6,7 +6,7 @@
 
 | File | Purpose |
 |---|---|
-| `compose-base.yaml` | Base Airflow cluster, Postgres, Redis, Milvus stack, Blue Core API, Sinopia, Marva, and Marva middleware |
+| `compose-base.yaml` | Base Airflow cluster, Postgres, Redis, Blue Core API, Sinopia, Marva, and Marva middleware |
 | `compose-dev.yaml` | Local development image stack with Keycloak using its `start-dev` command and Nginx on port 80 |
 | `compose-local-dev.yaml` | Local-source overlay with builds, bind mounts, live reload, and profile-gated optional services |
 | `compose.yaml` | Production variant with Keycloak `start`, Nginx on port 443, and absolute deployment paths |
@@ -22,9 +22,6 @@ Nginx (:80) -> bc_api (:8100)            -> Postgres (airflow/keycloak/bluecore 
             -> Keycloak (:8080)          -> Postgres (keycloak DB)
             -> Sinopia (:8004)
             -> Marva (:8080) + marva-keycloak-middleware (:9401)
-
-bc_api + Airflow workers  -> Milvus (:19530) [vector store]
-                          -> etcd + MinIO [Milvus backing services]
 ```
 
 Airflow uses CeleryExecutor with Redis as the broker. DAGs live in the workflows image at `/opt/airflow/ils_middleware/dags`.

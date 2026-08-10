@@ -120,15 +120,14 @@ No flag starts all local-source services. Subset flags are local-source only;
 ./scripts/dev/run --api              # core + API only
 ./scripts/dev/run --marva            # core + Marva + middleware
 ./scripts/dev/run --sinopia          # core + Sinopia
-./scripts/dev/run --airflow          # core + Airflow + Milvus
+./scripts/dev/run --airflow          # core + Airflow
 ./scripts/dev/run --marva --sinopia  # combine flags
 ./scripts/dev/run --image            # published images via compose-dev.yaml
 ```
 
 The first local-source run builds images and installs frontend dependencies, so 
 it can take a few minutes. Postgres, Keycloak, Nginx, and the Blue Core API 
-always start because the API runs database migrations. API and frontend-only 
-subset modes skip Milvus, so embedding endpoints need `--milvus`. Nginx tolerates 
+always start because the API runs database migrations. Nginx tolerates 
 absent services; disabled routes return `502`, and the landing page greys them out.
 
 ## 🔁 Live Reload Behavior
@@ -147,12 +146,12 @@ Use `scripts/dev/down` to tear everything down.
 
 ```bash
 ./scripts/dev/down            # stop & remove all containers + the network
-./scripts/dev/down --volumes  # also delete named volumes (Postgres/Milvus data)
+./scripts/dev/down --volumes  # also delete named volumes (Postgres data)
 ```
 
 Prefer it over a bare `docker compose down`. A plain `down` defaults to 
 `compose.yaml` (not `compose-local-dev.yaml`). It also skips profile-gated services 
-(`flower`, `airflow-cli`, `Milvus`, …), leaving them running and holding the 
+(`flower`, `airflow-cli`, …), leaving them running and holding the 
 network open (`Resource is still in use`). The wrapper ensures whole stack and 
 its network come down cleanly.
 
