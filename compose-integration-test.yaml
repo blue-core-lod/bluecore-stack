@@ -5,15 +5,6 @@ services:
 
   # Keep local integration runs lightweight;
   # for API->Workflows->Keycloak integration checks.
-  etcd:
-    profiles: ["integration-full"]
-
-  minio:
-    profiles: ["integration-full"]
-
-  milvus:
-    profiles: ["integration-full"]
-
   sinopia:
     profiles: ["integration-full"]
 

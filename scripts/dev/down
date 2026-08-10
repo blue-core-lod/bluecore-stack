@@ -4,7 +4,7 @@ set -euo pipefail
 ## Bring the local dev stack DOWN. Companion to scripts/dev/run.
 ##
 ##   ./scripts/dev/down            # stop & remove all containers + the network
-##   ./scripts/dev/down --volumes  # also delete named volumes (Postgres/Milvus data)
+##   ./scripts/dev/down --volumes  # also delete named volumes (Postgres data)
 ##
 ## Why a wrapper: a bare `docker compose down` misses things. It defaults to
 ## compose.yaml (not compose-local-dev.yaml)

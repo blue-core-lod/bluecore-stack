@@ -94,12 +94,8 @@ services:
   flower:                { <<: *workflows-local }
 
   # Heavy backing services are also profile-gated so a subset run can skip them.
-  # redis is only needed by Airflow; the Milvus stack (vector
-  # store) is used by Airflow workers and the API's embedding endpoints.
+  # redis is only needed by Airflow.
   redis:  { profiles: ["airflow"] }
-  etcd:   { profiles: ["milvus"] }
-  minio:  { profiles: ["milvus"] }
-  milvus: { profiles: ["milvus"] }
 
   # --- Frontends: run from local source on a node base image with the dev server (HMR) ---
   marva:

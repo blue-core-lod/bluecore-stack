@@ -13,7 +13,7 @@ set -euo pipefail
 ##   ./scripts/dev/run --api           # core + API only (no airflow)
 ##   ./scripts/dev/run --marva         # core + Marva (+ middleware)
 ##   ./scripts/dev/run --sinopia       # core + Sinopia
-##   ./scripts/dev/run --airflow       # core + Airflow (+ Milvus)
+##   ./scripts/dev/run --airflow       # core + Airflow
 ##   ./scripts/dev/run --marva --sinopia   # combine as needed
 ##
 ## No subset flag = everything. Subset flags are ignored in --image mode.
@@ -38,8 +38,7 @@ for arg in "$@"; do
     --api)     selected=1 ;;  # core only
     --marva)   selected=1; profiles+=("marva") ;;
     --sinopia) selected=1; profiles+=("sinopia") ;;
-    --airflow) selected=1; profiles+=("airflow" "milvus") ;;  # workers need Milvus
-    --milvus)  selected=1; profiles+=("milvus") ;;
+    --airflow) selected=1; profiles+=("airflow") ;;
     -h|--help) sed -n '3,21p' "${BASH_SOURCE[0]}"; exit 0 ;;
     *) echo "Unknown option: $arg" >&2; exit 1 ;;
   esac
@@ -54,7 +53,7 @@ fi
 
 # Local mode: select profiles. No subset flag => run everything.
 if [[ "$selected" == "0" ]]; then
-  export COMPOSE_PROFILES="airflow,milvus,sinopia,marva"
+  export COMPOSE_PROFILES="airflow,sinopia,marva"
 else
   export COMPOSE_PROFILES="$(IFS=,; echo "${profiles[*]:-}")"
 fi

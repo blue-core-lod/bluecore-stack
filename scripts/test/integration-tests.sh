@@ -18,7 +18,6 @@ user_set_pull_before_up="${PULL_BEFORE_UP+x}"
 user_set_keep_stack_up="${KEEP_STACK_UP+x}"
 user_set_remove_volumes_on_exit="${REMOVE_VOLUMES_ON_EXIT+x}"
 user_set_reset_stack_before_up="${RESET_STACK_BEFORE_UP+x}"
-user_set_clean_bind_mount_artifacts_on_exit="${CLEAN_BIND_MOUNT_ARTIFACTS_ON_EXIT+x}"
 user_set_compose_project_name="${COMPOSE_PROJECT_NAME+x}"
 user_set_build_local_dev_images="${BUILD_LOCAL_DEV_IMAGES+x}"
 user_set_build_local_bc_api_image="${BUILD_LOCAL_BC_API_IMAGE+x}"
@@ -37,16 +36,11 @@ PULL_BEFORE_UP="${PULL_BEFORE_UP:-1}"
 KEEP_STACK_UP="${KEEP_STACK_UP:-0}"
 REMOVE_VOLUMES_ON_EXIT="${REMOVE_VOLUMES_ON_EXIT:-1}"
 RESET_STACK_BEFORE_UP="${RESET_STACK_BEFORE_UP:-1}"
-CLEAN_BIND_MOUNT_ARTIFACTS_ON_EXIT="${CLEAN_BIND_MOUNT_ARTIFACTS_ON_EXIT:-1}"
 INTEGRATION_FULL_STACK="1"
 INTEGRATION_DEV_MODE="${INTEGRATION_DEV_MODE:-0}"
 INTEGRATION_DEV_MODE_STOP="${INTEGRATION_DEV_MODE_STOP:-0}"
 APPLY_MODELS_MIGRATIONS="${APPLY_MODELS_MIGRATIONS:-1}"
 COMPACT_LOG_OUTPUT="${COMPACT_LOG_OUTPUT:-1}"
-
-if [[ "${GITHUB_ACTIONS:-}" == "true" && -z "$user_set_clean_bind_mount_artifacts_on_exit" ]]; then
-  CLEAN_BIND_MOUNT_ARTIFACTS_ON_EXIT="0"
-fi
 
 ###########################
 ##   TOOLING & OUTPUT    ##
@@ -410,44 +404,6 @@ ensure_ci_bind_mount_permissions() {
 
   mkdir -p "$ROOT_DIR/logs" "$ROOT_DIR/uploads" "$ROOT_DIR/config"
   chmod -R a+rwX "$ROOT_DIR/logs" "$ROOT_DIR/uploads" "$ROOT_DIR/config" || true
-}
-
-cleanup_milvus_bind_mount_data() {
-  if [[ "${GITHUB_ACTIONS:-}" == "true" ]]; then
-    return 0
-  fi
-
-  if [[ "$CLEAN_BIND_MOUNT_ARTIFACTS_ON_EXIT" != "1" ]]; then
-    return 0
-  fi
-
-  local milvus_root="$ROOT_DIR/milvus"
-  local path
-  local removed_any="0"
-  local cleanup_paths=(
-    "$milvus_root/etcd"
-    "$milvus_root/minio"
-    "$milvus_root/milvus"
-  )
-
-  for path in "${cleanup_paths[@]}"; do
-    if [[ "$path" != "$milvus_root/"* ]]; then
-      echo "Skipping unsafe cleanup path: $path"
-      continue
-    fi
-    if [[ -L "$path" ]]; then
-      echo "Skipping symlink during cleanup: $path"
-      continue
-    fi
-    if [[ -e "$path" ]]; then
-      rm -rf "$path" || true
-      removed_any="1"
-    fi
-  done
-
-  if [[ "$removed_any" == "1" && "$COMPACT_LOG_OUTPUT" == "1" ]]; then
-    echo "Removed Milvus bind-mount artifacts under $milvus_root."
-  fi
 }
 
 is_workflows_service() {
@@ -828,9 +784,6 @@ if [[ "$INTEGRATION_DEV_MODE" == "1" ]]; then
   if [[ -z "$user_set_remove_volumes_on_exit" ]]; then
     REMOVE_VOLUMES_ON_EXIT="0"
   fi
-  if [[ -z "$user_set_clean_bind_mount_artifacts_on_exit" ]]; then
-    CLEAN_BIND_MOUNT_ARTIFACTS_ON_EXIT="0"
-  fi
 fi
 
 if [[ "$INTEGRATION_DEV_MODE" == "1" && "$BUILD_LOCAL_DEV_IMAGES" == "1" && -f "$ROOT_DIR/$DEV_LIVE_CODE_OVERRIDE_FILE" ]]; then
@@ -983,8 +936,6 @@ if [[ "$INTEGRATION_DEV_MODE_STOP" == "1" ]]; then
   echo "Compose project name: $COMPOSE_PROJECT_NAME"
   echo "Compose files: $COMPOSE_FILE, $LOCAL_OVERRIDE_FILE${ARM64_OVERRIDE_FILE:+, $ARM64_OVERRIDE_FILE}"
   run_compose_compact down -v --remove-orphans --rmi all || true
-  CLEAN_BIND_MOUNT_ARTIFACTS_ON_EXIT="1"
-  cleanup_milvus_bind_mount_data
   if [[ "$COMPACT_LOG_OUTPUT" == "1" ]]; then
     echo "Dev-mode stack cleanup complete."
   fi
@@ -1037,7 +988,6 @@ if [[ "$AUTO_START_STACK" == "1" ]]; then
   if [[ "$RESET_STACK_BEFORE_UP" == "1" ]]; then
     log_banner "🧹  Resetting integration stack state..."
     run_compose_compact down -v --remove-orphans >/dev/null 2>&1 || true
-    cleanup_milvus_bind_mount_data
   fi
   ensure_ci_bind_mount_permissions
   if [[ "$BUILD_LOCAL_DEV_IMAGES" == "1" ]]; then
@@ -1127,7 +1077,6 @@ cleanup() {
     log_banner "🧹 Stopping stack..."
     if [[ "$REMOVE_VOLUMES_ON_EXIT" == "1" ]]; then
       run_compose_compact down -v --remove-orphans
-      cleanup_milvus_bind_mount_data
     else
       run_compose_compact down
     fi
