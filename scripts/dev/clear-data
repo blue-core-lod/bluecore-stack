@@ -51,30 +51,65 @@ if [ -z "$pg_container" ]; then
   exit 1
 fi
 
-# Every resource lives in resource_base; works/instances/hubs/other_resources/
-# profiles are subtype tables keyed by the same id. Their foreign keys are all
-# NO ACTION, so children must go before parents.
+# The wipe is deliberately table-agnostic: it reads the table list out of
+# pg_tables at run time and truncates everything in the public schema except
+# alembic_version. New tables in bluecore-models are picked up automatically, so
+# this script does not have to track the schema.
+#
+# alembic_version is the one table that must survive, otherwise the API would
+# try to re-run every migration on its next start.
 #
 # Sequences are deliberately NOT reset, so ids are never reused across wipes and
 # stale references to old ids stay unambiguous.
+truncate_all="
+DO \$\$
+DECLARE
+  tbls text;
+BEGIN
+  SELECT string_agg(format('%I.%I', schemaname, tablename), ', ')
+    INTO tbls
+    FROM pg_tables
+   WHERE schemaname = 'public'
+     AND tablename <> 'alembic_version';
+  EXECUTE format('TRUNCATE TABLE %s CASCADE', tbls);
+END \$\$;
+"
+
 if [ "$keep_profiles" = "1" ]; then
   scope="all resources except profiles"
+  # Rather than deleting around the profiles (which means knowing every table
+  # and the order its foreign keys allow), stash the profile rows, wipe
+  # everything, and put them back. Only the tables we intentionally preserve are
+  # named, and the constraints stay enabled throughout, so a schema change can
+  # never leave orphans behind.
   sql="
 BEGIN;
-CREATE TEMP TABLE doomed ON COMMIT DROP AS
-  SELECT rb.id FROM resource_base rb
-  WHERE NOT EXISTS (SELECT 1 FROM profiles p WHERE p.id = rb.id);
 
-DELETE FROM resource_bibframe_classes WHERE resource_id IN (SELECT id FROM doomed);
-DELETE FROM bibframe_other_resources
-  WHERE bibframe_resource_id IN (SELECT id FROM doomed)
-     OR other_resource_id    IN (SELECT id FROM doomed);
-DELETE FROM versions         WHERE resource_id IN (SELECT id FROM doomed);
-DELETE FROM instances        WHERE id IN (SELECT id FROM doomed);
-DELETE FROM works            WHERE id IN (SELECT id FROM doomed);
-DELETE FROM hubs             WHERE id IN (SELECT id FROM doomed);
-DELETE FROM other_resources  WHERE id IN (SELECT id FROM doomed);
-DELETE FROM resource_base    WHERE id IN (SELECT id FROM doomed);
+CREATE TEMP TABLE kept_resource_base ON COMMIT DROP AS
+  SELECT rb.* FROM resource_base rb
+  WHERE EXISTS (SELECT 1 FROM profiles p WHERE p.id = rb.id);
+CREATE TEMP TABLE kept_profiles ON COMMIT DROP AS
+  SELECT * FROM profiles;
+
+$truncate_all
+
+-- Parents before children. The column list is read from the catalog because
+-- generated columns (resource_base.data_vector) cannot be inserted into.
+DO \$\$
+DECLARE
+  t    text;
+  cols text;
+BEGIN
+  FOREACH t IN ARRAY ARRAY['resource_base', 'profiles'] LOOP
+    SELECT string_agg(quote_ident(attname), ', ' ORDER BY attnum)
+      INTO cols
+      FROM pg_attribute
+     WHERE attrelid = t::regclass
+       AND attnum > 0 AND NOT attisdropped AND attgenerated = '';
+    EXECUTE format('INSERT INTO %I (%s) SELECT %s FROM kept_%I', t, cols, cols, t);
+  END LOOP;
+END \$\$;
+
 COMMIT;
 "
 else
@@ -82,20 +117,7 @@ else
   # bibframe_classes is a lazily-built vocabulary cache (bluecore_models
   # utils/db.py), not seeded reference data, so it is safe to drop and refills
   # itself on the next ingest.
-  sql="
-TRUNCATE TABLE
-  resource_bibframe_classes,
-  bibframe_other_resources,
-  versions,
-  instances,
-  works,
-  hubs,
-  other_resources,
-  profiles,
-  resource_base,
-  bibframe_classes
-CASCADE;
-"
+  sql="$truncate_all"
 fi
 
 echo "About to clear local dev data:"
