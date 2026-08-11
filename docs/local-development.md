@@ -191,3 +191,24 @@ local stack by pulling them from a remote bluecore instance.
 ./scripts/dev/load-profiles                        # prompt, then pull from the default remote
 ./scripts/dev/load-profiles https://dev.bcld.info  # pull from a specific remote
 ```
+
+## 🧹 Clearing Development Data
+
+`scripts/dev/clear-data` is the companion to `load-data`: it deletes loaded 
+Bibframe resources out of the local `bluecore` database so you can start from a 
+clean slate without restarting the stack.
+
+```bash
+./scripts/dev/clear-data                 # delete every resource
+./scripts/dev/clear-data --keep-profiles # keep the Sinopia Resource Templates
+./scripts/dev/clear-data --uploads       # also delete uploaded batch files in uploads/
+./scripts/dev/clear-data --yes           # skip the confirmation prompt
+```
+
+Useful for when you want to re-ingest the same batch without duplicate resources, 
+or when you are testing ingest behavior on an empty database.
+
+It only removes *data*. The schema and `alembic_version` survive, so the running 
+API does not re-migrate and the stack keeps serving. To throw away everything, 
+including the Keycloak realm, Airflow history, and the Postgres volume itself, 
+use `./scripts/dev/down --volumes` instead.

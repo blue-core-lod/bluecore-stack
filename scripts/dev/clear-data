@@ -1,0 +1,155 @@
+#!/usr/bin/env bash
+set -euo pipefail
+################################################################################
+## Wipe loaded Bibframe data out of the local dev stack. Companion to
+## scripts/dev/load-data.
+##
+##   ./scripts/dev/clear-data                 # delete all resources from the bluecore DB
+##   ./scripts/dev/clear-data --keep-profiles # keep Sinopia resource templates/profiles
+##   ./scripts/dev/clear-data --uploads       # also delete uploaded batch files in uploads/
+##   ./scripts/dev/clear-data --all           # DB + uploads
+##   ./scripts/dev/clear-data --yes           # skip the confirmation prompt
+##   ./scripts/dev/clear-data --dry-run       # print what would run, change nothing
+##
+## Only touches *data*: the schema and alembic_version are left alone, so the
+## stack keeps running and the API does not need to re-migrate. To throw away
+## everything including Keycloak, Airflow, and Postgres volumes, use
+## `./scripts/dev/down --volumes` instead.
+################################################################################
+
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+cd "$ROOT_DIR"
+
+keep_profiles=0
+clear_uploads=0
+assume_yes=0
+dry_run=0
+
+for arg in "$@"; do
+  case "$arg" in
+    --keep-profiles) keep_profiles=1 ;;
+    --uploads)       clear_uploads=1 ;;
+    --all)           clear_uploads=1 ;;
+    --yes|-y)        assume_yes=1 ;;
+    --dry-run)       dry_run=1 ;;
+    -h|--help)       sed -n '3,17p' "${BASH_SOURCE[0]}"; exit 0 ;;
+    *) echo "Unknown option: $arg" >&2; exit 1 ;;
+  esac
+done
+
+# Resolve the running Postgres container from its compose labels rather than a
+# hardcoded name, so this works whichever compose file brought the stack up.
+project="$(basename "$ROOT_DIR" | tr '[:upper:]' '[:lower:]')"
+pg_container="$(docker ps \
+  --filter "label=com.docker.compose.project=$project" \
+  --filter "label=com.docker.compose.service=postgres" \
+  --format '{{.Names}}' | head -1)"
+
+if [ -z "$pg_container" ]; then
+  echo "No running postgres container found for the '$project' stack." >&2
+  echo "Start it first: ./scripts/dev/run" >&2
+  exit 1
+fi
+
+# The wipe is deliberately table-agnostic: it reads the table list out of
+# pg_tables at run time and truncates everything in the public schema except
+# alembic_version. New tables in bluecore-models are picked up automatically, so
+# this script does not have to track the schema.
+#
+# alembic_version is the one table that must survive, otherwise the API would
+# try to re-run every migration on its next start.
+#
+# Sequences are deliberately NOT reset, so ids are never reused across wipes and
+# stale references to old ids stay unambiguous.
+truncate_all="
+DO \$\$
+DECLARE
+  tbls text;
+BEGIN
+  SELECT string_agg(format('%I.%I', schemaname, tablename), ', ')
+    INTO tbls
+    FROM pg_tables
+   WHERE schemaname = 'public'
+     AND tablename <> 'alembic_version';
+  EXECUTE format('TRUNCATE TABLE %s CASCADE', tbls);
+END \$\$;
+"
+
+if [ "$keep_profiles" = "1" ]; then
+  scope="all resources except profiles"
+  # Rather than deleting around the profiles (which means knowing every table
+  # and the order its foreign keys allow), stash the profile rows, wipe
+  # everything, and put them back. Only the tables we intentionally preserve are
+  # named, and the constraints stay enabled throughout, so a schema change can
+  # never leave orphans behind.
+  sql="
+BEGIN;
+
+CREATE TEMP TABLE kept_resource_base ON COMMIT DROP AS
+  SELECT rb.* FROM resource_base rb
+  WHERE EXISTS (SELECT 1 FROM profiles p WHERE p.id = rb.id);
+CREATE TEMP TABLE kept_profiles ON COMMIT DROP AS
+  SELECT * FROM profiles;
+
+$truncate_all
+
+-- Parents before children. The column list is read from the catalog because
+-- generated columns (resource_base.data_vector) cannot be inserted into.
+DO \$\$
+DECLARE
+  t    text;
+  cols text;
+BEGIN
+  FOREACH t IN ARRAY ARRAY['resource_base', 'profiles'] LOOP
+    SELECT string_agg(quote_ident(attname), ', ' ORDER BY attnum)
+      INTO cols
+      FROM pg_attribute
+     WHERE attrelid = t::regclass
+       AND attnum > 0 AND NOT attisdropped AND attgenerated = '';
+    EXECUTE format('INSERT INTO %I (%s) SELECT %s FROM kept_%I', t, cols, cols, t);
+  END LOOP;
+END \$\$;
+
+COMMIT;
+"
+else
+  scope="all resources, including profiles/resource templates"
+  # bibframe_classes is a lazily-built vocabulary cache (bluecore_models
+  # utils/db.py), not seeded reference data, so it is safe to drop and refills
+  # itself on the next ingest.
+  sql="$truncate_all"
+fi
+
+echo "About to clear local dev data:"
+echo "  • bluecore database ($pg_container): $scope"
+[ "$clear_uploads" = "1" ] && echo "  • uploads/: delete uploaded batch files"
+[ "$clear_uploads" = "0" ] && echo "  (uploads/ kept — add --uploads to delete them)"
+
+if [ "$dry_run" = "1" ]; then
+  echo
+  echo "DRY RUN — SQL that would run against the bluecore database:"
+  echo "$sql"
+  exit 0
+fi
+
+if [ "$assume_yes" != "1" ]; then
+  read -r -p "This cannot be undone. Continue? [y/N] " reply
+  case "${reply:-N}" in
+    [Yy]*) ;;
+    *) echo "Aborted." >&2; exit 0 ;;
+  esac
+fi
+
+# POSTGRES_USER/POSTGRES_PASSWORD are already set inside the container, so the
+# credentials never have to be duplicated here.
+echo "🧹 Clearing the bluecore database"
+docker exec -i "$pg_container" bash -c \
+  'PGPASSWORD="$POSTGRES_PASSWORD" psql -v ON_ERROR_STOP=1 -q -U "$POSTGRES_USER" -d bluecore -f -' <<<"$sql"
+
+if [ "$clear_uploads" = "1" ]; then
+  echo "🧹 Deleting uploaded batch files in uploads/"
+  # Batch uploads land in uploads/<uuid>/; keep the mounted uploads/ dir itself.
+  find "$ROOT_DIR/uploads" -mindepth 1 -maxdepth 1 -exec rm -rf {} +
+fi
+
+echo "✅ Done. Reload data with ./scripts/dev/load-data"
