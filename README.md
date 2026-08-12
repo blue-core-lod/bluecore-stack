@@ -113,6 +113,8 @@ graph LR;
 
    Airflow uses the imported Keycloak realm. Use username `developer` and password `123456`. See [docs/keycloak.md](docs/keycloak.md) for all local accounts and realm export steps.
 
+6. Additional training resources, including some helpful jupyter notebooks, are located in the [training](training) folder.
+
 ## 🛠️ Common Tasks
 
 | Task | Command or doc                                                                                                    |
