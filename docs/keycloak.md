@@ -28,6 +28,32 @@ Additional local users use the same password:
 | `dev_user` | Standard user |
 | `dev_viewer` | Viewer |
 
+## 📓 JupyterHub Login
+
+Open JupyterHub at:
+
+```text
+http://localhost/jupyter
+```
+
+Use the local development account:
+
+| Field | Value |
+|---|---|
+| Realm | `bluecore` |
+| Client | `bluecore_jupyterhub` |
+| Username | `developer` |
+| Password | `123456` |
+
+Any enabled realm user can currently log in (`Authenticator.allow_all = True` in
+`jupyterhub/jupyterhub_config.py`) — there's no role/group check restricting Hub access the way
+`bluecore_workflows` restricts Airflow menus. `JUPYTERHUB_ADMIN_USERS` (comma-separated usernames)
+grants JupyterHub's own admin UI (start/stop other users' servers), independent of Keycloak roles.
+
+If login fails with `client_not_found` on a Keycloak instance that predates this client, `--import-realm`
+skipped it because the `bluecore` realm already existed — see the JupyterHub section of
+[local-development.md](local-development.md) for the `kcadm.sh` command to add it by hand.
+
 ## 🛡️ Keycloak Admin Login
 
 Open Keycloak at:

@@ -35,6 +35,15 @@ command:
 
 **NOTE**: If using the included Jupyter notebooks, you'll need to have a local version of the Blue Core stack running at http://localhost.
 
+### Using the shared JupyterHub instead
+
+The stack also runs a multi-user [JupyterHub](https://jupyterhub.readthedocs.io/) at `http://localhost/jupyter`,
+authenticated with the same Keycloak `developer` / `123456` account. It spawns a per-user notebook server
+preloaded with this directory's notebooks and dependencies, so no local `uv sync` is required. See the
+JupyterHub section of [architecture.md](https://github.com/blue-core-lod/bluecore-stack/blob/main/docs/architecture.md)
+for how it's wired up. Inside a Hub-spawned notebook, reach other stack services by their Docker service name
+(e.g. `http://bc_api:8100`) rather than `http://localhost`.
+
 ## Editing in Sinopia
 1. Log into Sinopia 
 2. Search for an existing Work or Instance
