@@ -1,7 +1,7 @@
 services:
   postgres:
     environment:
-      POSTGRES_MULTIPLE_DB: airflow,keycloak,bluecore,${INTEGRATION_DB_NAME:-bluecore_integration_test}
+      POSTGRES_MULTIPLE_DB: airflow,keycloak,bluecore,jupyterhub,${INTEGRATION_DB_NAME:-bluecore_integration_test}
 
   # Keep local integration runs lightweight;
   # for API->Workflows->Keycloak integration checks.
@@ -16,6 +16,11 @@ services:
     environment:
       # Overrides MARVA_UTIL_PATH from .env instead of proxying to a live external upstream (e.g. bibframe.org).
       MARVA_UTIL_PATH: ""
+
+  # Not exercised by integration tests yet, and needs a Docker socket mount --
+  # keep it out of the lightweight default profile.
+  jupyterhub:
+    profiles: ["integration-full"]
 
   airflow-triggerer:
     profiles: ["disabled"]
