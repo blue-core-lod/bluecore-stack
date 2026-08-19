@@ -658,12 +658,24 @@ apply_bluecore_models_migrations() {
     }
   ' "$MODELS_DIR/alembic.ini" > "$temp_alembic_config"
 
-  if ! (cd "$MODELS_DIR" && UV_LINK_MODE="${UV_LINK_MODE:-copy}" uv run alembic -c "$temp_alembic_config" upgrade head); then
-    rm -f "$temp_alembic_config"
-    return 1
-  fi
+  # bc_api's own container entrypoint also runs "alembic upgrade head" against this
+  # same database on startup, racing this call to create the alembic_version table.
+  # Retry on failure: the loser of that race just needs to see the table the winner
+  # already created.
+  local attempt
+  for attempt in 1 2 3; do
+    if (cd "$MODELS_DIR" && UV_LINK_MODE="${UV_LINK_MODE:-copy}" uv run alembic -c "$temp_alembic_config" upgrade head); then
+      rm -f "$temp_alembic_config"
+      return 0
+    fi
+    if [[ "$attempt" -lt 3 ]]; then
+      echo "bluecore-models migration attempt $attempt failed; retrying..."
+      sleep 3
+    fi
+  done
 
   rm -f "$temp_alembic_config"
+  return 1
 }
 
 configure_keycloak_ssl_requirement() {
