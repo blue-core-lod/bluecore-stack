@@ -78,6 +78,9 @@ jobs:
     # Main job: prepare the stack inputs/images, then run bluecore-stack integration tests.
     # --------------------------------------------------------------------------
     runs-on: ubuntu-latest
+    # Bound the job so an infrastructure stall fails in minutes, not the
+    # 6-hour GitHub default.
+    timeout-minutes: 20
     permissions:
       # Allow reading repo contents and package images only.
       contents: read
@@ -130,6 +133,7 @@ jobs:
       # Create a test environment with tools used by this workflow.
       # ------------------------------------------------------------------------
       - name: Install test runtime
+        timeout-minutes: 20
         run: |
           set -euo pipefail
           venv_dir="${RUNNER_TEMP:-/tmp}/terraform-integration-venv"
@@ -137,9 +141,21 @@ jobs:
           . "$venv_dir/bin/activate"
           python -m pip install --upgrade pip
           python -m pip install uv pytest anyio pytest-base-url playwright pytest-playwright
-          # Chromium (plus its OS libraries) for the browser UI tests under
-          # tests/ui/*. Fall back to the browser-only install if apt deps fail.
-          python -m playwright install --with-deps chromium || python -m playwright install chromium
+          # Chromium for the browser UI tests under tests/ui/*.
+          #
+          # Deliberately NOT using `--with-deps` on the happy path: it shells out
+          # to apt as root, and the runner's azure.archive.ubuntu.com mirror
+          # stalls there indefinitely. ubuntu-24.04 runners already ship the
+          # shared libraries chromium needs (Chrome is preinstalled).
+          python -m playwright install chromium
+          # Prove the browser actually launches. Only if it does not do we pay
+          # for apt -- hardened with timeouts/retries so it fails fast.
+          if ! python -c "from playwright.sync_api import sync_playwright; p=sync_playwright().start(); b=p.chromium.launch(); b.close(); p.stop()"; then
+            echo "Chromium failed to launch; falling back to apt for OS deps."
+            printf 'Acquire::Retries "3";\nAcquire::http::Timeout "20";\nAcquire::https::Timeout "20";\nAcquire::ForceIPv4 "true";\n' \
+              | sudo tee /etc/apt/apt.conf.d/99-ci-timeouts >/dev/null
+            timeout 8m python -m playwright install --with-deps chromium
+          fi
           echo "TEST_RUNTIME_VENV=$venv_dir" >> "$GITHUB_ENV"
           echo "$venv_dir/bin" >> "$GITHUB_PATH"
 
