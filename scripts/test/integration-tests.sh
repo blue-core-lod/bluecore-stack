@@ -441,6 +441,14 @@ service_should_pull() {
   local service="$1"
   local image="$2"
 
+  # jupyterhub and its single-user image are always built locally; there is no
+  # registry counterpart to pull for either.
+  case "$service" in
+    jupyterhub|jupyterhub-singleuser)
+      return 1
+      ;;
+  esac
+
   if [[ "$BUILD_LOCAL_DEV_IMAGES" == "1" ]]; then
     if [[ "$BUILD_LOCAL_BC_API_IMAGE" == "1" && "$service" == "bc_api" && "$image" == "$effective_bluecore_api_image" ]]; then
       return 1
@@ -1025,22 +1033,18 @@ if [[ "$AUTO_START_STACK" == "1" ]]; then
   if [[ "$PULL_BEFORE_UP" == "1" ]]; then
     log_banner "🐳 Pulling images..."
     print_service_image_plan
-    if [[ "$BUILD_LOCAL_DEV_IMAGES" == "1" ]]; then
-      pull_services=()
-      if command -v mapfile >/dev/null 2>&1; then
-        mapfile -t pull_services < <(compose_services_to_pull)
-      else
-        while IFS= read -r service; do
-          [[ -n "$service" ]] && pull_services+=("$service")
-        done < <(compose_services_to_pull)
-      fi
-      if [[ ${#pull_services[@]} -gt 0 ]]; then
-        run_compose_compact pull "${pull_services[@]}"
-      else
-        echo "No remote services selected for pull."
-      fi
+    pull_services=()
+    if command -v mapfile >/dev/null 2>&1; then
+      mapfile -t pull_services < <(compose_services_to_pull)
     else
-      run_compose_compact pull
+      while IFS= read -r service; do
+        [[ -n "$service" ]] && pull_services+=("$service")
+      done < <(compose_services_to_pull)
+    fi
+    if [[ ${#pull_services[@]} -gt 0 ]]; then
+      run_compose_compact pull "${pull_services[@]}"
+    else
+      echo "No remote services selected for pull."
     fi
     if [[ "$COMPACT_LOG_OUTPUT" == "1" ]]; then
       echo "Images pulled."
