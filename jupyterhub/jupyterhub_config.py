@@ -102,3 +102,11 @@ c.DockerSpawner.notebook_dir = notebook_dir
 c.DockerSpawner.volumes = {"jupyterhub-user-{username}": notebook_dir}
 
 c.DockerSpawner.remove = True
+
+# Training notebooks need to reach Keycloak directly (same address the Hub
+# itself uses above) rather than through nginx, whose external-facing listen
+# port/scheme is environment-specific (e.g. TLS-only on some deployments).
+c.DockerSpawner.environment = {
+    "KEYCLOAK_INTERNAL_URL": keycloak_internal_url,
+    "KEYCLOAK_REALM": keycloak_realm,
+}
