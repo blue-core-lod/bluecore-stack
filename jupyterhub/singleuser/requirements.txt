@@ -1,0 +1,6 @@
+# Mirrors training/pyproject.toml (minus jupyterlab, already in the base image).
+bluecore-models>=0.26.2
+httpx>=0.27.0
+ipywidgets>=8.1.8
+pydantic-ai>=1.37.0
+tqdm>=4.67.3

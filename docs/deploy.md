@@ -19,6 +19,8 @@ Change these to strong, unique values.
 | `AIRFLOW_WWW_USER_USERNAME` / `AIRFLOW_WWW_USER_PASSWORD` | `developer` / `123456` | Strong, unique Airflow admin login |
 | `KEYCLOAK_ADMIN` / `KEYCLOAK_ADMIN_PASSWORD` | `admin` / `gracious-professed` | Strong, unique Keycloak master-admin login |
 | `AIRFLOW_KEYCLOAK_CLIENT_SECRET` | `KIu8gWa8rtjlT0Zl7zkNzsObFZGJ2IsJ` | **Regenerate** in Keycloak; keep in sync with the realm export |
+| `JUPYTERHUB_KEYCLOAK_CLIENT_SECRET` | `25dab91f94aa830290df93924b7ec89a1e84e8286356afef` | **Regenerate** in Keycloak; keep in sync with the realm export |
+| `JUPYTERHUB_COOKIE_SECRET` | `27bcff...e0bc82` | Regenerate with `python3 -c "import secrets; print(secrets.token_hex(32))"` |
 
 ---
 
@@ -36,6 +38,10 @@ default to `airflow` / `airflow` / `postgres` / `5432` when unset. **Add them to
 | `DATABASE_PASSWORD` | `airflow` | Your external DB password |
 | `DATABASE_HOSTNAME` | `postgres` | Your external DB host |
 | `DATABASE_PORT` | `5432` | Your external DB port |
+
+Create the `jupyterhub` database on the external Postgres yourself before starting
+`jupyterhub` (there's no `init-multi-postgres-dbs.sh` equivalent against an external
+DB — that script only runs against the dev-mode `postgres` container).
 
 ---
 
@@ -56,6 +62,8 @@ Move every browser-facing URL from `localhost` to the public HTTPS origin
 | `MARVA_BASE_URL` | `http://localhost/marva/` | `https://bcld.info/marva/` |
 | `SINOPIA_BASE_URL` | `http://localhost/sinopia/` | `https://bcld.info/sinopia/` |
 | `CORS_ORIGIN` | `*` | Lock to the public origin, e.g. `https://bcld.info` |
+| `JUPYTERHUB_EXTERNAL_URL` | `http://localhost/jupyter/` | `https://bcld.info/jupyter/` |
+| `JUPYTERHUB_DOCKER_NETWORK` | `bluecore-stack_default` | The Docker network name on the deploy host — check `docker network ls`, it depends on the server's Compose project name/directory |
 
 > ✅ Leave the internal service URLs as-is — `KEYCLOAK_INTERNAL_URL`,
 > `KEYCLOAK_MIDDLEWARE_BASE`, and `AIRFLOW_INTERNAL_URL` use Docker service names
@@ -83,6 +91,10 @@ Full steps: [updating-keycloak-credentials.md](updating-keycloak-credentials.md)
 `AIRFLOW_KEYCLOAK_CLIENT_SECRET` is committed to the repo (in `.env` and in `keycloak-export/development/bluecore-realm.json`), 
 so treat it as **compromised**: regenerate the `bluecore_workflows` client secret in Keycloak and update both the `.env` 
 value and the realm export.
+
+`JUPYTERHUB_KEYCLOAK_CLIENT_SECRET` and `JUPYTERHUB_COOKIE_SECRET` are likewise committed (dev-only values) — regenerate
+both before a public deploy. Rotating the cookie secret invalidates every logged-in Hub session (harmless; users just log
+back in), so there's no realm export to keep in sync for it.
 
 `AIRFLOW_WWW_USER_USERNAME` / `AIRFLOW_WWW_USER_PASSWORD` is committed to the repo (in `.env` and in `keycloak-export/development/bluecore-realm.json`),
 so treat those as **compromised**: change the user credentials in Keycloak and update both the `.env` value and re-export the `bluecore` realm settings

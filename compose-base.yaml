@@ -105,6 +105,54 @@ services:
     env_file:
       - ./.env
 
+  jupyterhub:
+    restart: always
+    container_name: jupyterhub
+    build:
+      context: ./jupyterhub
+      dockerfile: Dockerfile
+    image: ${JUPYTERHUB_IMAGE:-bluecore-jupyterhub:local}
+    expose:
+      - 8000
+      - 8080
+    env_file:
+      - ./.env
+    environment:
+      DATABASE_USERNAME: ${DATABASE_USERNAME:-airflow}
+      DATABASE_PASSWORD: ${DATABASE_PASSWORD:-airflow}
+      DATABASE_HOSTNAME: ${DATABASE_HOSTNAME:-postgres}
+      DATABASE_PORT: ${DATABASE_PORT:-5432}
+      KEYCLOAK_INTERNAL_URL: ${KEYCLOAK_INTERNAL_URL}
+      KEYCLOAK_EXTERNAL_URL: ${KEYCLOAK_EXTERNAL_URL}
+      KEYCLOAK_REALM: ${KEYCLOAK_REALM:-bluecore}
+      JUPYTERHUB_EXTERNAL_URL: ${JUPYTERHUB_EXTERNAL_URL:-http://localhost/jupyter/}
+      JUPYTERHUB_KEYCLOAK_CLIENT_ID: ${JUPYTERHUB_KEYCLOAK_CLIENT_ID:-bluecore_jupyterhub}
+      JUPYTERHUB_KEYCLOAK_CLIENT_SECRET: ${JUPYTERHUB_KEYCLOAK_CLIENT_SECRET}
+      JUPYTERHUB_COOKIE_SECRET: ${JUPYTERHUB_COOKIE_SECRET}
+      JUPYTERHUB_ADMIN_USERS: ${JUPYTERHUB_ADMIN_USERS:-developer}
+      JUPYTERHUB_SINGLEUSER_IMAGE: ${JUPYTERHUB_SINGLEUSER_IMAGE:-bluecore-singleuser:local}
+      # Must match the Docker network this compose project actually creates
+      # (`docker network ls`) -- see docs/architecture.md.
+      JUPYTERHUB_DOCKER_NETWORK: ${JUPYTERHUB_DOCKER_NETWORK:-bluecore-stack_default}
+    # DockerSpawner talks to the host's Docker daemon to launch one container
+    # per user. This grants the jupyterhub container root-equivalent control
+    # of the host -- see docs/architecture.md for the tradeoff.
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+
+  # Not a long-running service -- this just builds the image DockerSpawner
+  # spawns per user (JUPYTERHUB_SINGLEUSER_IMAGE). `profiles: ["build-only"]`
+  # keeps it out of `up`; `docker compose build jupyterhub-singleuser` (or any
+  # `up`/`build` that names it explicitly) still builds/refreshes the image.
+  jupyterhub-singleuser:
+    build:
+      context: .
+      dockerfile: jupyterhub/singleuser/Dockerfile
+    image: ${JUPYTERHUB_SINGLEUSER_IMAGE:-bluecore-singleuser:local}
+    command: ["true"]
+    restart: "no"
+    profiles: ["build-only"]
+
   airflow-apiserver:
     <<: *airflow-common
     command: api-server

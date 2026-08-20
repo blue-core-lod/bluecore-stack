@@ -126,9 +126,57 @@ No flag starts all local-source services. Subset flags are local-source only;
 ```
 
 The first local-source run builds images and installs frontend dependencies, so 
-it can take a few minutes. Postgres, Keycloak, Nginx, and the Blue Core API 
-always start because the API runs database migrations. Nginx tolerates 
+it can take a few minutes. Postgres, Keycloak, Nginx, the Blue Core API, and 
+JupyterHub always start because the API runs database migrations. Nginx tolerates 
 absent services; disabled routes return `502`, and the landing page greys them out.
+
+JupyterHub needs `/var/run/docker.sock` mounted into its container (it spawns one
+notebook container per logged-in user) and needs `JUPYTERHUB_DOCKER_NETWORK` in
+`.env` to match the Docker network this compose project creates — see the
+JupyterHub section of [architecture.md](architecture.md) if notebooks come up
+but can't reach `bc_api`/Keycloak.
+
+`scripts/init-multi-postgres-dbs.sh` only runs the first time a Postgres volume
+initializes. If you're adding JupyterHub to an **existing** local stack (a
+Postgres volume that predates this feature), the `jupyterhub` container will
+crash-loop with `Failed to connect to db` until you create the database by hand:
+
+```bash
+docker compose -f compose-dev.yaml exec postgres \
+  psql -U "${DATABASE_USERNAME:-airflow}" -c "CREATE DATABASE jupyterhub;" \
+  -c "GRANT ALL PRIVILEGES ON DATABASE jupyterhub TO ${DATABASE_USERNAME:-airflow};"
+docker compose -f compose-dev.yaml restart jupyterhub
+```
+
+(Or `./scripts/dev/down --volumes` to wipe and recreate the Postgres volume from
+scratch, which re-runs the init script for every database instead.)
+
+Keycloak has the same class of problem: `--import-realm` uses the `IGNORE_EXISTING` strategy, so if the
+`bluecore` realm already exists (any pre-existing local Keycloak volume), the whole realm import — including
+the new `bluecore_jupyterhub` client — is skipped, and login fails with `client_not_found`. Add the client to
+the running realm by hand with `kcadm.sh` (values match `keycloak-export/development/bluecore-realm.json`):
+
+```bash
+docker compose -f compose-dev.yaml exec keycloak /opt/keycloak/bin/kcadm.sh config credentials \
+  --server http://localhost:8080/keycloak --realm master --user admin --password gracious-professed
+docker compose -f compose-dev.yaml exec keycloak /opt/keycloak/bin/kcadm.sh create clients -r bluecore \
+  -s clientId=bluecore_jupyterhub -s name="Bluecore JupyterHub" -s description="For JupyterHub" \
+  -s enabled=true -s protocol=openid-connect -s publicClient=false -s standardFlowEnabled=true \
+  -s directAccessGrantsEnabled=false -s serviceAccountsEnabled=false \
+  -s secret=25dab91f94aa830290df93924b7ec89a1e84e8286356afef \
+  -s 'redirectUris=["http://localhost/jupyter/hub/oauth_callback"]' -s 'webOrigins=["/*"]'
+```
+
+(Or `./scripts/dev/down --volumes` to wipe both Postgres *and* Keycloak, which re-imports the realm from
+scratch — the same tradeoff as above, but bigger: it resets every realm user/credential to the checked-in
+defaults, not just adds the one client.)
+
+The single-user notebook image also isn't built by a normal `up` — build/refresh
+it explicitly whenever `jupyterhub/singleuser/` or `training/` changes:
+
+```bash
+docker compose -f compose-dev.yaml build jupyterhub-singleuser
+```
 
 ## 🔁 Live Reload Behavior
 
@@ -139,6 +187,7 @@ absent services; disabled routes return `502`, and the landing page greys them o
 | Marva | `http://localhost/marva/` | Vite HMR |
 | Marva middleware | internal | `node --watch` |
 | Sinopia | `http://localhost/sinopia/` | webpack dev server through Nginx |
+| JupyterHub | `http://localhost/jupyter/` | none — rebuild `jupyterhub`/`jupyterhub-singleuser` images to pick up changes |
 
 ## 🛑 Bring the Stack Down
 
