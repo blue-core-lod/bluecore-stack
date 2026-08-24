@@ -77,6 +77,14 @@
       "containerId" : "19fb378d-99ba-452e-b722-b5508ca29427",
       "attributes" : { }
     }, {
+      "id" : "85492d3e-78ec-4071-9666-8110d7a581b7",
+      "name" : "export",
+      "description" : "",
+      "composite" : false,
+      "clientRole" : false,
+      "containerId" : "19fb378d-99ba-452e-b722-b5508ca29427",
+      "attributes" : { }
+    }, {
       "id" : "5be31477-c788-4386-8e69-07125a67f280",
       "name" : "offline_access",
       "description" : "${role_offline-access}",
@@ -485,7 +493,7 @@
     } ],
     "disableableCredentialTypes" : [ ],
     "requiredActions" : [ ],
-    "realmRoles" : [ "default-roles-bluecore", "create", "update" ],
+    "realmRoles" : [ "default-roles-bluecore", "create", "export", "update" ],
     "clientRoles" : {
       "bluecore_workflows" : [ "update", "Admin", "create" ]
     },
