@@ -1,0 +1,34 @@
+# Overlay applied when an explicit bluecore-models ref is selected (i.e. not the
+# default "latest"). Images install bluecore-models from PyPI at build time via
+# each repo's uv.lock, so without this the selected ref would only drive Alembic
+# migrations while the running code kept the pinned release — migrating the
+# schema ahead of the ORM reading it. Mounting the checkout over the installed
+# package keeps code and schema on the same ref.
+#
+# With "latest" this file is not included, so the pinned release is used as-is.
+services:
+  bc_api:
+    volumes:
+      - ${MODELS_DIR}/src/bluecore_models:/bluecore_api/.venv/lib/python3.12/site-packages/bluecore_models:ro
+
+  airflow-apiserver:
+    volumes: &models_override_airflow
+      - ${MODELS_DIR}/src/bluecore_models:/home/airflow/.local/lib/python3.12/site-packages/bluecore_models:ro
+
+  airflow-scheduler:
+    volumes: *models_override_airflow
+
+  airflow-dag-processor:
+    volumes: *models_override_airflow
+
+  airflow-worker:
+    volumes: *models_override_airflow
+
+  airflow-init:
+    volumes: *models_override_airflow
+
+  airflow-triggerer:
+    volumes: *models_override_airflow
+
+  airflow-cli:
+    volumes: *models_override_airflow

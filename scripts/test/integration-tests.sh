@@ -9,6 +9,7 @@ COMPOSE_FILE="${COMPOSE_FILE:-compose-dev.yaml}"
 LOCAL_OVERRIDE_FILE="${LOCAL_OVERRIDE_FILE:-compose-integration-test.yaml}"
 ARM64_OVERRIDE_FILE="${ARM64_OVERRIDE_FILE:-compose-arm64-workflows.yaml}"
 DEV_LIVE_CODE_OVERRIDE_FILE="${DEV_LIVE_CODE_OVERRIDE_FILE:-compose-integration-test-dev-mode.yaml}"
+MODELS_OVERRIDE_FILE="${MODELS_OVERRIDE_FILE:-compose-integration-test-models-override.yaml}"
 USE_ARM64_WORKFLOWS_OVERRIDE="${USE_ARM64_WORKFLOWS_OVERRIDE:-1}"
 
 ###########################
@@ -76,6 +77,8 @@ POSTGRES_READY_TIMEOUT_SECONDS="${POSTGRES_READY_TIMEOUT_SECONDS:-120}"
 BUILD_LOCAL_DEV_IMAGES="${BUILD_LOCAL_DEV_IMAGES:-0}"
 LOCAL_BLUECORE_API_DIR="${LOCAL_BLUECORE_API_DIR:-$ROOT_DIR/../bluecore_api}"
 LOCAL_BLUECORE_WORKFLOWS_DIR="${LOCAL_BLUECORE_WORKFLOWS_DIR:-$ROOT_DIR/../bluecore-workflows}"
+LOCAL_BLUECORE_MODELS_DIR="${LOCAL_BLUECORE_MODELS_DIR:-}"
+MODELS_PACKAGE_OVERRIDE="${INTEGRATION_MODELS_PACKAGE_OVERRIDE:-0}"
 LOCAL_MARVA_DIR="${LOCAL_MARVA_DIR:-$ROOT_DIR/../marva_editor}"
 LOCAL_SINOPIA_DIR="${LOCAL_SINOPIA_DIR:-$ROOT_DIR/../sinopia_editor}"
 LOCAL_IMAGE_TAG="${LOCAL_IMAGE_TAG:-integration-test-local}"
@@ -93,6 +96,9 @@ api_ref=""
 workflows_ref=""
 marva_ref=""
 models_ref=""
+# The ref exactly as the caller typed it; models_ref is later rewritten to the
+# resolved tag, which would otherwise make "latest" indistinguishable from a branch.
+user_models_ref=""
 BLUECORE_API_REPO_URL="${BLUECORE_API_REPO_URL:-https://github.com/blue-core-lod/bluecore_api.git}"
 BLUECORE_WORKFLOWS_REPO_URL="${BLUECORE_WORKFLOWS_REPO_URL:-https://github.com/blue-core-lod/bluecore-workflows.git}"
 MARVA_REPO_URL="${MARVA_REPO_URL:-https://github.com/blue-core-lod/marva_editor.git}"
@@ -128,7 +134,9 @@ Runner options:
   --api-ref <ref>        Build API image from a Git ref into terraform/external/bluecore_api
   --workflows-ref <ref>  Build Workflows image from a Git ref into terraform/external/bluecore-workflows
   --marva-ref <ref>      Build Marva + Marva middleware images from a Git ref into terraform/external/marva_editor
-  --models-ref <ref>     Run migrations from a Git ref into terraform/external/bluecore-models
+  --models-ref <ref>     Run migrations from a Git ref into terraform/external/bluecore-models.
+                          Unless the ref is "latest", that checkout is also mounted over the
+                          bluecore-models pinned in the images so the services run it too.
   -h, --help             Show this help text
 
 All other args are forwarded to pytest.
@@ -725,6 +733,7 @@ while [[ $# -gt 0 ]]; do
         exit 1
       fi
       models_ref="$2"
+      user_models_ref="$2"
       shift 2
       ;;
     --help|-h)
@@ -887,6 +896,25 @@ if [[ -z "$effective_models_ref" && "$MODELS_SOURCE_LABEL" == bluecore-models@* 
   effective_models_ref="${MODELS_SOURCE_LABEL#bluecore-models@}"
 fi
 
+# ====================================================================
+# Selecting an explicit models ref means "test that models code", not just run
+# its migrations. Images install bluecore-models from PyPI per their uv.lock, so
+# without this the schema would move ahead of the ORM reading it. The default
+# "latest" leaves the pinned release in place.
+# --------------------------------------------------------------------
+if [[ -n "$user_models_ref" && "$user_models_ref" != "latest" ]]; then
+  MODELS_PACKAGE_OVERRIDE="1"
+fi
+
+# Dev mode already mounts models through the live-code overlay; adding this one
+# too would mount the same target twice.
+if [[ "$MODELS_PACKAGE_OVERRIDE" == "1" && "$INTEGRATION_DEV_MODE" != "1" && -f "$ROOT_DIR/$MODELS_OVERRIDE_FILE" ]]; then
+  compose_args+=(-f "$MODELS_OVERRIDE_FILE")
+  if [[ "$COMPACT_LOG_OUTPUT" == "1" ]]; then
+    echo "Models package override enabled via $MODELS_OVERRIDE_FILE (bluecore-models@${effective_models_ref:-unknown})"
+  fi
+fi
+
 compose_profiles_value="${COMPOSE_PROFILES:-}"
 if [[ "$INTEGRATION_FULL_STACK" == "1" && -z "$compose_profiles_value" ]]; then
   compose_profiles_value="integration-full"
@@ -916,12 +944,14 @@ compose_env=(
   "BLUECORE_API_IMAGE=$effective_bluecore_api_image"
   "BLUECORE_WORKFLOWS_IMAGE=$effective_bluecore_workflows_image"
   "_PIP_ADDITIONAL_REQUIREMENTS=redis==5.2.1"
+  "MODELS_DIR=$MODELS_DIR"
 )
 
 if [[ "$INTEGRATION_DEV_MODE" == "1" ]]; then
   compose_env+=(
     "LOCAL_BLUECORE_API_DIR=$LOCAL_BLUECORE_API_DIR"
     "LOCAL_BLUECORE_WORKFLOWS_DIR=$LOCAL_BLUECORE_WORKFLOWS_DIR"
+    "LOCAL_BLUECORE_MODELS_DIR=${LOCAL_BLUECORE_MODELS_DIR:-$MODELS_DIR}"
     "LOCAL_MARVA_DIR=$LOCAL_MARVA_DIR"
     "LOCAL_SINOPIA_DIR=$LOCAL_SINOPIA_DIR"
   )
@@ -1103,6 +1133,7 @@ echo "API ref: ${effective_api_ref:-<none>}"
 echo "Workflows ref: ${effective_workflows_ref:-<none>}"
 echo "Marva ref: ${effective_marva_ref:-<none>}"
 echo "Models ref: ${effective_models_ref:-<none>}"
+echo "Models package override: $MODELS_PACKAGE_OVERRIDE"
 echo "Airflow UID: $AIRFLOW_UID"
 echo "Keycloak token URL: $default_keycloak_token_url"
 echo "Bluecore API image: $effective_bluecore_api_image"

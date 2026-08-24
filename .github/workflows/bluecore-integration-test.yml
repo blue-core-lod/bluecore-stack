@@ -44,7 +44,9 @@ on:
         required: false
         default: "latest"
         type: string
-      # Models ref for DB migrations (no image). 'latest' = latest released tag.
+      # Models ref (no image). 'latest' = migrate with the newest released tag and
+      # keep the version pinned in each image. A branch is also mounted over the
+      # pinned package so the services actually run that code.
       models_ref:
         description: "bluecore-models — Default tests ':latest' release image | Enter branch (e.g. main) to build & test it"
         required: false
@@ -234,12 +236,16 @@ jobs:
           marva_ref_tag="$(sanitize_tag_component "$marva_ref")"
           sinopia_ref_tag="$(sanitize_tag_component "$sinopia_ref")"
 
-          # bluecore-models has no image: "latest" resolves to the most recent
-          # released tag (vX.Y.Z) for migrations; any other value is used as-is.
+          # "latest" = newest release, used only to run migrations; the
+          # containers keep the model version they are pinned with. Anything else is a
+          # branch, so we swap that code in too and actually test it.
           if [[ "$models_ref" == "latest" ]]; then
+            models_package_override="0"
             models_ref="$(git ls-remote --tags --refs https://github.com/blue-core-lod/bluecore-models.git 'v*' 2>/dev/null \
               | sed -E 's#^.*refs/tags/##' | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | tail -n1)"
             models_ref="${models_ref:-main}"
+          else
+            models_package_override="1"
           fi
 
           # The API source is always checked out (for the CLI/fixtures), so the
@@ -333,6 +339,7 @@ jobs:
             echo "marva_ref=$marva_ref"
             echo "sinopia_ref=$sinopia_ref"
             echo "models_ref=$models_ref"
+            echo "models_package_override=$models_package_override"
             echo "compose_project_name=$compose_project_name"
             echo "integration_db_name=$integration_db_name"
             echo "pytest_target=$pytest_target"
@@ -525,6 +532,7 @@ jobs:
           echo "WF source label:        bluecore-workflows@${{ steps.resolve.outputs.workflows_ref }}"
           echo "Model source lbl:       bluecore-models@${{ steps.resolve.outputs.models_ref }}"
           echo "Models dir:             ${GITHUB_WORKSPACE}/external/bluecore-models"
+          echo "Models pkg override?:   ${{ steps.resolve.outputs.models_package_override }}"
           echo "Fixtures dir:           ${GITHUB_WORKSPACE}/external/bluecore_api/sample"
           echo "Sample load URL:        https://raw.githubusercontent.com/blue-core-lod/bluecore_api/refs/heads/main/sample/batch-small.jsonld"
           echo "Pull before update?:    ${{ steps.resolve.outputs.pull_before_up }}"
@@ -582,6 +590,7 @@ jobs:
           INTEGRATION_MARVA_REF: ${{ steps.resolve.outputs.marva_ref }}
           INTEGRATION_SINOPIA_REF: ${{ steps.resolve.outputs.sinopia_ref }}
           INTEGRATION_MODELS_REF: ${{ steps.resolve.outputs.models_ref }}
+          INTEGRATION_MODELS_PACKAGE_OVERRIDE: ${{ steps.resolve.outputs.models_package_override }}
           INTEGRATION_SAMPLE_BATCH_SOURCE: ${{ github.workspace }}/external/bluecore_api/sample/batch-small.jsonld
           INTEGRATION_BATCH_JSONLD_URL: https://raw.githubusercontent.com/blue-core-lod/bluecore_api/refs/heads/main/sample/batch-small.jsonld
           PULL_BEFORE_UP: ${{ steps.resolve.outputs.pull_before_up }}

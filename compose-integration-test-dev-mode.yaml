@@ -17,6 +17,10 @@ services:
       - ${LOCAL_BLUECORE_API_DIR}/src:/bluecore_api/src
       - ${LOCAL_BLUECORE_API_DIR}/pyproject.toml:/bluecore_api/pyproject.toml:ro
       - ${LOCAL_BLUECORE_API_DIR}/uv.lock:/bluecore_api/uv.lock:ro
+      # bluecore-models is resolved from PyPI at image build time, so an unreleased
+      # models version the API already imports would be missing. Overlay the same
+      # local checkout the migrations run from to keep API code and schema in sync.
+      - ${LOCAL_BLUECORE_MODELS_DIR}/src/bluecore_models:/bluecore_api/.venv/lib/python3.12/site-packages/bluecore_models:ro
 
   # Mount workflows code into all Airflow runtime services so DAG/task code edits are visible.
   airflow-apiserver:
