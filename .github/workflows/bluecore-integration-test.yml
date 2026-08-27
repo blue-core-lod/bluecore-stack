@@ -534,7 +534,7 @@ jobs:
           echo "Models dir:             ${GITHUB_WORKSPACE}/external/bluecore-models"
           echo "Models pkg override?:   ${{ steps.resolve.outputs.models_package_override }}"
           echo "Fixtures dir:           ${GITHUB_WORKSPACE}/external/bluecore_api/sample"
-          echo "Sample load URL:        https://raw.githubusercontent.com/blue-core-lod/bluecore_api/refs/heads/main/sample/batch-small.jsonld"
+          echo "Test fixture:           ${GITHUB_WORKSPACE}/external/bluecore_api/sample/int-test-batch.jsonld"
           echo "Pull before update?:    ${{ steps.resolve.outputs.pull_before_up }}"
           echo "Compose project:        ${{ steps.resolve.outputs.compose_project_name }}"
           echo "Integration DB:         ${{ steps.resolve.outputs.integration_db_name }}"
@@ -591,8 +591,7 @@ jobs:
           INTEGRATION_SINOPIA_REF: ${{ steps.resolve.outputs.sinopia_ref }}
           INTEGRATION_MODELS_REF: ${{ steps.resolve.outputs.models_ref }}
           INTEGRATION_MODELS_PACKAGE_OVERRIDE: ${{ steps.resolve.outputs.models_package_override }}
-          INTEGRATION_SAMPLE_BATCH_SOURCE: ${{ github.workspace }}/external/bluecore_api/sample/batch-small.jsonld
-          INTEGRATION_BATCH_JSONLD_URL: https://raw.githubusercontent.com/blue-core-lod/bluecore_api/refs/heads/main/sample/batch-small.jsonld
+          INTEGRATION_SAMPLE_BATCH_SOURCE: ${{ github.workspace }}/external/bluecore_api/sample/int-test-batch.jsonld
           PULL_BEFORE_UP: ${{ steps.resolve.outputs.pull_before_up }}
           COMPOSE_PROJECT_NAME: ${{ steps.resolve.outputs.compose_project_name }}
           INTEGRATION_DB_NAME: ${{ steps.resolve.outputs.integration_db_name }}
