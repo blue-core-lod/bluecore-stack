@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import os
-import shutil
 import time
 from dataclasses import dataclass
 from pathlib import Path
@@ -14,12 +13,12 @@ from playwright.sync_api import Error as PlaywrightError
 from playwright.sync_api import Playwright
 from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
 
-TERRAFORM_ROOT = Path(__file__).resolve().parents[2]
-SAMPLE_BATCH_SOURCE_CANDIDATES: tuple[Path, ...] = (
-    TERRAFORM_ROOT.parent / "bluecore_api" / "sample" / "batch-small.jsonld",
-    TERRAFORM_ROOT / "external" / "bluecore_api" / "sample" / "batch-small.jsonld",
-)
-UPLOADS_DIR = TERRAFORM_ROOT / "uploads"
+from tests.integration.support import sample_data
+
+BLUECORE_STACK_ROOT = Path(__file__).resolve().parents[2]
+UPLOADS_DIR = BLUECORE_STACK_ROOT / "uploads"
+# The DAG-trigger tests post this path, so it gets its own copy -- the loader
+# deletes whatever it reads. Same source file either way (see sample_data.py).
 LOCAL_BATCH_UPLOAD = UPLOADS_DIR / "integration-test.jsonld"
 
 
@@ -297,28 +296,21 @@ def _ensure_airflow_dag_unpaused(
 
 
 # ==============================================================================
-# Copy the sample batch fixture into terraform/uploads for file:// ingest tests.
+# Put the fixture where the DAG-trigger tests look for it.
 # ------------------------------------------------------------------------------
 def _prepare_local_batch_upload() -> None:
-    sample_batch_source = next(
-        (candidate for candidate in SAMPLE_BATCH_SOURCE_CANDIDATES if candidate.exists()),
-        None,
-    )
-    if sample_batch_source is None:
-        checked_paths = ", ".join(str(path) for path in SAMPLE_BATCH_SOURCE_CANDIDATES)
+    if sample_data.stage_batch(LOCAL_BATCH_UPLOAD):
+        return
+    if not sample_data.FIXTURE_BATCH.exists():
         raise AssertionError(
-            f"Missing batch fixture source file. Checked: {checked_paths}"
+            f"Missing test fixture. Expected it at {sample_data.FIXTURE_BATCH}."
         )
-    try:
-        UPLOADS_DIR.mkdir(parents=True, exist_ok=True)
-        shutil.copyfile(sample_batch_source, LOCAL_BATCH_UPLOAD)
-    except PermissionError as exc:
-        # In some CI environments the uploads bind mount may be owned by a
-        # container user. The file:// test asserts DAG-trigger wiring only.
-        print(
-            f"Warning: could not prepare local upload fixture at "
-            f"{LOCAL_BATCH_UPLOAD}: {exc}. Continuing without local file copy."
-        )
+    # It exists but would not copy, which happens when the uploads mount is
+    # owned by a container user. These tests only check the trigger, so carry on.
+    print(
+        f"Warning: could not stage the batch fixture at {LOCAL_BATCH_UPLOAD}. "
+        "Continuing without the local copy."
+    )
 
 
 # ==============================================================================

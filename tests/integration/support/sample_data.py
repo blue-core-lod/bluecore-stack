@@ -1,15 +1,64 @@
 from __future__ import annotations
 
 import json
+import os
+import shutil
+from pathlib import Path
 
 from playwright.sync_api import APIRequestContext
 
 from tests.integration.support import waits
 from tests.integration.support.http import send_request
 
-SAMPLE_BATCH_JSONLD_URL = (
-    "https://raw.githubusercontent.com/blue-core-lod/bluecore_api/refs/heads/main/sample/batch-small.jsonld"
+# ==============================================================================
+# The one fixture every test loads
+# ------------------------------------------------------------------------------
+# All the test data lives in sample/int-test-batch.jsonld in the bluecore_api
+# checkout, and is copied into uploads/ where the Airflow containers can read it.
+#
+# CI clones that repo somewhere else, so it sets INTEGRATION_SAMPLE_BATCH_SOURCE.
+# ------------------------------------------------------------------------------
+_ROOT = Path(__file__).resolve().parents[3]
+
+FIXTURE_BATCH = Path(
+    os.getenv(
+        "INTEGRATION_SAMPLE_BATCH_SOURCE",
+        _ROOT.parent / "bluecore_api" / "sample" / "int-test-batch.jsonld",
+    )
 )
+HOST_SAMPLE_BATCH = _ROOT / "uploads" / "int-test-batch.jsonld"
+CONTAINER_SAMPLE_BATCH = "/opt/airflow/uploads/int-test-batch.jsonld"
+
+
+def stage_batch(destination: Path) -> bool:
+    """Copy the fixture into uploads/ under the given name.
+
+    Copies every time, because the loader deletes the file it reads.
+    """
+    if not FIXTURE_BATCH.exists():
+        return False
+    try:
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(FIXTURE_BATCH, destination)
+    except OSError:
+        # The uploads mount is owned by a container user in some CI setups.
+        return False
+    return True
+
+
+def default_batch_source() -> str:
+    """Where the loader should read the fixture from.
+
+    No scheme on the path: a file:// URI matches none of get_file()'s branches
+    in bluecore-workflows and the task crashes.
+    """
+    if not stage_batch(HOST_SAMPLE_BATCH):
+        raise AssertionError(
+            f"Could not stage the test fixture. Expected it at {FIXTURE_BATCH}. "
+            "Set INTEGRATION_SAMPLE_BATCH_SOURCE if the bluecore_api checkout "
+            "is somewhere else."
+        )
+    return CONTAINER_SAMPLE_BATCH
 
 SAMPLE_SEARCH_QUERY = "joli"
 
@@ -32,8 +81,9 @@ def ingest_sample_batch_and_wait_for_resources(
     keycloak_access_token: str,
     airflow_access_token: str,
     query: str = SAMPLE_SEARCH_QUERY,
-    batch_url: str = SAMPLE_BATCH_JSONLD_URL,
+    batch_url: str | None = None,
 ) -> tuple[str, str]:
+    batch_url = batch_url or default_batch_source()
     cache_key = (config.base_url, batch_url, query)
     if cache_key in _INGEST_RESULT_CACHE:
         return _INGEST_RESULT_CACHE[cache_key]

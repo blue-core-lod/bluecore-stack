@@ -20,9 +20,11 @@ def open_search(page: Page, api_base_url: str, timeout: int, query: str = "", **
     )
 
 
-def open_resource(page: Page, api_base_url: str, kind: str, uuid: str, timeout: int) -> None:
+def open_resource(
+    page: Page, api_base_url: str, resource_type: str, uuid: str, timeout: int
+) -> None:
     page.goto(
-        f"{api_base_url}/{kind}/{uuid}",
+        f"{api_base_url}/{resource_type}/{uuid}",
         wait_until="domcontentloaded",
         timeout=timeout,
     )
