@@ -81,30 +81,6 @@ def build_resource_template_with_reference_jsonld(nonce: str) -> list[dict[str, 
         },
     ]
 
-
-# ========================================================================
-# Build an expanded (context-free, full-URI) Resource Template JSON-LD list.
-#
-# Mirrors the shape the remote /api/search/profile returns and that the
-# load-templates flow POSTs back, so tests cover the real interop payload.
-# ------------------------------------------------------------------------
-def build_expanded_resource_template_jsonld(nonce: str) -> list[dict[str, Any]]:
-    resource_id = f"test:RT:bluecore:Interop:{nonce}"
-    return [
-        {
-            "@id": f"http://localhost:3000/resource/{resource_id}",
-            "@type": [RESOURCE_TEMPLATE_TYPE],
-            "http://www.w3.org/2000/01/rdf-schema#label": [
-                {"@value": f"Blue Core Sinopia interop probe {nonce}"}
-            ],
-            "http://sinopia.io/vocabulary/hasResourceId": [{"@value": resource_id}],
-            "http://sinopia.io/vocabulary/hasClass": [
-                {"@id": "http://id.loc.gov/ontologies/bibframe/Work"}
-            ],
-        }
-    ]
-
-
 # ========================================================================
 # Wrap JSON-LD into the ProfileCreateSchema body ({"data": "<json string>"}).
 # ------------------------------------------------------------------------
