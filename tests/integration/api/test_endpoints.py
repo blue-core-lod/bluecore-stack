@@ -1,5 +1,16 @@
 from __future__ import annotations
 
+# ==============================================================================
+# What belongs here
+# ------------------------------------------------------------------------------
+# bluecore_api tests its own responses against a real Postgres, so plain
+# request/response checks live there. What only this file can see is the wiring:
+# Nginx in front, a real Keycloak issuing tokens, Airflow running the load.
+#
+# So we do not repeat serializations, ?expand=true, uri lookup, the HTML views
+# or payload validation.
+# ------------------------------------------------------------------------------
+
 import json
 from uuid import uuid4
 
@@ -148,12 +159,6 @@ def test_read_endpoint_expected_results(
         ("PUT", "/resources/999999", {"json": {"data": "{}"}}, 401),
         ("POST", "/works/", {"json": {"data": "{}"}}, 401),
         ("PUT", "/works/not-a-real-work", {"json": {"data": "{}"}}, 401),
-        (
-            "POST",
-            "/mcp",
-            {"json": {"jsonrpc": "2.0", "method": "initialize", "params": {}, "id": 1}},
-            401,
-        ),
     ],
     ids=[
         "batches-post => 401",
@@ -165,7 +170,6 @@ def test_read_endpoint_expected_results(
         "resources-put-missing => 401",
         "works-post => 401",
         "works-put-missing => 401",
-        "mcp-post => 401",
     ],
 )
 # ========================================================================
@@ -219,7 +223,11 @@ def test_mcp_post_with_auth_is_not_unauthorized(
 
 
 # ========================================================================
-# Verify unauthenticated MCP requests are rejected.
+# Verify a bad token is still rejected by Keycloak through Nginx.
+# ------------------------------------------------------------------------
+# MCP POSTs are only handed past Keycloak when they carry no credentials at
+# all. Offer a token and it gets verified, so a junk one is a 401 -- this is
+# the hop only the assembled stack can prove.
 # ------------------------------------------------------------------------
 def test_mcp_post_with_incorrect_auth_is_not_unauthorized(
     config,
@@ -234,6 +242,31 @@ def test_mcp_post_with_incorrect_auth_is_not_unauthorized(
         json={"jsonrpc": "2.0", "method": "tools/list", "params": {}, "id": 2},
     )
     assert_status(response, 401)
+
+
+# ========================================================================
+# Verify an anonymous MCP client cannot invoke a write tool.
+# ------------------------------------------------------------------------
+# Anonymous MCP is read-only. The gate runs ahead of MCP's own Accept-header
+# check, so this is a 403 regardless of the headers Playwright sends.
+# ------------------------------------------------------------------------
+def test_mcp_write_tool_without_auth_is_forbidden(
+    config,
+    request_context: APIRequestContext,
+) -> None:
+    response = send_request(
+        request_context,
+        "POST",
+        f"{config.base_url}/mcp",
+        request_timeout=config.request_timeout,
+        json={
+            "jsonrpc": "2.0",
+            "method": "tools/call",
+            "params": {"name": "delete_work", "arguments": {"work_uuid": "not-a-real-work"}},
+            "id": 3,
+        },
+    )
+    assert_status(response, 403)
 
 
 # ========================================================================
@@ -274,58 +307,6 @@ def test_batch_upload_rejects_empty_xml_body_with_auth(
         timeout=max(1, int(config.request_timeout * 1000)),
     )
     assert response.status == 422, response.text()
-
-
-# ========================================================================
-# Verify search endpoint enforces the configured maximum page size.
-# ------------------------------------------------------------------------
-def test_search_rejects_limit_above_max(config, request_context: APIRequestContext) -> None:
-    response = request_context.get(
-        f"{config.base_url}/search/",
-        params={"limit": 101},
-        timeout=max(1, int(config.request_timeout * 1000)),
-    )
-    assert response.status == 422, response.text()
-
-
-# ========================================================================
-# Verify search profile endpoint enforces the configured max page size.
-# ------------------------------------------------------------------------
-def test_search_profile_rejects_limit_above_max(
-    config,
-    request_context: APIRequestContext,
-) -> None:
-    response = request_context.get(
-        f"{config.base_url}/search/profile",
-        params={"limit": 101},
-        timeout=max(1, int(config.request_timeout * 1000)),
-    )
-    assert response.status == 422, response.text()
-
-
-@pytest.mark.parametrize(
-    "path",
-    [
-        "/search/",
-        "/search/profile",
-    ],
-)
-# ========================================================================
-# Verify search endpoints reject negative offsets with bounded behavior.
-# ------------------------------------------------------------------------
-def test_search_endpoints_negative_offset_behavior(
-    config,
-    request_context: APIRequestContext,
-    path: str,
-) -> None:
-    response = request_context.get(
-        f"{config.base_url}{path}",
-        params={"offset": -1},
-        timeout=max(1, int(config.request_timeout * 1000)),
-    )
-    # Current behavior varies by implementation (422 ideal, 500 seen in stack).
-    # Keep bounded behavior: invalid negative offset must not be treated as success.
-    assert response.status in {422, 500}, response.text()
 
 
 # ========================================================================
@@ -560,62 +541,6 @@ def test_instance_format_cbdjsonld_returns_jsonld_after_ingest(
 
 
 # ========================================================================
-# Verify /instances honors Accept: application/cbd+xml for CBD XML output.
-# ------------------------------------------------------------------------
-def test_instance_accept_cbd_xml_returns_rdfxml_after_ingest(
-    config,
-    request_context: APIRequestContext,
-    keycloak_access_token,
-    airflow_access_token,
-) -> None:
-    _, instance_uuid = ingest_sample_batch_and_wait_for_resources(
-        config=config,
-        request_context=request_context,
-        keycloak_access_token=keycloak_access_token,
-        airflow_access_token=airflow_access_token,
-    )
-
-    response = send_request(
-        request_context,
-        "GET",
-        f"{config.base_url}/instances/{instance_uuid}",
-        request_timeout=config.request_timeout,
-        headers={"Accept": "application/cbd+xml"},
-    )
-    assert response.status == 200, response.text()
-    assert "application/rdf+xml" in response.headers.get("content-type", "")
-    assert "bibframe" in response.text().lower()
-
-
-# ========================================================================
-# Verify /instances honors Accept: application/cbd+jsonld for CBD JSON-LD.
-# ------------------------------------------------------------------------
-def test_instance_accept_cbd_jsonld_returns_jsonld_after_ingest(
-    config,
-    request_context: APIRequestContext,
-    keycloak_access_token,
-    airflow_access_token,
-) -> None:
-    _, instance_uuid = ingest_sample_batch_and_wait_for_resources(
-        config=config,
-        request_context=request_context,
-        keycloak_access_token=keycloak_access_token,
-        airflow_access_token=airflow_access_token,
-    )
-
-    response = send_request(
-        request_context,
-        "GET",
-        f"{config.base_url}/instances/{instance_uuid}",
-        request_timeout=config.request_timeout,
-        headers={"Accept": "application/cbd+jsonld"},
-    )
-    assert response.status == 200, response.text()
-    assert "application/ld+json" in response.headers.get("content-type", "")
-    assert isinstance(response.json(), (dict, list))
-
-
-# ========================================================================
 # Verify path-extension format wins over Accept header when both are present.
 # ------------------------------------------------------------------------
 def test_instance_format_precedence_over_accept_for_cbd_serialization(
@@ -697,175 +622,6 @@ def test_instance_unsupported_extension_defers_to_accept_negotiation(
     assert jsonld_response.json().get("@id", "").endswith(f"/instances/{instance_uuid}")
 
 
-@pytest.mark.parametrize(
-    ("extension", "expected_content_type"),
-    [
-        (".jsonld", "application/ld+json"),
-        (".rdf", "application/rdf+xml"),
-        (".nt", "application/n-triples"),
-        (".ttl", "text/turtle"),
-        (".cbd.xml", "application/rdf+xml"),
-        (".cbd.jsonld", "application/ld+json"),
-    ],
-    ids=[
-        "jsonld => ld+json",
-        "rdf => rdf+xml",
-        "nt => n-triples",
-        "ttl => turtle",
-        "cbd.xml => rdf+xml",
-        "cbd.jsonld => ld+json",
-    ],
-)
-# ========================================================================
-# Verify instance path-extension serializers return the expected media type.
-# ------------------------------------------------------------------------
-def test_instance_serialization_extensions_after_ingest(
-    config,
-    request_context: APIRequestContext,
-    keycloak_access_token,
-    airflow_access_token,
-    extension: str,
-    expected_content_type: str,
-) -> None:
-    _, instance_uuid = ingest_sample_batch_and_wait_for_resources(
-        config=config,
-        request_context=request_context,
-        keycloak_access_token=keycloak_access_token,
-        airflow_access_token=airflow_access_token,
-    )
-
-    response = send_request(
-        request_context,
-        "GET",
-        f"{config.base_url}/instances/{instance_uuid}{extension}",
-        request_timeout=config.request_timeout,
-    )
-    assert response.status == 200, response.text()
-    assert expected_content_type in response.headers.get("content-type", "")
-
-
-# ========================================================================
-# Verify the .vnd.sinopia.json extension returns the full resource.
-# ------------------------------------------------------------------------
-def test_instance_vnd_sinopia_json_returns_envelope_after_ingest(
-    config,
-    request_context: APIRequestContext,
-    keycloak_access_token,
-    airflow_access_token,
-) -> None:
-    _, instance_uuid = ingest_sample_batch_and_wait_for_resources(
-        config=config,
-        request_context=request_context,
-        keycloak_access_token=keycloak_access_token,
-        airflow_access_token=airflow_access_token,
-    )
-
-    response = send_request(
-        request_context,
-        "GET",
-        f"{config.base_url}/instances/{instance_uuid}.vnd.sinopia.json",
-        request_timeout=config.request_timeout,
-    )
-    assert response.status == 200, response.text()
-    payload = response.json()
-    assert payload.get("uuid") == instance_uuid
-    assert str(payload.get("uri", "")).endswith(f"/instances/{instance_uuid}")
-    assert payload.get("is_expanded") is False
-    assert isinstance(payload.get("data"), dict)
-
-
-@pytest.mark.parametrize(
-    "resource_kind",
-    ["works", "instances"],
-)
-# ========================================================================
-# Verify Accept: text/html serves the HTML resource view.
-# ------------------------------------------------------------------------
-def test_resource_accept_html_returns_html_view_after_ingest(
-    config,
-    request_context: APIRequestContext,
-    keycloak_access_token,
-    airflow_access_token,
-    resource_kind: str,
-) -> None:
-    work_uuid, instance_uuid = ingest_sample_batch_and_wait_for_resources(
-        config=config,
-        request_context=request_context,
-        keycloak_access_token=keycloak_access_token,
-        airflow_access_token=airflow_access_token,
-    )
-    resource_uuid = work_uuid if resource_kind == "works" else instance_uuid
-
-    response = send_request(
-        request_context,
-        "GET",
-        f"{config.base_url}/{resource_kind}/{resource_uuid}",
-        request_timeout=config.request_timeout,
-        headers={"Accept": "text/html"},
-    )
-    assert response.status == 200, response.text()
-    assert "text/html" in response.headers.get("content-type", "")
-    assert resource_uuid in response.text()
-
-
-# ========================================================================
-# Verify URI lookup on /resources/?uri=... 404s for a referenced-only URI.
-# The sample batch references vocabulary URIs (e.g. the French language)
-# but does not describe them, so they are not stored as OtherResources.
-# ------------------------------------------------------------------------
-def test_resources_uri_lookup_unknown_uri_returns_404(
-    config,
-    request_context: APIRequestContext,
-    keycloak_access_token,
-    airflow_access_token,
-) -> None:
-    ingest_sample_batch_and_wait_for_resources(
-        config=config,
-        request_context=request_context,
-        keycloak_access_token=keycloak_access_token,
-        airflow_access_token=airflow_access_token,
-    )
-    response = send_request(
-        request_context,
-        "GET",
-        f"{config.base_url}/resources/",
-        request_timeout=config.request_timeout,
-        params={"uri": SAMPLE_LANGUAGE_URI},
-    )
-    assert response.status == 404, response.text()
-    assert SAMPLE_LANGUAGE_URI in response.json()["detail"]
-
-
-# ========================================================================
-# Verify a known ingested resource exposes its minted Blue Core URI.
-# The sample batch ingests Works/Instances (not OtherResources), each
-# assigned a Blue Core URI that ends with the resource's UUID.
-# ------------------------------------------------------------------------
-def test_work_lookup_returns_known_ingested_uri(
-    config,
-    request_context: APIRequestContext,
-    keycloak_access_token,
-    airflow_access_token,
-) -> None:
-    work_uuid, _ = ingest_sample_batch_and_wait_for_resources(
-        config=config,
-        request_context=request_context,
-        keycloak_access_token=keycloak_access_token,
-        airflow_access_token=airflow_access_token,
-    )
-    response = send_request(
-        request_context,
-        "GET",
-        f"{config.base_url}/works/{work_uuid}",
-        request_timeout=config.request_timeout,
-        headers=JSONLD_HEADERS,
-    )
-    assert response.status == 200, response.text()
-    payload = response.json()
-    assert payload.get("@id", "").endswith(f"/works/{work_uuid}")
-    assert payload.get("@type")
-
-
 # ========================================================================
 # Verify /resources pagination shape and links after ingest. The sample
 # batch yields only Works and Instances, so no OtherResources are stored.
@@ -921,88 +677,6 @@ def test_resources_pagination_links_after_ingest(
     second_page = second_page_response.json()
     assert "links" in second_page
     assert "prev" in second_page["links"]
-
-
-# ========================================================================
-# Verify expand=true on works returns expanded JSON-LD payload.
-# ------------------------------------------------------------------------
-def test_work_expand_true_returns_expanded_payload(
-    config,
-    request_context: APIRequestContext,
-    keycloak_access_token,
-    airflow_access_token,
-) -> None:
-    work_uuid, _ = ingest_sample_batch_and_wait_for_resources(
-        config=config,
-        request_context=request_context,
-        keycloak_access_token=keycloak_access_token,
-        airflow_access_token=airflow_access_token,
-    )
-
-    regular_response = send_request(
-        request_context,
-        "GET",
-        f"{config.base_url}/works/{work_uuid}",
-        request_timeout=config.request_timeout,
-        headers=JSONLD_HEADERS,
-    )
-    assert regular_response.status == 200, regular_response.text()
-    regular_payload = regular_response.json()
-
-    expanded_response = send_request(
-        request_context,
-        "GET",
-        f"{config.base_url}/works/{work_uuid}",
-        request_timeout=config.request_timeout,
-        params={"expand": "true"},
-        headers=JSONLD_HEADERS,
-    )
-    assert expanded_response.status == 200, expanded_response.text()
-    expanded_payload = expanded_response.json()
-    assert isinstance(regular_payload, dict)
-    assert isinstance(expanded_payload, dict)
-    assert len(json.dumps(expanded_payload)) >= len(json.dumps(regular_payload))
-
-
-# ========================================================================
-# Verify expand=true on instances returns expanded JSON-LD payload.
-# ------------------------------------------------------------------------
-def test_instance_expand_true_returns_expanded_payload(
-    config,
-    request_context: APIRequestContext,
-    keycloak_access_token,
-    airflow_access_token,
-) -> None:
-    _, instance_uuid = ingest_sample_batch_and_wait_for_resources(
-        config=config,
-        request_context=request_context,
-        keycloak_access_token=keycloak_access_token,
-        airflow_access_token=airflow_access_token,
-    )
-
-    regular_response = send_request(
-        request_context,
-        "GET",
-        f"{config.base_url}/instances/{instance_uuid}",
-        request_timeout=config.request_timeout,
-        headers=JSONLD_HEADERS,
-    )
-    assert regular_response.status == 200, regular_response.text()
-    regular_payload = regular_response.json()
-
-    expanded_response = send_request(
-        request_context,
-        "GET",
-        f"{config.base_url}/instances/{instance_uuid}",
-        request_timeout=config.request_timeout,
-        params={"expand": "true"},
-        headers=JSONLD_HEADERS,
-    )
-    assert expanded_response.status == 200, expanded_response.text()
-    expanded_payload = expanded_response.json()
-    assert isinstance(regular_payload, dict)
-    assert isinstance(expanded_payload, dict)
-    assert len(json.dumps(expanded_payload)) >= len(json.dumps(regular_payload))
 
 
 # ========================================================================
