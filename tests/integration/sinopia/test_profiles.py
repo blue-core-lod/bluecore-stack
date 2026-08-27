@@ -1,6 +1,16 @@
 from __future__ import annotations
 
 import json
+
+# ==============================================================================
+# What belongs here
+# ------------------------------------------------------------------------------
+# bluecore_api covers profile create/read/update/delete on its own, but it mocks
+# Keycloak away -- so what is left here is the routes reached through Nginx with
+# real tokens: what the deployed image advertises, which reads are public, which
+# writes need a token, CORS, and links that resolve from outside the container.
+# ------------------------------------------------------------------------------
+
 import time
 from uuid import uuid4
 
@@ -8,14 +18,12 @@ import pytest
 from playwright.sync_api import APIRequestContext
 
 from tests.integration.sinopia._support import (
-    BF_WORK,
     HAS_RESOURCE_TEMPLATE,
-    build_expanded_resource_template_jsonld,
-    build_resource_template_jsonld,
     build_resource_template_with_reference_jsonld,
+    original_resource_uri,
+    build_resource_template_jsonld,
     find_resource_template_node,
     interop_nonce,
-    original_resource_uri,
     profile_create_body,
 )
 from tests.integration.support.http import assert_status, send_request
@@ -206,175 +214,6 @@ def test_create_profile_mints_uri_and_rehomes_resource_template(
 
 
 # ========================================================================
-# The same contract holds for the expanded-list payload the remote pull sends.
-# ------------------------------------------------------------------------
-def test_create_profile_accepts_expanded_jsonld_payload(
-    config, request_context: APIRequestContext, keycloak_access_token
-):
-    log_header("Create profile accepts expanded JSON-LD payload")
-    nonce = interop_nonce()
-    body = _create_profile(
-        request_context,
-        config,
-        keycloak_access_token,
-        build_expanded_resource_template_jsonld(nonce),
-    )
-    uri = body.get("uri")
-    node = find_resource_template_node(body.get("data"))
-    assert node is not None
-    assert node.get("@id") == uri
-
-
-# ========================================================================
-# Stored profile data is expanded JSON-LD with no compacting @context.
-# ------------------------------------------------------------------------
-def test_created_profile_data_is_expanded_without_context(
-    config, request_context: APIRequestContext, keycloak_access_token
-):
-    log_header("Stored profile is expanded (no @context)")
-    body = _create_profile(
-        request_context,
-        config,
-        keycloak_access_token,
-        build_resource_template_jsonld(interop_nonce()),
-    )
-    data = body.get("data")
-    assert isinstance(data, list)
-    assert all("@context" not in node for node in data if isinstance(node, dict))
-
-
-# ========================================================================
-# A created profile is retrievable by its minted UUID.
-# ------------------------------------------------------------------------
-def test_created_profile_is_retrievable_by_uuid(
-    config, request_context: APIRequestContext, keycloak_access_token
-):
-    log_header("Profile retrievable by UUID")
-    created = _create_profile(
-        request_context,
-        config,
-        keycloak_access_token,
-        build_resource_template_jsonld(interop_nonce()),
-    )
-    uuid = created["uuid"]
-    response = send_request(
-        request_context,
-        "GET",
-        f"{config.base_url}/profiles/{uuid}",
-        request_timeout=config.request_timeout,
-    )
-    assert_status(response, 200)
-    fetched = response.json()
-    assert str(fetched.get("uuid")) == str(uuid)
-    assert fetched.get("uri") == created["uri"]
-    assert find_resource_template_node(fetched.get("data")) is not None
-
-
-# ========================================================================
-# A created profile is findable by its minted URI via GET /profiles/?uri=.
-# ------------------------------------------------------------------------
-def test_created_profile_is_findable_by_uri(
-    config, request_context: APIRequestContext, keycloak_access_token
-):
-    log_header("Profile findable by URI")
-    created = _create_profile(
-        request_context,
-        config,
-        keycloak_access_token,
-        build_resource_template_jsonld(interop_nonce()),
-    )
-    uri = created["uri"]
-    response = send_request(
-        request_context,
-        "GET",
-        f"{config.base_url}/profiles/",
-        request_timeout=config.request_timeout,
-        params={"uri": uri},
-    )
-    assert_status(response, 200)
-    assert response.json().get("uri") == uri
-
-
-# ========================================================================
-# A created profile is discoverable via full-text search (what Sinopia uses).
-# ------------------------------------------------------------------------
-def test_created_profile_is_searchable(
-    config, request_context: APIRequestContext, keycloak_access_token
-):
-    log_header("Profile searchable via /search/profile")
-    nonce = interop_nonce()
-    created = _create_profile(
-        request_context, config, keycloak_access_token, build_resource_template_jsonld(nonce)
-    )
-    found = _search_for_uri(request_context, config, nonce, created["uri"])
-    log_expected_actual("profile in search results", True, found)
-    assert found, f"profile {created['uri']} not found searching for '{nonce}'"
-
-
-# ========================================================================
-# Updating a profile persists new template data (Sinopia edit round-trip).
-# ------------------------------------------------------------------------
-def test_update_profile_persists_new_data(
-    config, request_context: APIRequestContext, keycloak_access_token
-):
-    log_header("Update profile persists new data")
-    created = _create_profile(
-        request_context,
-        config,
-        keycloak_access_token,
-        build_resource_template_jsonld(interop_nonce()),
-    )
-    uuid = created["uuid"]
-    new_nonce = interop_nonce()
-    update = send_request(
-        request_context,
-        "PUT",
-        f"{config.base_url}/profiles/{uuid}",
-        request_timeout=config.request_timeout,
-        headers={**JSON_HEADERS, "Authorization": f"Bearer {keycloak_access_token}"},
-        json={"data": profile_create_body(build_expanded_resource_template_jsonld(new_nonce))["data"]},
-    )
-    assert_status(update, 200)
-
-    fetched = send_request(
-        request_context,
-        "GET",
-        f"{config.base_url}/profiles/{uuid}",
-        request_timeout=config.request_timeout,
-    )
-    assert_status(fetched, 200)
-    import json as _json
-
-    assert new_nonce in _json.dumps(fetched.json().get("data"))
-
-
-# ========================================================================
-# Unknown profile UUID / URI lookups return 404 (not 500).
-# ------------------------------------------------------------------------
-def test_unknown_profile_uuid_returns_404(config, request_context: APIRequestContext):
-    log_header("Unknown profile UUID is 404")
-    response = send_request(
-        request_context,
-        "GET",
-        f"{config.base_url}/profiles/{uuid4()}",
-        request_timeout=config.request_timeout,
-    )
-    assert_status(response, 404)
-
-
-def test_unknown_profile_uri_returns_404(config, request_context: APIRequestContext):
-    log_header("Unknown profile URI is 404")
-    response = send_request(
-        request_context,
-        "GET",
-        f"{config.base_url}/profiles/",
-        request_timeout=config.request_timeout,
-        params={"uri": "http://example.org/profiles/does-not-exist"},
-    )
-    assert_status(response, 404)
-
-
-# ========================================================================
 # Pagination links envelope: next on a full page, prev when offset>0, and
 # no next on the final page. Sinopia pages through templates via these links.
 # ------------------------------------------------------------------------
@@ -445,24 +284,6 @@ def test_profiles_api_cors_preflight(config, request_context: APIRequestContext,
 
 
 # ========================================================================
-# Round-trip fidelity: the template's class and label survive the API's
-# JSON-LD load -> re-serialize -> store -> retrieve path (not just the type).
-# ------------------------------------------------------------------------
-def test_created_profile_preserves_template_content(
-    config, request_context: APIRequestContext, keycloak_access_token
-):
-    log_header("Profile preserves template content")
-    nonce = interop_nonce()
-    body = _create_profile(
-        request_context, config, keycloak_access_token, build_resource_template_jsonld(nonce)
-    )
-    blob = json.dumps(body.get("data"))
-    log_expected_actual("bibframe class retained", True, BF_WORK in blob)
-    assert BF_WORK in blob, "sinopia:hasClass value did not survive the round trip"
-    assert nonce in blob, "template label did not survive the round trip"
-
-
-# ========================================================================
 # References to the template node are re-homed to the minted URI, and the
 # original @id no longer appears anywhere in the stored graph.
 # ------------------------------------------------------------------------
@@ -509,24 +330,6 @@ def test_context_jsonld_is_served_as_jsonld(config, request_context: APIRequestC
     log_expected_actual("content-type is ld+json", True, "ld+json" in content_type)
     assert "ld+json" in content_type
     assert "@context" in response.json()
-
-
-# ========================================================================
-# Creating a profile without the required `data` field is a 422, not a 500.
-# ------------------------------------------------------------------------
-def test_create_profile_missing_data_is_422(
-    config, request_context: APIRequestContext, keycloak_access_token
-):
-    log_header("Create profile missing data -> 422")
-    response = send_request(
-        request_context,
-        "POST",
-        f"{config.base_url}/profiles/",
-        request_timeout=config.request_timeout,
-        headers={**JSON_HEADERS, "Authorization": f"Bearer {keycloak_access_token}"},
-        json={},
-    )
-    assert_status(response, 422)
 
 
 # ========================================================================
