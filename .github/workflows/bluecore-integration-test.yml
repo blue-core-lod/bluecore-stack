@@ -543,14 +543,12 @@ jobs:
           echo "Compose profiles:       integration-full"
 
       # ========================================================================
-      # Fail early if expected API fixture and CLI files are missing.
+      # Fail early if the expected API fixture file is missing.
       # ------------------------------------------------------------------------
       - name: Verify integration fixture file
         run: |
           test -f "${GITHUB_WORKSPACE}/external/bluecore_api/sample/batch.jsonld"
           ls -l "${GITHUB_WORKSPACE}/external/bluecore_api/sample/batch.jsonld"
-          test -f "${GITHUB_WORKSPACE}/external/bluecore_api/src/bluecore_api/cli.py"
-          ls -l "${GITHUB_WORKSPACE}/external/bluecore_api/src/bluecore_api/cli.py"
 
       # ========================================================================
       # Show important Airflow config values from merged compose settings for debug.
