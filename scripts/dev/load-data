@@ -9,9 +9,11 @@
 #
 # Points the bluecore CLI at the nginx-fronted stack (localhost/api,
 # localhost/keycloak) instead of the direct dev server on :3000, so it works
-# while `bluecore-stack` is up. The CLI itself lives in the sibling bluecore_api
-# project; It runs there (via `uv run --directory`) so its .env — which holds
-# the dev credentials, is picked up regardless of where you invoke this script.
+# while `bluecore-stack` is up. The CLI is the published `bluecore-client`
+# package, fetched on demand by `uv tool run`, so nothing needs installing
+# first. It still runs in the sibling bluecore_api checkout (via `--directory`)
+# so that project's .env — which holds the dev credentials — is picked up
+# regardless of where you invoke this script.
 
 set -euo pipefail
 
@@ -36,18 +38,19 @@ else
   esac
 fi
 
-# Decide which bluecore subcommand to use: load-file for a local file,
-# load-url otherwise.
+# Decide which bluecore subcommand to use: `load file` for a local file,
+# `load url` otherwise.
 if [ -f "$input" ]; then
-  subcommand="load-file"
-  # Resolve to an absolute path so it's valid after `uv run --directory`.
+  subcommand=(load file)
+  # Resolve to an absolute path so it's valid after `uv tool run --directory`.
   input="$(cd "$(dirname "$input")" && pwd)/$(basename "$input")"
 else
-  subcommand="load-url"
+  subcommand=(load url)
 fi
 
-# This script lives in bluecore-stack/scripts/dev. The CLI lives in the local
-# bluecore_api checkout configured by scripts/dev/local-repo-paths.
+# This script lives in bluecore-stack/scripts/dev. The bluecore_api checkout,
+# whose .env supplies the dev credentials, is configured by
+# scripts/dev/local-repo-paths.
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 . "$ROOT_DIR/scripts/dev/local-repo-paths"
 api_project="${BLUECORE_API_DIR:-$LOCAL_BLUECORE_API_DIR}"
@@ -62,8 +65,8 @@ fi
 host="${BLUECORE_STACK_URL:-http://localhost}"
 host="${host%/}"
 
-uv run --directory "$api_project" bluecore --verbose \
+uv tool run --directory "$api_project" --from bluecore-client bluecore --verbose \
   --bluecore-url "$host" \
   --api-url "$host/api" \
   --keycloak-url "$host/keycloak" \
-  "$subcommand" "$input"
+  "${subcommand[@]}" "$input"
