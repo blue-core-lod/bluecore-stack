@@ -543,7 +543,7 @@ jobs:
           echo "Compose profiles:       integration-full"
 
       # ========================================================================
-      # Fail early if expected API fixture and CLI files are missing.
+      # Fail early if the expected API fixture file is missing.
       # ------------------------------------------------------------------------
       - name: Verify integration fixture file
         run: |
