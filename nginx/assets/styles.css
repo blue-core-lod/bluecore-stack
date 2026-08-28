@@ -200,6 +200,11 @@ body {
     font-size: 14px
 }
 
+.version {
+    color: var(--muted);
+    font-size: 14px
+}
+
 .chev {
     justify-self: end;
     font-size: 22px;

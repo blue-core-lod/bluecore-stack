@@ -37,14 +37,30 @@ async function checkGateway() {
 async function probeRow(row) {
   const url = row.getAttribute('data-probe');
   let up = false;
+  let version = null;
   try {
     const res = await fetch(url, { method: 'GET', redirect: 'manual', cache: 'no-store' });
     up = !(res.status === 502 || res.status === 503 || res.status === 504);
+
+    // A JSON payload may advertise the service version, e.g. {"version": "1.2.3"}
+    const contentType = res.headers.get('content-type') || '';
+    if (up && contentType.includes('application/json')) {
+      try {
+        const payload = await res.json();
+        if (payload && payload.version) version = payload.version;
+        console.log(`Version: ${version}`)
+      } catch (e) {
+        version = null; // not valid JSON after all
+      }
+    }
   } catch (e) {
     up = false; // connection failed
   }
   row.classList.toggle('unavailable', !up);
   row.setAttribute('aria-disabled', String(!up));
+
+  const versionEl = row.querySelector('.version');
+  if (versionEl) versionEl.innerHTML = version ? `Version: ${version}` : '';
 }
 
 function checkServices() {
