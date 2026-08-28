@@ -3,7 +3,7 @@ x-airflow-common:
   # In order to add custom dependencies or upgrade provider distributions you can use your extended image.
   # Comment the image line, place your Dockerfile in the directory where you placed the docker-compose.yaml
   # and uncomment the "build" line below, Then run `docker-compose build` to build the images.
-  # image: ${AIRFLOW_IMAGE_NAME:-apache/airflow:3.0.1}
+  # image: ${AIRFLOW_IMAGE_NAME:-apache/airflow:3.3.1}
   image: ${BLUECORE_WORKFLOWS_IMAGE:-ghcr.io/blue-core-lod/bluecore-workflows:latest}
   environment:
     &airflow-common-env
@@ -23,8 +23,6 @@ x-airflow-common:
     AIRFLOW__KEYCLOAK_AUTH_MANAGER__CLIENT_SECRET: ${AIRFLOW_KEYCLOAK_CLIENT_SECRET}
     AIRFLOW__KEYCLOAK_AUTH_MANAGER__SERVER_URL: ${KEYCLOAK_INTERNAL_URL}
     AIRFLOW__KEYCLOAK_AUTH_MANAGER__REALM: ${KEYCLOAK_REALM:-bluecore}
-    AIRFLOW__WEBSERVER__SHOW_TRIGGER_FORM_IF_NO_PARAMS: 'true'
-    AIRFLOW__WEBSERVER__ALLOWED_PAYLOAD_SIZE: 250.0
     AIRFLOW_VAR_SINOPIA_ENV: ${AIRFLOW_VAR_SINOPIA_ENV:-dev}
     AIRFLOW_VAR_BLUECORE_URL: ${BLUECORE_URL:-https://bcld.info}
     KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN:-admin}

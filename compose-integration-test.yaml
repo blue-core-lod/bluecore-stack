@@ -56,8 +56,9 @@ services:
       DATABASE_URL: postgresql+psycopg2://airflow:airflow@postgres:5432/${INTEGRATION_DB_NAME:-bluecore_integration_test}
       UV_CACHE_DIR: /tmp/uv-cache
       # bc_api authenticates to Airflow's /auth/token with these to trigger DAGs.
-      # Override the .env value (injected via env_file) so it matches the FAB user
-      # airflow-init creates. Interpolated from the value the test runner exports.
+      # Override the .env value (injected via env_file) so it matches the Keycloak
+      # realm user in keycloak-export/. airflow-init does not create any user; the
+      # AIRFLOW_WWW_USER_* names are historical. Interpolated from the test runner.
       AIRFLOW_WWW_USER_USERNAME: ${AIRFLOW_WWW_USER_USERNAME:-developer}
       AIRFLOW_WWW_USER_PASSWORD: ${AIRFLOW_WWW_USER_PASSWORD:-123456}
     ports:
@@ -68,7 +69,6 @@ services:
       AIRFLOW_CONN_BLUECORE_DB: postgresql+psycopg2://airflow:airflow@postgres:5432/${INTEGRATION_DB_NAME:-bluecore_integration_test}
       AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: "false"
       AIRFLOW__LOGGING__BASE_LOG_FOLDER: /tmp/airflow-logs
-      AIRFLOW__CORE__INTERNAL_API_SECRET_KEY: ${INTEGRATION_AIRFLOW_INTERNAL_API_SECRET_KEY:-integration-internal-api-secret}
       AIRFLOW__API_AUTH__JWT_SECRET: ${INTEGRATION_AIRFLOW_API_AUTH_JWT_SECRET:-integration-api-auth-jwt-secret}
       AIRFLOW__API__WORKERS: "1"
       AIRFLOW_CONFIG: /tmp/airflow.cfg
@@ -86,7 +86,6 @@ services:
       AIRFLOW_CONN_BLUECORE_DB: postgresql+psycopg2://airflow:airflow@postgres:5432/${INTEGRATION_DB_NAME:-bluecore_integration_test}
       AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: "false"
       AIRFLOW__LOGGING__BASE_LOG_FOLDER: /tmp/airflow-logs
-      AIRFLOW__CORE__INTERNAL_API_SECRET_KEY: ${INTEGRATION_AIRFLOW_INTERNAL_API_SECRET_KEY:-integration-internal-api-secret}
       AIRFLOW__API_AUTH__JWT_SECRET: ${INTEGRATION_AIRFLOW_API_AUTH_JWT_SECRET:-integration-api-auth-jwt-secret}
       AIRFLOW__SCHEDULER__PARSING_PROCESSES: "1"
       AIRFLOW_CONFIG: /tmp/airflow.cfg
@@ -103,7 +102,6 @@ services:
       AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: "false"
       AIRFLOW__LOGGING__BASE_LOG_FOLDER: /tmp/airflow-logs
       AIRFLOW__LOGGING__DAG_PROCESSOR_CHILD_PROCESS_LOG_DIRECTORY: /tmp/airflow-logs/dag_processor
-      AIRFLOW__CORE__INTERNAL_API_SECRET_KEY: ${INTEGRATION_AIRFLOW_INTERNAL_API_SECRET_KEY:-integration-internal-api-secret}
       AIRFLOW__API_AUTH__JWT_SECRET: ${INTEGRATION_AIRFLOW_API_AUTH_JWT_SECRET:-integration-api-auth-jwt-secret}
       AIRFLOW_CONFIG: /tmp/airflow.cfg
     healthcheck:
@@ -127,7 +125,6 @@ services:
       AIRFLOW_CONN_BLUECORE_DB: postgresql+psycopg2://airflow:airflow@postgres:5432/${INTEGRATION_DB_NAME:-bluecore_integration_test}
       AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: "false"
       AIRFLOW__LOGGING__BASE_LOG_FOLDER: /tmp/airflow-logs
-      AIRFLOW__CORE__INTERNAL_API_SECRET_KEY: ${INTEGRATION_AIRFLOW_INTERNAL_API_SECRET_KEY:-integration-internal-api-secret}
       AIRFLOW__API_AUTH__JWT_SECRET: ${INTEGRATION_AIRFLOW_API_AUTH_JWT_SECRET:-integration-api-auth-jwt-secret}
       AIRFLOW__CELERY__WORKER_CONCURRENCY: "2"
       AIRFLOW__CELERY__WORKER_AUTOSCALE: "2,1"
@@ -146,6 +143,5 @@ services:
       AIRFLOW_CONN_BLUECORE_DB: postgresql+psycopg2://airflow:airflow@postgres:5432/${INTEGRATION_DB_NAME:-bluecore_integration_test}
       AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: "false"
       AIRFLOW__LOGGING__BASE_LOG_FOLDER: /tmp/airflow-logs
-      AIRFLOW__CORE__INTERNAL_API_SECRET_KEY: ${INTEGRATION_AIRFLOW_INTERNAL_API_SECRET_KEY:-integration-internal-api-secret}
       AIRFLOW__API_AUTH__JWT_SECRET: ${INTEGRATION_AIRFLOW_API_AUTH_JWT_SECRET:-integration-api-auth-jwt-secret}
       AIRFLOW_CONFIG: /tmp/airflow.cfg
