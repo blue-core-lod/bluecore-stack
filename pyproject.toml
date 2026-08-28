@@ -1,0 +1,12 @@
+[project]
+name = "blue-core-stack"
+version = "0.1.0"
+description = "Public repository for deploying the Blue Core stack"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "gssapi>=1.11.1",
+    "paramiko>=4.0.0",
+    "pyasn1>=0.6.3",
+    "pyinfra>=3.8.0",
+]
