@@ -125,6 +125,9 @@ No flag starts all local-source services. Subset flags are local-source only;
 ./scripts/dev/run --image            # published images via compose-dev.yaml
 ```
 
+To build a service from its own Dockerfile instead of running it live-reloaded, see 
+[Building Local Images](local-images.md).
+
 The first local-source run builds images and installs frontend dependencies, so 
 it can take a few minutes. Postgres, Keycloak, Nginx, and the Blue Core API 
 always start because the API runs database migrations. Nginx tolerates 
