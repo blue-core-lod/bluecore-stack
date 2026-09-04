@@ -112,8 +112,9 @@ already present. For each repository it:
 
 ## 🚀 Run the Stack
 
-No flag starts all local-source services. Subset flags are local-source only; 
-`--image` always runs the full published-image stack.
+No flag starts all local-source services. `--image` always runs the full 
+published-image stack. Service flags select which services run in local mode, and which 
+are built from their Dockerfiles in `--local-images` mode.
 
 ```bash
 ./scripts/dev/run                    # everything
@@ -123,6 +124,11 @@ No flag starts all local-source services. Subset flags are local-source only;
 ./scripts/dev/run --airflow          # core + Airflow
 ./scripts/dev/run --marva --sinopia  # combine flags
 ./scripts/dev/run --image            # published images via compose-dev.yaml
+
+# Published-image stack, but these services built from their real Dockerfiles.
+# See "Testing Dockerfile Changes" below.
+./scripts/dev/run --local-images --sinopia
+./scripts/dev/run --local-images --sinopia --rebuild
 ```
 
 The first local-source run builds images and installs frontend dependencies, so 
@@ -139,6 +145,61 @@ absent services; disabled routes return `502`, and the landing page greys them o
 | Marva | `http://localhost/marva/` | Vite HMR |
 | Marva middleware | internal | `node --watch` |
 | Sinopia | `http://localhost/sinopia/` | webpack dev server through Nginx |
+
+## 🐳 Testing Dockerfile Changes (`--local-images`)
+
+Local mode does **not** use the services' Dockerfiles. It runs stock base images with 
+your checkout bind-mounted and a dev server for live reload, which is what you want for 
+app work. When the thing you are changing *is* a Dockerfile or the production build it 
+runs, use `--local-images` with the service flags:
+
+```bash
+./scripts/dev/run --local-images --sinopia          # build Sinopia from its Dockerfile
+./scripts/dev/run --local-images --api              # build the Blue Core API
+./scripts/dev/run --local-images --marva            # build Marva + its middleware
+./scripts/dev/run --local-images --airflow          # build the workflows image
+./scripts/dev/run --local-images --marva --sinopia  # combine as needed
+./scripts/dev/run --local-images                    # build all of them
+```
+
+The named services are built from `$LOCAL_*_DIR` and tagged `<name>:built-dev-image`; 
+everything else is pulled from GHCR as in `--image` mode. The build is wired in through 
+the same `*_IMAGE` variables `compose-base.yaml` already reads (`SINOPIA_IMAGE`, 
+`BLUECORE_API_IMAGE`, `MARVA_IMAGE`, `MARVA_KEYCLOAK_MIDDLEWARE_IMAGE`, 
+`BLUECORE_WORKFLOWS_IMAGE`).
+
+| Flag | Builds | From |
+|---|---|---|
+| `--api` | `bc_api` | `$LOCAL_BLUECORE_API_DIR/Dockerfile` |
+| `--airflow` | all Airflow services (one shared image) | `$LOCAL_BLUECORE_WORKFLOWS_DIR/Dockerfile` |
+| `--marva` | `marva`, `marva-keycloak-middleware` | `$LOCAL_MARVA_DIR/Dockerfile`, `Dockerfile.middleware` |
+| `--sinopia` | `sinopia` | `$LOCAL_SINOPIA_DIR/Dockerfile` |
+
+### Rebuilding after a change
+
+There is no live reload in this mode. `--rebuild` rebuilds the named images and recreates 
+only those containers, leaving the rest of the stack up:
+
+```bash
+./scripts/dev/run --local-images --sinopia --rebuild
+./scripts/dev/run --local-images --sinopia --rebuild --no-cache   # ignore the layer cache
+```
+
+### Sinopia bakes its config in at build time
+
+Sinopia is the one service whose configuration is compiled into its webpack bundle — 
+compose passes the container no runtime environment, so the build args are what the 
+running app uses. `run` defaults them to the local Nginx routes and supplies 
+`KEYCLOAK_URL`, which Sinopia's Dockerfile leaves with no default at all (auth silently 
+breaks without it). Override any of them through the environment:
+
+```bash
+KEYCLOAK_URL=http://localhost/keycloak ./scripts/dev/run --local-images --sinopia
+```
+
+Note that `./scripts/dev/restart` belongs to local (live-reload) mode and will refuse to 
+recreate a service that is running a `:built-dev-image`, since that would swap your build 
+for the bind-mounted container.
 
 ## 🛑 Bring the Stack Down
 
