@@ -1,0 +1,107 @@
+#!/usr/bin/env bash
+set -euo pipefail
+################################################################################
+## Deploy the Blue Core stack in PRODUCTION (compose.yaml).
+##
+##   ./scripts/prod/deploy
+##
+## Steps:
+##   1. Stop any running containers.
+##   2. Pull the published images. Image-override variables that point at a
+##      LOCAL image are temporarily unset (in the environment and in .env) so
+##      the pull uses the published defaults, then restored.
+##   3. Export HOSTNAME (from `hostname`) if it is not already set.
+##   4. Start the stack detached.
+################################################################################
+
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+cd "$ROOT_DIR"
+
+IMAGE_VARS=(
+  BLUECORE_WORKFLOWS_IMAGE
+  BLUECORE_API_IMAGE
+  SINOPIA_IMAGE
+  MARVA_IMAGE
+  MARVA_KEYCLOAK_MIDDLEWARE_IMAGE
+)
+
+# Published images live in ghcr.io/blue-core-lod/<service>; anything else is local.
+is_local_image() {
+  [[ "$1" != ghcr.io/* ]]
+}
+
+echo "==> Step 1: Stopping containers (if any are running)"
+docker compose down --remove-orphans
+echo "    Containers stopped."
+
+echo "==> Step 2: Pulling published images"
+unset_vars=()
+declare -A saved_values=()
+for var in "${IMAGE_VARS[@]}"; do
+  value="${!var:-}"
+  if [[ -n "$value" ]] && is_local_image "$value"; then
+    echo "    $var=$value looks like a local image - temporarily unsetting it."
+    saved_values["$var"]="$value"
+    unset_vars+=("$var")
+    unset "$var"
+  elif [[ -n "$value" ]]; then
+    echo "    $var=$value is a published image - leaving it as is."
+  fi
+done
+
+# docker compose reads .env regardless of the shell environment, so local image
+# overrides have to be commented out there too.
+env_backup=""
+restore_env_file() {
+  if [[ -n "$env_backup" ]]; then
+    mv "$env_backup" .env
+    echo "    Restored original .env"
+    env_backup=""
+  fi
+}
+trap restore_env_file EXIT
+
+if [[ -f .env ]]; then
+  for var in "${IMAGE_VARS[@]}"; do
+    env_line="$(grep -E "^[[:space:]]*${var}=" .env | tail -n 1 || true)"
+    [[ -n "$env_line" ]] || continue
+    env_value="${env_line#*=}"
+    env_value="${env_value%\"}"; env_value="${env_value#\"}"
+    env_value="${env_value%\'}"; env_value="${env_value#\'}"
+    if is_local_image "$env_value"; then
+      if [[ -z "$env_backup" ]]; then
+        env_backup="$(mktemp)"
+        cp .env "$env_backup"
+      fi
+      echo "    .env sets $var=$env_value (local image) - temporarily commenting it out."
+      sed -i.deploybak -E "s|^([[:space:]]*${var}=)|# \1|" .env
+      rm -f .env.deploybak
+    else
+      echo "    .env sets $var=$env_value (published image) - leaving it as is."
+    fi
+  done
+fi
+
+docker compose pull
+echo "    Pull complete."
+
+restore_env_file
+trap - EXIT
+
+for var in "${unset_vars[@]+"${unset_vars[@]}"}"; do
+  export "$var=${saved_values[$var]}"
+  echo "    Restored $var=${saved_values[$var]}"
+done
+
+echo "==> Step 3: Ensuring HOSTNAME is set"
+if [[ -z "${HOSTNAME:-}" ]]; then
+  HOSTNAME="$(hostname)"
+  echo "    HOSTNAME was unset - set to '$HOSTNAME'."
+else
+  echo "    HOSTNAME already set to '$HOSTNAME'."
+fi
+export HOSTNAME
+
+echo "==> Step 4: Starting the stack"
+docker compose up -d
+echo "    Stack started."
