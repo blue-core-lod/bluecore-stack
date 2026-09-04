@@ -53,6 +53,7 @@ Move every browser-facing URL from `localhost` to the public HTTPS origin
 | `KC_HOSTNAME_STRICT` | `false` | `true` |
 | `MARVA_REDIRECT_BASE` | `http://localhost/marva/` | `https://bcld.info/marva/` |
 | `BLUECORE_STACK_KEYCLOAK_REDIRECT_URI` | `http://localhost/marva/util/auth/callback` | `https://bcld.info/marva/util/auth/callback` |
+| `HOSTNAME` | *(required)* | Your public domain, e.g. `bcld.info` (must match `/etc/letsencrypt/live/<HOSTNAME>`) |
 | `MARVA_BASE_URL` | `http://localhost/marva/` | `https://bcld.info/marva/` |
 | `SINOPIA_BASE_URL` | `http://localhost/sinopia/` | `https://bcld.info/sinopia/` |
 | `CORS_ORIGIN` | `*` | Lock to the public origin, e.g. `https://bcld.info` |
