@@ -85,6 +85,8 @@ services:
     image: ${SINOPIA_IMAGE:-ghcr.io/blue-core-lod/sinopia:latest}
     expose:
       - 8004
+    env_file:
+      ./.env
     depends_on:
       - bc_api
 
