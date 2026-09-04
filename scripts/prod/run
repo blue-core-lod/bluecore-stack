@@ -3,7 +3,7 @@ set -euo pipefail
 ################################################################################
 ## Deploy the Blue Core stack in PRODUCTION (compose.yaml).
 ##
-##   ./scripts/prod/deploy
+##   ./scripts/prod/run
 ##
 ## Steps:
 ##   1. Stop any running containers.

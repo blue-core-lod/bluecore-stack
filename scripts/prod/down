@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+set -euo pipefail
+################################################################################
+## Stop the Blue Core stack in PRODUCTION (compose.yaml).
+##
+##   ./scripts/prod/down
+################################################################################
+
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+cd "$ROOT_DIR"
+
+echo "==> Stopping the stack"
+docker compose down
+echo "    Stack stopped."
