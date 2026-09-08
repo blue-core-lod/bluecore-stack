@@ -39,6 +39,8 @@ x-airflow-common:
     _PIP_ADDITIONAL_REQUIREMENTS: ${_PIP_ADDITIONAL_REQUIREMENTS:-}
     # The following line can be used to set a custom config file, stored in the local config folder
     AIRFLOW_CONFIG: '/opt/airflow/config/airflow.cfg'
+    AIRFLOW_UID: ${AIRFLOW_UID:-50000}
+    AIRFLOW_GID: ${AIRFLOW_GID:-0}
   env_file:
     - ./.env
   volumes:
@@ -46,7 +48,7 @@ x-airflow-common:
     - ${AIRFLOW_PROJ_DIR:-.}/uploads:/opt/airflow/uploads
     - ${AIRFLOW_PROJ_DIR:-.}/config:/opt/airflow/config
 
-  user: "${AIRFLOW_UID:-50000}:0"
+  user: "${AIRFLOW_UID}:${AIRFLOW_GID}"
   depends_on:
     &airflow-common-depends-on
     redis:
