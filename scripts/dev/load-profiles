@@ -17,10 +17,11 @@
 # It fetches resource templates from <remote-host>/api/search/profile and POSTs
 # each to the local /api/profiles/, minting a local URI for each. Points the CLI
 # at the nginx-fronted local stack (localhost/api, localhost/keycloak) so it
-# works while `bluecore-stack` is up. The CLI itself lives in the sibling
-# bluecore_api project; it runs there (via `uv run --directory`) so its .env —
-# which holds the dev credentials — is picked up regardless of where you invoke
-# this script.
+# works while `bluecore-stack` is up. The CLI is the published `bluecore-client`
+# package, fetched on demand by `uv tool run`, so nothing needs installing
+# first. It still runs in the sibling bluecore_api checkout (via `--directory`)
+# so that project's .env — which holds the dev credentials — is picked up
+# regardless of where you invoke this script.
 #
 # The local stack must be running (API, Keycloak, and Nginx).
 
@@ -40,8 +41,9 @@ if [ "$#" -eq 0 ]; then
   esac
 fi
 
-# This script lives in bluecore-stack/scripts/dev. The CLI lives in the local
-# bluecore_api checkout configured by scripts/dev/local-repo-paths.
+# This script lives in bluecore-stack/scripts/dev. The bluecore_api checkout,
+# whose .env supplies the dev credentials, is configured by
+# scripts/dev/local-repo-paths.
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 . "$ROOT_DIR/scripts/dev/local-repo-paths"
 api_project="${BLUECORE_API_DIR:-$LOCAL_BLUECORE_API_DIR}"
@@ -57,9 +59,9 @@ host="${BLUECORE_STACK_URL:-http://localhost}"
 host="${host%/}"
 
 # Remaining args are the remote host and/or flags (e.g. --dry-run, --page-size)
-# passed straight through to the CLI's `load-profiles` command.
-uv run --directory "$api_project" bluecore --verbose \
+# passed straight through to the CLI's `load profiles` command.
+uv tool run --directory "$api_project" --from bluecore-client bluecore --verbose \
   --bluecore-url "$host" \
   --api-url "$host/api" \
   --keycloak-url "$host/keycloak" \
-  load-profiles "$@"
+  load profiles "$@"
