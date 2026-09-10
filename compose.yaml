@@ -41,9 +41,20 @@ services:
     environment:
       # Must match the /etc/letsencrypt/live/<HOSTNAME> cert directory.
       - HOSTNAME=${HOSTNAME}
+      # Second domain for hosts reachable under two names (staging answers on
+      # both stage.bcld.info and bluecore-stage.stanford.edu). Only read when
+      # NGINX_EXTRA_SERVERS is set; must match its own cert directory.
+      - HOSTNAME_ALT=${HOSTNAME_ALT:-}
     volumes:
       - /etc/letsencrypt:/etc/letsencrypt:ro
       - ./nginx/base.conf:/etc/nginx/conf.d/default.conf
+      # Outside conf.d/ on purpose: base.conf includes it from inside its
+      # server block, and conf.d/*.conf is loaded at http context.
+      - ./nginx/site-body.conf:/etc/nginx/site-body.conf
       - ./nginx/server.conf:/etc/nginx/templates/env/server.conf.template
+      # Extra server blocks, selected per host in .env. Unset means the
+      # comment-only placeholder, i.e. a single domain (production).
+      # Set NGINX_EXTRA_SERVERS=server-alt.conf for a second cert pair.
+      - ./nginx/${NGINX_EXTRA_SERVERS:-no-extra-servers.conf}:/etc/nginx/templates/env/extra/extra.conf.template
       - ./nginx:/var/www/html
     restart: always
