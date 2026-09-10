@@ -102,7 +102,7 @@ else
 fi
 export HOSTNAME
 
-echo "==> Step 4: Ensuring airflow uid/gid is set"
+echo "==> Step 4: Ensuring airflow uid is set"
 if [[ -z "${AIRFLOW_UID:-}" ]]; then
   AIRFLOW_UID=$(id -u)
   echo "    AIRFLOW_UID was unset - set to '$AIRFLOW_UID'."
@@ -110,14 +110,6 @@ else
   echo "    AIRFLOW_UID already set to '$AIRFLOW_UID'."
 fi
 export AIRFLOW_UID
-
-if [[ -z "${AIRFLOW_GID:-}" ]]; then
-  AIRFLOW_GID=$(id -g)
-  echo "    AIRFLOW_GID was unset - set to '$AIRFLOW_GID'."
-else
-  echo "    AIRFLOW_GID already set to '$AIRFLOW_GID'."
-fi
-export AIRFLOW_GID
 
 echo "==> Step 5: Starting the stack"
 docker compose up -d

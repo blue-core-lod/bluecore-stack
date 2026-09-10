@@ -16,7 +16,11 @@ x-airflow-common:
     AIRFLOW__CORE__FERNET_KEY: ''
     AIRFLOW__CORE__DAGS_FOLDER: '/opt/airflow/ils_middleware/dags'
     AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: 'true'
+    AIRFLOW__CORE__KILLED_TASK_CLEANUP_TIME: 120
     AIRFLOW__CORE__LOAD_EXAMPLES: 'false'
+    AIRFLOW__DATABASE__SQL_ALCHEMY_POOL_SIZE: 30
+    AIRFLOW__DATABASE__SQL_ALCHEMY_MAX_OVERFLOW: 300
+    AIRFLOW__DATABASE__SQL_ALCHEMY_POOL_RECYCLE: 300
     AIRFLOW__CORE__EXECUTION_API_SERVER_URL: 'http://airflow-apiserver:8080/workflows/execution/'
     AIRFLOW__API__BASE_URL: ${AIRFLOW_EXTERNAL_URL:-http://localhost/workflows}
     AIRFLOW__KEYCLOAK_AUTH_MANAGER__CLIENT_ID: ${AIRFLOW_KEYCLOAK_CLIENT_ID:-bluecore_workflows}
@@ -40,7 +44,6 @@ x-airflow-common:
     # The following line can be used to set a custom config file, stored in the local config folder
     AIRFLOW_CONFIG: '/opt/airflow/config/airflow.cfg'
     AIRFLOW_UID: ${AIRFLOW_UID:-50000}
-    AIRFLOW_GID: ${AIRFLOW_GID:-0}
   env_file:
     - ./.env
   volumes:
@@ -48,7 +51,7 @@ x-airflow-common:
     - ${AIRFLOW_PROJ_DIR:-.}/uploads:/opt/airflow/uploads
     - ${AIRFLOW_PROJ_DIR:-.}/config:/opt/airflow/config
 
-  user: "${AIRFLOW_UID}:${AIRFLOW_GID}"
+  user: "${AIRFLOW_UID}:0"
   depends_on:
     &airflow-common-depends-on
     redis:
@@ -76,9 +79,10 @@ services:
       - 8100
     env_file:
       - ./.env
-    user: "${AIRFLOW_UID:-50000}:0"
     environment:
+      AIRFLOW_UID: ${AIRFLOW_UID:-50000}
       DATABASE_URL: postgresql+psycopg2://${DATABASE_USERNAME:-airflow}:${DATABASE_PASSWORD:-airflow}@${DATABASE_HOSTNAME:-postgres}:${DATABASE_PORT:-5432}/bluecore
+    user: "${AIRFLOW_UID}:0"
     volumes:
        - ${AIRFLOW_PROJ_DIR:-.}/uploads:/bluecore_api/uploads
 
@@ -205,7 +209,7 @@ services:
     command:
       - -c
       - |
-        if [[ -z "${AIRFLOW_UID}" ]]; then
+        if [[ -z "$${AIRFLOW_UID}" ]]; then
           echo
           echo -e "\033[1;33mWARNING!!!: AIRFLOW_UID not set!\e[0m"
           echo "If you are on Linux, you SHOULD follow the instructions below to set "
@@ -213,7 +217,7 @@ services:
           echo "For other operating systems you can get rid of the warning with manually created .env file:"
           echo "    See: https://airflow.apache.org/docs/apache-airflow/stable/howto/docker-compose/index.html#setting-the-right-airflow-user"
           echo
-          export AIRFLOW_UID=$(id -u)
+          export AIRFLOW_UID=$$(id -u)
         fi
         one_meg=1048576
         mem_available=$$(($$(getconf _PHYS_PAGES) * $$(getconf PAGE_SIZE) / one_meg))
@@ -268,13 +272,13 @@ services:
         echo
         ls -la /opt/airflow/{logs,dags,plugins,config}
         echo
-        echo "Change ownership of files in /opt/airflow to ${AIRFLOW_UID}:0"
+        echo "Change ownership of files in /opt/airflow to $${AIRFLOW_UID}:0"
         echo
-        chown -R "${AIRFLOW_UID}:0" /opt/airflow/
+        chown -R "$${AIRFLOW_UID}:0" /opt/airflow/
         echo
-        echo "Change ownership of files in shared volumes to ${AIRFLOW_UID}:0"
+        echo "Change ownership of files in shared volumes to $${AIRFLOW_UID}:0"
         echo
-        chown -v -R "${AIRFLOW_UID}:0" /opt/airflow/{logs,dags,plugins,config}
+        chown -v -R "$${AIRFLOW_UID}:0" /opt/airflow/{logs,dags,plugins,config}
         echo
         echo "Files in shared volumes:"
         echo
