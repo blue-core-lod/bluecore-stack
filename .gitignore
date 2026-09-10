@@ -2,13 +2,16 @@ samlapi_formauth.py
 .DS_Store
 .env*
 *swp
-logs/*
-uploads/*
+/logs/*
+!/logs/.keepme
+/uploads/*
+!/uploads/.keepme
 __pycache__/
 *.py[cod]
 tests/playwright/.venv/
 .secrets
-/config/airflow.cfg
+/config/*
+!/config/.keepme
 /.idea/
 # ignore every keycloak export except development
 /keycloak-export/*/
