@@ -93,6 +93,12 @@ graph LR;
    ./scripts/dev/run --image
    ```
 
+   To run in production envrionment:
+
+   ```bash
+   ./scripts/prod/run
+   ```
+
 4. Open the local landing page:
 
    ```text
