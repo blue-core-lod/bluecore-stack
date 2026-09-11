@@ -65,8 +65,8 @@ services:
       - sh
       - -c
       - >
-        uv run alembic upgrade head &&
-        uv run uvicorn bluecore_api.app.main:application
+        alembic upgrade head &&
+        uvicorn bluecore_api.app.main:application
         --host 0.0.0.0 --port 8100 --root-path /api
         --reload --reload-dir /bluecore_api/src --reload-dir /bluecore_models/src
     # Browser-facing URLs baked into the HTML view's "Load to Marva/Sinopia"
