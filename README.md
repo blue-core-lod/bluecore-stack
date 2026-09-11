@@ -16,7 +16,10 @@ Blue Core is deployed in the following environments:
   is ready, we will migrate the bcld.info top-level DNS to use the on-premises server and remove the 
   AWS environment.
 - **[stage.bcld.info](https://stage.bcld.info)** Staging environment hosted at Stanford University
-  Libraries, currently being built but will be available early in Work Cycle two.
+  Libraries, currently being built but will be available early in Work Cycle two. The same server also
+  serves [bluecore-stage.stanford.edu](https://bluecore-stage.stanford.edu) with its own TLS
+  certificate — both domains serve the full stack
+  (see [Two domains on one host](docs/deploy.md#-two-domains-on-one-host)).
 - **[bcld.info](https://bcld.info)** Production Blue Core environment hosted at Stanford University
   Libraries, will start to be be available in Work Cycle Three, with actual production use occurring
   in the first half of 2027.
@@ -91,6 +94,12 @@ graph LR;
 
    ```bash
    ./scripts/dev/run --image
+   ```
+
+   To run in production envrionment:
+
+   ```bash
+   ./scripts/prod/run
    ```
 
 4. Open the local landing page:

@@ -94,7 +94,28 @@ for var in "${unset_vars[@]+"${unset_vars[@]}"}"; do
 done
 
 echo "==> Step 3: Ensuring HOSTNAME is set"
-if [[ -z "${HOSTNAME:-}" ]]; then
+# HOSTNAME selects the /etc/letsencrypt/live/<HOSTNAME> cert directory and, on a
+# host that answers to two domains, which one is canonical - so it is a
+# deliberate choice, not whatever `hostname` happens to return. .env wins:
+# bash always defines HOSTNAME itself, and an exported shell variable outranks
+# .env in docker compose's precedence order, so without this the machine name
+# would silently override the configured domain.
+env_hostname=""
+if [[ -f .env ]]; then
+  hostname_line="$(grep -E "^[[:space:]]*HOSTNAME=" .env | tail -n 1 || true)"
+  if [[ -n "$hostname_line" ]]; then
+    env_hostname="${hostname_line#*=}"
+    env_hostname="${env_hostname%%#*}"                      # strip trailing comment
+    env_hostname="${env_hostname%"${env_hostname##*[![:space:]]}"}"  # strip trailing space
+    env_hostname="${env_hostname%\"}"; env_hostname="${env_hostname#\"}"
+    env_hostname="${env_hostname%\'}"; env_hostname="${env_hostname#\'}"
+  fi
+fi
+
+if [[ -n "$env_hostname" ]]; then
+  HOSTNAME="$env_hostname"
+  echo "    HOSTNAME set to '$HOSTNAME' (from .env)."
+elif [[ -z "${HOSTNAME:-}" ]]; then
   HOSTNAME="$(hostname)"
   echo "    HOSTNAME was unset - set to '$HOSTNAME'."
 else
@@ -102,6 +123,25 @@ else
 fi
 export HOSTNAME
 
-echo "==> Step 4: Starting the stack"
+if [[ ! -d "/etc/letsencrypt/live/$HOSTNAME" ]]; then
+  echo "    WARNING: /etc/letsencrypt/live/$HOSTNAME does not exist - nginx will"
+  echo "             fail to start until that certificate is in place."
+fi
+
+# Second domain (optional). Only nginx reads these; see nginx/server-alt.conf.
+if [[ -n "${NGINX_EXTRA_SERVERS:-}" ]]; then
+  echo "    NGINX_EXTRA_SERVERS='$NGINX_EXTRA_SERVERS' - extra nginx server block(s) enabled."
+fi
+
+echo "==> Step 4: Ensuring airflow uid is set"
+if [[ -z "${AIRFLOW_UID:-}" ]]; then
+  AIRFLOW_UID=$(id -u)
+  echo "    AIRFLOW_UID was unset - set to '$AIRFLOW_UID'."
+else
+  echo "    AIRFLOW_UID already set to '$AIRFLOW_UID'."
+fi
+export AIRFLOW_UID
+
+echo "==> Step 5: Starting the stack"
 docker compose up -d
 echo "    Stack started."
