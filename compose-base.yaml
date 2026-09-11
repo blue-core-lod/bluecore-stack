@@ -18,9 +18,30 @@ x-airflow-common:
     AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: 'true'
     AIRFLOW__CORE__KILLED_TASK_CLEANUP_TIME: 120
     AIRFLOW__CORE__LOAD_EXAMPLES: 'false'
-    AIRFLOW__DATABASE__SQL_ALCHEMY_POOL_SIZE: 30
-    AIRFLOW__DATABASE__SQL_ALCHEMY_MAX_OVERFLOW: 300
-    AIRFLOW__DATABASE__SQL_ALCHEMY_POOL_RECYCLE: 300
+    # ---- Postgres connection budget ------------------------------------------
+    # Every setting in this block exists to bound how many connections this
+    # stack asks of the shared Postgres, which it reaches through an on-prem
+    # PgBouncer in the deployed environments.
+    #
+    # pool_size + max_overflow is a per-PROCESS ceiling, and there are many
+    # processes: AIRFLOW__API__WORKERS gunicorn workers, the scheduler, the
+    # dag-processor, the triggerer, and one celery parent plus
+    # AIRFLOW__CELERY__WORKER_CONCURRENCY children. Multiply before raising
+    # anything here.
+    #
+    # These govern the metadata database only. The bluecore database is sized
+    # separately by its two clients: BLUECORE_DB_POOL_SIZE / _MAX_OVERFLOW in
+    # bluecore-workflows, and DATABASE_POOL_SIZE / _MAX_OVERFLOW in bluecore_api.
+    AIRFLOW__DATABASE__SQL_ALCHEMY_POOL_SIZE: 5
+    AIRFLOW__DATABASE__SQL_ALCHEMY_MAX_OVERFLOW: 5
+    AIRFLOW__DATABASE__SQL_ALCHEMY_POOL_RECYCLE: 1800
+    AIRFLOW__API__WORKERS: 2
+    AIRFLOW__CELERY__WORKER_CONCURRENCY: 8
+    # The celery result backend is a separate SQLAlchemy engine that inherits
+    # none of the [database] settings above, and defaults to no pre-ping - so it
+    # hands out connections the pooler has already closed unless told otherwise.
+    AIRFLOW__CELERY__RESULT_BACKEND_SQLALCHEMY_ENGINE_OPTIONS: '{"pool_size": 3, "max_overflow": 2, "pool_pre_ping": true, "pool_recycle": 1800}'
+    # --------------------------------------------------------------------------
     AIRFLOW__CORE__EXECUTION_API_SERVER_URL: 'http://airflow-apiserver:8080/workflows/execution/'
     AIRFLOW__API__BASE_URL: ${AIRFLOW_EXTERNAL_URL:-http://localhost/workflows}
     AIRFLOW__KEYCLOAK_AUTH_MANAGER__CLIENT_ID: ${AIRFLOW_KEYCLOAK_CLIENT_ID:-bluecore_workflows}
