@@ -29,13 +29,27 @@ x-airflow-common:
     # AIRFLOW__CELERY__WORKER_CONCURRENCY children. Multiply before raising
     # anything here.
     #
+    # PgBouncer pools the airflow database in TRANSACTION mode, so a client
+    # connection only occupies a server connection for the length of a
+    # transaction. That makes client connections cheap - they cost a socket and
+    # one of max_client_conn (1000) - so this pool is sized for the apiserver's
+    # concurrency rather than for the database's connection count. Sizing it as
+    # though every client connection pinned a server connection starves the
+    # apiserver, which serves the Execution API (see
+    # AIRFLOW__CORE__EXECUTION_API_SERVER_URL) as well as the UI, and shows up
+    # as 500s with "QueuePool limit of size N overflow N reached".
+    #
+    # There is no [database] pool_timeout option in Airflow 3.2; SQLAlchemy's
+    # 30s default applies. Raising it via sql_alchemy_engine_args would only
+    # defer the error, so keep the pool sized to the load instead.
+    #
     # These govern the metadata database only. The bluecore database is sized
     # separately by its two clients: BLUECORE_DB_POOL_SIZE / _MAX_OVERFLOW in
     # bluecore-workflows, and DATABASE_POOL_SIZE / _MAX_OVERFLOW in bluecore_api.
-    AIRFLOW__DATABASE__SQL_ALCHEMY_POOL_SIZE: 5
-    AIRFLOW__DATABASE__SQL_ALCHEMY_MAX_OVERFLOW: 5
+    AIRFLOW__DATABASE__SQL_ALCHEMY_POOL_SIZE: 10
+    AIRFLOW__DATABASE__SQL_ALCHEMY_MAX_OVERFLOW: 20
     AIRFLOW__DATABASE__SQL_ALCHEMY_POOL_RECYCLE: 1800
-    AIRFLOW__API__WORKERS: 2
+    AIRFLOW__API__WORKERS: 4
     AIRFLOW__CELERY__WORKER_CONCURRENCY: 8
     # The celery result backend is a separate SQLAlchemy engine that inherits
     # none of the [database] settings above, and defaults to no pre-ping - so it
