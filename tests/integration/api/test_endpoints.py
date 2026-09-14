@@ -1304,7 +1304,7 @@ def test_work_update_readback_with_auth(
     updated_work_data = dict(work_response.json())
     updated_work_data.pop("@context", None)
     marker = f"work-update-{uuid4().hex}"
-    updated_work_data["integration_update_marker"] = marker
+    updated_work_data["integration_update_marker"] = [marker]
 
     update_response = send_request(
         request_context,
@@ -1324,7 +1324,7 @@ def test_work_update_readback_with_auth(
         headers=JSONLD_HEADERS,
     )
     assert readback_response.status == 200, readback_response.text()
-    assert readback_response.json().get("integration_update_marker") == marker
+    assert readback_response.json().get("integration_update_marker") == [marker]
 
 
 # ========================================================================
@@ -1353,7 +1353,7 @@ def test_instance_update_readback_with_auth(
     updated_instance_data = dict(instance_response.json())
     updated_instance_data.pop("@context", None)
     marker = f"instance-update-{uuid4().hex}"
-    updated_instance_data["integration_update_marker"] = marker
+    updated_instance_data["integration_update_marker"] = [marker]
 
     update_response = send_request(
         request_context,
@@ -1373,7 +1373,7 @@ def test_instance_update_readback_with_auth(
         headers=JSONLD_HEADERS,
     )
     assert readback_response.status == 200, readback_response.text()
-    assert readback_response.json().get("integration_update_marker") == marker
+    assert readback_response.json().get("integration_update_marker") == [marker]
 
 
 # ========================================================================
@@ -1417,7 +1417,7 @@ def test_resource_update_readback_with_auth(
             "data": json.dumps({
                 "@id": other_resource_uri,
                 "@context": jsonld_context,
-                "rdfs:label": "Updated integration resource",
+                "rdfs:label": ["Updated integration resource"],
             }),
         },
     )
@@ -1432,7 +1432,7 @@ def test_resource_update_readback_with_auth(
     assert readback_response.status == 200, readback_response.text()
     payload = readback_response.json()
     assert payload["uri"] == other_resource_uri
-    assert payload["data"].get("rdfs:label") == "Updated integration resource"
+    assert payload["data"].get("rdfs:label") == ["Updated integration resource"]
 
 
 # ========================================================================
