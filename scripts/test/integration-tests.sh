@@ -105,13 +105,6 @@ MARVA_REPO_URL="${MARVA_REPO_URL:-https://github.com/blue-core-lod/marva_editor.
 BLUECORE_MODELS_REPO_URL="${BLUECORE_MODELS_REPO_URL:-https://github.com/blue-core-lod/bluecore-models.git}"
 
 ###########################
-##   KEYCLOAK SETTINGS   ##
-###########################
-KEYCLOAK_SSL_REQUIRED_OVERRIDE="${KEYCLOAK_SSL_REQUIRED_OVERRIDE:-NONE}"
-INTEGRATION_KEYCLOAK_ADMIN_USER="${INTEGRATION_KEYCLOAK_ADMIN_USER:-${KEYCLOAK_ADMIN:-admin}}"
-INTEGRATION_KEYCLOAK_ADMIN_PASSWORD="${INTEGRATION_KEYCLOAK_ADMIN_PASSWORD:-${KEYCLOAK_ADMIN_PASSWORD:-gracious-professed}}"
-
-###########################
 ##  EFFECTIVE OVERRIDES  ##
 ###########################
 user_bluecore_api_image="${BLUECORE_API_IMAGE:-}"
@@ -666,29 +659,6 @@ apply_bluecore_models_migrations() {
   rm -f "$temp_alembic_config"
 }
 
-configure_keycloak_ssl_requirement() {
-  if [[ -z "$KEYCLOAK_SSL_REQUIRED_OVERRIDE" ]]; then
-    return 0
-  fi
-
-  local deadline
-  deadline=$((SECONDS + POSTGRES_READY_TIMEOUT_SECONDS))
-  while (( SECONDS < deadline )); do
-    if run_compose exec -T keycloak /opt/keycloak/bin/kcadm.sh config credentials \
-      --server http://localhost:8080/keycloak \
-      --realm master \
-      --user "$INTEGRATION_KEYCLOAK_ADMIN_USER" \
-      --password "$INTEGRATION_KEYCLOAK_ADMIN_PASSWORD" >/dev/null 2>&1 &&
-      run_compose exec -T keycloak /opt/keycloak/bin/kcadm.sh update realms/bluecore -s "sslRequired=$KEYCLOAK_SSL_REQUIRED_OVERRIDE" >/dev/null 2>&1; then
-      return 0
-    fi
-    sleep 2
-  done
-
-  echo "Timed out configuring Keycloak sslRequired to '$KEYCLOAK_SSL_REQUIRED_OVERRIDE'."
-  return 1
-}
-
 pytest_passthrough_args=()
 pytest_passthrough_count=0
 base_url_arg_already_set="0"
@@ -1097,10 +1067,6 @@ if [[ "$APPLY_MODELS_MIGRATIONS" == "1" ]]; then
   echo "Migration DB URL: $integration_database_url"
   apply_bluecore_models_migrations
 fi
-
-log_banner "🔐 Configuring Keycloak realm sslRequired"
-echo "sslRequired: $KEYCLOAK_SSL_REQUIRED_OVERRIDE"
-configure_keycloak_ssl_requirement
 
 cleanup() {
   if [[ "$AUTO_START_STACK" == "1" && "$KEEP_STACK_UP" != "1" ]]; then
