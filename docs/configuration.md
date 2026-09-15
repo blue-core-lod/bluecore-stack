@@ -91,6 +91,13 @@ KEYCLOAK_MIDDLEWARE_BASE=http://marva-keycloak-middleware:9401/marva/util
 CORS_ORIGIN=*
 MARVA_UTIL_PATH=https://bibframe.org
 
+####################################
+## Sinopia Editor Configuration   ##
+####################################
+KEYCLOAK_URL=http://localhost/keycloak/
+SINOPIA_URI=http://localhost/sinopia/
+SINOPIA_API_BASE_URL=http://localhost/api
+
 ###############################################
 ## Blue Core API HTML Redirect Configuration ##
 ###############################################
