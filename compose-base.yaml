@@ -83,6 +83,10 @@ services:
       AIRFLOW_UID: ${AIRFLOW_UID:-50000}
       DATABASE_URL: postgresql+psycopg2://${DATABASE_USERNAME:-airflow}:${DATABASE_PASSWORD:-airflow}@${DATABASE_HOSTNAME:-postgres}:${DATABASE_PORT:-5432}/bluecore
     user: "${AIRFLOW_UID}:0"
+    # bc_api resolves the realm's public key at import time (fastapi-keycloak-
+    # middleware), so it hard-crashes if it starts before the realm exists.
+    # The keycloak-config gate lives in compose-dev.yaml (dev/CI only); this
+    # merges with any environment-specific overrides of this key.
     volumes:
        - ${AIRFLOW_PROJ_DIR:-.}/uploads:/bluecore_api/uploads
 
@@ -125,10 +129,9 @@ services:
       retries: 5
       start_period: 30s
     restart: always
+    # The keycloak-config gate lives in compose-dev.yaml (dev/CI only).
     depends_on:
       <<: *airflow-common-depends-on
-      keycloak:
-        condition: service_healthy
       airflow-init:
         condition: service_completed_successfully
 

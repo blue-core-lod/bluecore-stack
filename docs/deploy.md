@@ -191,11 +191,15 @@ Full steps: [updating-keycloak-credentials.md](updating-keycloak-credentials.md)
 
 ## 🚨 Rotate before going public
 
-`AIRFLOW_KEYCLOAK_CLIENT_SECRET` is committed to the repo (in `.env` and in `keycloak-export/development/bluecore-realm.json`), 
-so treat it as **compromised**: regenerate the `bluecore_workflows` client secret in Keycloak and update both the `.env` 
-value and the realm export.
+`AIRFLOW_KEYCLOAK_CLIENT_SECRET` is committed to the repo (in `.env` and, frozen as
+of the pre-migration snapshot, in `tests/fixtures/keycloak/bluecore-realm-pre-migration.json`),
+so treat it as **compromised**: regenerate the `bluecore_workflows` client secret in
+Keycloak and update the `.env` value (see
+[updating-keycloak-credentials.md](updating-keycloak-credentials.md) for every
+other place the development value needs updating too).
 
-`AIRFLOW_WWW_USER_USERNAME` / `AIRFLOW_WWW_USER_PASSWORD` is committed to the repo (in `.env` and in `keycloak-export/development/bluecore-realm.json`),
+`AIRFLOW_WWW_USER_USERNAME` / `AIRFLOW_WWW_USER_PASSWORD` is committed to the repo (in `.env` and, frozen as
+of the pre-migration snapshot, in `tests/fixtures/keycloak/bluecore-realm-pre-migration.json`),
 so treat those as **compromised**: change the user credentials in Keycloak and update both the `.env` value and re-export the `bluecore` realm settings
 "Partial export" to include groups, roles, and clients. Upload the exported file to the server (do not commit to github repository).
 
