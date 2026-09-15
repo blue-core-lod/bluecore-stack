@@ -19,3 +19,6 @@ tests/playwright/.venv/
 cbd_files/**/*
 sinopia_templates/**/*
 .ipynb_checkpoints*
+# Scratch output from scripts/keycloak/verify-realm.sh and drift-check.sh
+/tmp/kc-verify/
+/tmp/kc-drift/
