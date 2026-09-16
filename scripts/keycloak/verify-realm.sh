@@ -6,6 +6,7 @@
 # equivalence  - applying keycloak/realm/ reproduces the committed export
 # convergence  - applying twice is idempotent (proves safe re-apply)
 # user-safety  - a user absent from the config survives an apply
+# dev-users    - the dev/CI seed users overlay applies additively
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
@@ -80,6 +81,39 @@ apply_config() {
     -e KEYCLOAK_SSL_REQUIRED=external \
     -e KEYCLOAK_PUBLIC_BASE_URL=http://localhost \
     -e AIRFLOW_KEYCLOAK_CLIENT_SECRET=verify-only-secret \
+    "$CONFIG_CLI_IMAGE"
+}
+
+# Apply the dev-only users overlay with every managed policy set to no-delete,
+# so this pass can only add. Unlike apply_config, this file declares only
+# `realm` + `users` -- its own two custom clients (bluecore_api,
+# bluecore_workflows) ARE in config-cli's tracked state for this file, so
+# leaving IMPORT_MANAGED_* at the upstream `full` default here (as apply_config
+# does) would let this pass delete them. Every policy below must stay no-delete.
+apply_dev_users() {
+  docker run --rm \
+    --network bluecore-kc-verify_default \
+    -v "$ROOT_DIR/keycloak/realm:/config:ro" \
+    -e KEYCLOAK_URL=http://verify-keycloak:8080 \
+    -e KEYCLOAK_USER=admin \
+    -e KEYCLOAK_PASSWORD=admin \
+    -e IMPORT_VAR_SUBSTITUTION_ENABLED=true \
+    -e IMPORT_FILES_LOCATIONS=/config/bluecore-dev-users.yaml \
+    -e KEYCLOAK_DEV_USER_PASSWORD=123456 \
+    -e IMPORT_MANAGED_CLIENT=no-delete \
+    -e IMPORT_MANAGED_ROLE=no-delete \
+    -e IMPORT_MANAGED_CLIENT_SCOPE=no-delete \
+    -e IMPORT_MANAGED_SCOPE_MAPPING=no-delete \
+    -e IMPORT_MANAGED_CLIENT_SCOPE_MAPPING=no-delete \
+    -e IMPORT_MANAGED_COMPONENT=no-delete \
+    -e IMPORT_MANAGED_SUB_COMPONENT=no-delete \
+    -e IMPORT_MANAGED_AUTHENTICATION_FLOW=no-delete \
+    -e IMPORT_MANAGED_REQUIRED_ACTION=no-delete \
+    -e IMPORT_MANAGED_IDENTITY_PROVIDER=no-delete \
+    -e IMPORT_MANAGED_IDENTITY_PROVIDER_MAPPER=no-delete \
+    -e IMPORT_MANAGED_GROUP=no-delete \
+    -e IMPORT_MANAGED_SUB_GROUP=no-delete \
+    -e IMPORT_MANAGED_CLIENT_AUTHORIZATION_RESOURCES=no-delete \
     "$CONFIG_CLI_IMAGE"
 }
 
@@ -391,10 +425,32 @@ check_user_safety() {
   fi
 }
 
+check_dev_users() {
+  info "Dev users: are the five seed accounts created with their roles?"
+  reset_stack
+  apply_config || fail "realm apply failed"
+  apply_dev_users || fail "dev users apply failed"
+
+  kcadm_login
+  for u in developer dev_op dev_user dev_viewer dev_public; do
+    kcadm get users -r bluecore -q "username=$u" --fields username \
+      | grep -q "$u" || fail "seed user $u was not created"
+  done
+  pass "all five seed users exist"
+
+  # Realm settings must have survived the second, minimal file.
+  kcadm get realms/bluecore --fields sslRequired | grep -q external \
+    || fail "sslRequired was blanked by the users pass"
+  kcadm get clients -r bluecore --fields clientId | grep -q bluecore_workflows \
+    || fail "clients were removed by the users pass"
+  pass "realm settings and clients survived the users pass"
+}
+
 case "${1:-all}" in
   equivalence) check_equivalence ;;
   convergence) check_convergence ;;
   user-safety) check_user_safety ;;
-  all) check_equivalence; check_convergence; check_user_safety ;;
-  *) echo "usage: $0 [equivalence|convergence|user-safety|all]" >&2; exit 2 ;;
+  dev-users) check_dev_users ;;
+  all) check_equivalence; check_convergence; check_user_safety; check_dev_users ;;
+  *) echo "usage: $0 [equivalence|convergence|user-safety|dev-users|all]" >&2; exit 2 ;;
 esac

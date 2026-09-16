@@ -1,0 +1,101 @@
+# Development and CI seed users ONLY. Never applied to staging or production.
+#
+# Applied by the keycloak-config-users service with every IMPORT_MANAGED_*
+# policy set to no-delete, so this file can only add. keycloak-config-cli is
+# upsert-only for users, so accounts a developer creates locally by hand always
+# survive a re-apply.
+#
+# IMPORT_VAR_SUBSTITUTION_ENABLED=true is REQUIRED for KEYCLOAK_DEV_USER_PASSWORD
+# below to substitute; keycloak-config-cli's variable syntax opens with a
+# parenthesis after "env", not a curly brace -- the curly-brace form is a
+# silent no-op that would seed the literal placeholder text as every user's
+# password. Note also that substitution runs over this file's raw text,
+# comments included, so any example syntax written here would itself be
+# "resolved" and fail if it names a variable that does not exist.
+#
+# email/firstName/lastName are required here, not cosmetic: Keycloak's default
+# declarative User Profile requires them, and a user missing any of them fails
+# password-grant login with "Account is not fully set up" even though the
+# account exists, is enabled and has a password credential. Values below are
+# carried over unchanged from keycloak-export/development/bluecore-realm.json.
+realm: bluecore
+users:
+  - username: developer
+    enabled: true
+    emailVerified: true
+    firstName: Johny
+    lastName: Dev
+    email: johnydev@bluecore.edu
+    realmRoles:
+      - default-roles-bluecore
+      - create
+      - export
+      - update
+    credentials:
+      - type: password
+        value: "$(env:KEYCLOAK_DEV_USER_PASSWORD)"
+        temporary: false
+
+  - username: dev_op
+    enabled: true
+    emailVerified: true
+    firstName: dev
+    lastName: op
+    email: dev_op@bluecore.edu
+    realmRoles:
+      - default-roles-bluecore
+    clientRoles:
+      bluecore_workflows:
+        - Op
+    credentials:
+      - type: password
+        value: "$(env:KEYCLOAK_DEV_USER_PASSWORD)"
+        temporary: false
+
+  - username: dev_user
+    enabled: true
+    emailVerified: true
+    firstName: dev
+    lastName: user
+    email: dev_user@bluecore.edu
+    realmRoles:
+      - default-roles-bluecore
+    clientRoles:
+      bluecore_workflows:
+        - User
+    credentials:
+      - type: password
+        value: "$(env:KEYCLOAK_DEV_USER_PASSWORD)"
+        temporary: false
+
+  - username: dev_viewer
+    enabled: true
+    emailVerified: true
+    firstName: dev
+    lastName: viewer
+    email: dev_viewer@bluecore.edu
+    realmRoles:
+      - default-roles-bluecore
+    clientRoles:
+      bluecore_workflows:
+        - Viewer
+    credentials:
+      - type: password
+        value: "$(env:KEYCLOAK_DEV_USER_PASSWORD)"
+        temporary: false
+
+  - username: dev_public
+    enabled: true
+    emailVerified: true
+    firstName: dev
+    lastName: public
+    email: dev_public@bluecore.edu
+    realmRoles:
+      - default-roles-bluecore
+    clientRoles:
+      bluecore_workflows:
+        - Public
+    credentials:
+      - type: password
+        value: "$(env:KEYCLOAK_DEV_USER_PASSWORD)"
+        temporary: false
