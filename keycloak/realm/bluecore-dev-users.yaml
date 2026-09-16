@@ -17,7 +17,8 @@
 # declarative User Profile requires them, and a user missing any of them fails
 # password-grant login with "Account is not fully set up" even though the
 # account exists, is enabled and has a password credential. Values below are
-# carried over unchanged from keycloak-export/development/bluecore-realm.json.
+# carried over unchanged from the pre-migration realm export (now frozen at
+# tests/fixtures/keycloak/bluecore-realm-pre-migration.json).
 realm: bluecore
 users:
   - username: developer
