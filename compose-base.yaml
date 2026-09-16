@@ -58,6 +58,30 @@ x-airflow-common:
       condition: service_healthy
 
 services:
+  # Applies the declarative bluecore realm over the Admin REST API. Runs once
+  # and exits; services that need a configured realm gate on it completing.
+  keycloak-config:
+    image: ${KEYCLOAK_CONFIG_CLI_IMAGE:-adorsys/keycloak-config-cli:6.5.1-26.1.0}
+    env_file:
+      - ./.env
+    environment:
+      KEYCLOAK_URL: http://keycloak:8080/keycloak/
+      KEYCLOAK_USER: ${KEYCLOAK_ADMIN:-admin}
+      KEYCLOAK_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD}
+      # config-cli retries on its own, so it tolerates Keycloak being
+      # healthy-but-not-ready rather than racing it.
+      KEYCLOAK_AVAILABILITYCHECK_ENABLED: "true"
+      KEYCLOAK_AVAILABILITYCHECK_TIMEOUT: 120s
+      # Defaults to false upstream; the templating no-ops silently without it.
+      IMPORT_VAR_SUBSTITUTION_ENABLED: "true"
+      IMPORT_FILES_LOCATIONS: /config/bluecore.yaml
+    volumes:
+      - ./keycloak/realm:/config:ro
+    depends_on:
+      keycloak:
+        condition: service_healthy
+    restart: "no"
+
   redis:
     # Redis is limited to 7.2-bookworm due to licencing change
     # https://redis.io/blog/redis-adopts-dual-source-available-licensing/
@@ -83,6 +107,12 @@ services:
       AIRFLOW_UID: ${AIRFLOW_UID:-50000}
       DATABASE_URL: postgresql+psycopg2://${DATABASE_USERNAME:-airflow}:${DATABASE_PASSWORD:-airflow}@${DATABASE_HOSTNAME:-postgres}:${DATABASE_PORT:-5432}/bluecore
     user: "${AIRFLOW_UID}:0"
+    # bc_api resolves the realm's public key at import time (fastapi-keycloak-
+    # middleware), so it hard-crashes if it starts before the realm exists.
+    # This merges with any environment-specific overrides of this key.
+    depends_on:
+      keycloak-config:
+        condition: service_completed_successfully
     volumes:
        - ${AIRFLOW_PROJ_DIR:-.}/uploads:/bluecore_api/uploads
 
@@ -127,8 +157,8 @@ services:
     restart: always
     depends_on:
       <<: *airflow-common-depends-on
-      keycloak:
-        condition: service_healthy
+      keycloak-config:
+        condition: service_completed_successfully
       airflow-init:
         condition: service_completed_successfully
 
