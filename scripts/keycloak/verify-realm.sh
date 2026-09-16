@@ -25,7 +25,7 @@ source "$ROOT_DIR/scripts/keycloak/lib.sh"
 # scratch space via VERIFY_WORK. Kept as one literal, not derived, so it is
 # obvious the two must never disagree.
 WORK="tmp/kc-verify"
-COMMITTED_EXPORT="keycloak-export/development/bluecore-realm.json"
+COMMITTED_EXPORT="tests/fixtures/keycloak/bluecore-realm-pre-migration.json"
 
 trap 'compose down --volumes >/dev/null 2>&1 || true' EXIT
 
