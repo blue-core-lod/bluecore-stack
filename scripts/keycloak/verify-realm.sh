@@ -20,9 +20,8 @@ WORK="tmp/kc-verify"
 COMMITTED_EXPORT="keycloak-export/development/bluecore-realm.json"
 
 # Entities Keycloak creates by itself on every realm. keycloak/realm/bluecore.yaml
-# deliberately declares none of them. Their *contents* are excluded from the
-# equivalence comparison (see strip_intended) and their *existence* is asserted
-# separately (see assert_defaults_present).
+# deliberately declares none of them, so assert_defaults_present checks that an
+# apply never removes them. Their contents ARE still compared -- see prune_legacy_defaults.
 export DEFAULT_CLIENTS="account account-console admin-cli broker realm-management security-admin-console"
 export DEFAULT_CLIENT_SCOPES="acr address basic email microprofile-jwt offline_access organization phone profile role_list roles saml_organization service_account web-origins"
 
@@ -84,6 +83,75 @@ apply_config() {
     "$CONFIG_CLI_IMAGE"
 }
 
+# Keycloak version drift *inside Keycloak's own default clients and client scopes*.
+#
+# The dev realm was created by an older Keycloak and migrated forward. That older
+# version wrote two keys explicitly when it created the default entities, and
+# 26.1.2 no longer does -- in both cases the omitted value is the effective
+# default, so this is a version artifact and not configuration:
+#
+#   attributes."post.logout.redirect.uris" = "+"   on admin-cli, broker, realm-management
+#   config."userinfo.token.claim"          = "true" on 7 named default-scope mappers
+#
+# Those 10 keys are the *complete* set of differences between this realm's
+# default entities and the ones a 26.1.2 realm creates today (established by a
+# field-by-field diff of the two raw exports; account, account-console and
+# security-admin-console differ in nothing at all).
+#
+# They are pruned here, from the raw export of BOTH sides, rather than excluded
+# later in the canonicalizer. That is deliberate and it is the only stage where
+# a narrow fix works: normalize's granularity is the whole entity -- it emits an
+# entity in full if any field differs from its reference realm and omits it
+# entirely otherwise. Dropping these keys post-normalize would leave a fully
+# populated entity on the baseline side and nothing at all on the candidate
+# side. Pruning pre-normalize makes normalize omit admin-cli, broker and the
+# client scopes from both sides symmetrically, and -- the point of doing it this
+# way -- leaves every other field of every default entity under comparison. An
+# added redirectUri on account-console or a changed default-scope mapper still
+# makes normalize emit the entity on one side only, and still fails the diff.
+read -r -d '' PRUNE_LEGACY_PY <<'PY' || true
+import json, sys
+
+LEGACY_LOGOUT_CLIENTS = {"admin-cli", "broker", "realm-management"}
+LEGACY_USERINFO_MAPPERS = {
+    "acr": {"acr loa level"},
+    "basic": {"auth_time"},
+    "microprofile-jwt": {"groups"},
+    "organization": {"organization"},
+    "service_account": {"Client Host", "Client ID", "Client IP Address"},
+}
+
+realm = json.load(open(sys.argv[1]))
+
+for client in realm.get("clients") or []:
+    if client.get("clientId") in LEGACY_LOGOUT_CLIENTS:
+        attributes = client.get("attributes")
+        if isinstance(attributes, dict):
+            attributes.pop("post.logout.redirect.uris", None)
+
+for scope in realm.get("clientScopes") or []:
+    mapper_names = LEGACY_USERINFO_MAPPERS.get(scope.get("name"))
+    if not mapper_names:
+        continue
+    for mapper in scope.get("protocolMappers") or []:
+        if mapper.get("name") in mapper_names:
+            config = mapper.get("config")
+            if isinstance(config, dict):
+                config.pop("userinfo.token.claim", None)
+
+with open(sys.argv[2], "w") as out:
+    json.dump(realm, out)
+PY
+
+# Prune the legacy default-entity keys from a raw realm export, then normalize it.
+prune_and_normalize() {
+  local raw="$1" outdir="$2"
+  local pruned="$WORK/$(basename "$outdir").pruned.json"
+  mkdir -p "$outdir"
+  python3 -c "$PRUNE_LEGACY_PY" "$raw" "$pruned"
+  ./scripts/keycloak/normalize.sh "$pruned" "$outdir" >/dev/null
+}
+
 # Export the live bluecore realm from the throwaway Keycloak, then normalize it.
 export_and_normalize() {
   local outdir="$1"
@@ -96,7 +164,7 @@ export_and_normalize() {
   compose start verify-keycloak >/dev/null
   compose up -d --wait >/dev/null
 
-  ./scripts/keycloak/normalize.sh "$WORK/export/bluecore-realm.json" "$outdir" >/dev/null
+  prune_and_normalize "$WORK/export/bluecore-realm.json" "$outdir"
 }
 
 # Reduce a normalized realm YAML to a canonical JSON form so that the only
@@ -129,22 +197,18 @@ export_and_normalize() {
 #     (roles/scopes/resources/applyPolicies) - these are sets encoded as JSON
 #     text, and Keycloak emits them in arbitrary order.
 #
-# Also dropped: the six default clients and the 14 default client scopes
-# ($DEFAULT_CLIENTS / $DEFAULT_CLIENT_SCOPES). Keycloak owns these and this
-# config does not declare them, but the long-lived realm's copies are not
-# byte-identical to the ones a 26.1.2 realm creates today: the old realm carries
-# attributes."post.logout.redirect.uris"="+" on admin-cli/broker/realm-management
-# and config."userinfo.token.claim"="true" on seven default scope mappers, both of
-# which newer Keycloak simply omits (the omitted value is the effective default).
-# Those are Keycloak version artifacts, not configuration -- pinning them would
-# mean declaring Keycloak's defaults, which is what this migration exists to stop.
-# Dropping their contents would hide them being *deleted*, so
-# assert_defaults_present checks their existence against the raw export instead.
+# Two modes, selected by CANONICALIZE_MODE:
+#   full       - drop the intended differences above, then canonicalize ordering.
+#                Used by equivalence, which compares two *different* realms.
+#   order-only - canonicalize ordering and drop NOTHING. Used by convergence,
+#                which compares one realm to itself across a re-apply: the UUIDs,
+#                the secret and config-cli's own state attributes must all match
+#                there, and dropping them would hide real apply-to-apply churn.
 read -r -d '' CANONICALIZE_PY <<'PY' || true
 import json, os, sys
 
-DEFAULT_CLIENTS = set(os.environ["DEFAULT_CLIENTS"].split())
-DEFAULT_CLIENT_SCOPES = set(os.environ["DEFAULT_CLIENT_SCOPES"].split())
+DROPPING = os.environ.get("CANONICALIZE_MODE", "full") == "full"
+
 DROP_KEYS = {"id", "containerId", "secret", "components"}
 DROP_ATTRS = {"client.secret.creation.time"}
 DROP_ATTR_PREFIX = "de.adorsys.keycloak.config."
@@ -159,37 +223,31 @@ def sort_key(value):
     return (2, "", json.dumps(value, sort_keys=True))
 
 
-def clean(node, parent_key=None):
+def clean(node, parent_key=None, dropping=None):
+    if dropping is None:
+        dropping = DROPPING
     if isinstance(node, dict):
         out = {}
         for key, value in node.items():
-            if key in DROP_KEYS:
+            if dropping and key in DROP_KEYS:
                 continue
-            if parent_key == "attributes" and (
-                key in DROP_ATTRS or key.startswith(DROP_ATTR_PREFIX)
+            if (
+                dropping
+                and parent_key == "attributes"
+                and (key in DROP_ATTRS or key.startswith(DROP_ATTR_PREFIX))
             ):
                 continue
-            cleaned = clean(value, key)
-            # Filtering out the default clients/client scopes can empty these
-            # lists entirely; normalize omits the key altogether when it has
-            # nothing to say, so treat empty-after-filtering as absent.
-            if key in ("clients", "clientScopes") and cleaned == []:
+            cleaned = clean(value, key, dropping)
+            # normalize omits these keys altogether when it has nothing to say,
+            # so treat an empty list as absent rather than as a difference.
+            if dropping and key in ("clients", "clientScopes") and cleaned == []:
                 continue
             out[key] = cleaned
         return out
     if isinstance(node, list):
-        items = node
-        if parent_key == "clients":
-            items = [
-                c for c in items
-                if not (isinstance(c, dict) and c.get("clientId") in DEFAULT_CLIENTS)
-            ]
-        elif parent_key == "clientScopes":
-            items = [
-                s for s in items
-                if not (isinstance(s, dict) and s.get("name") in DEFAULT_CLIENT_SCOPES)
-            ]
-        return sorted((clean(item, parent_key) for item in items), key=sort_key)
+        return sorted(
+            (clean(item, parent_key, dropping) for item in node), key=sort_key
+        )
     if isinstance(node, str):
         text = node.strip()
         if text.startswith("[") and text.endswith("]"):
@@ -198,7 +256,15 @@ def clean(node, parent_key=None):
             except ValueError:
                 return node
             if isinstance(parsed, list):
-                return json.dumps(sorted(clean(parsed), key=sort_key))
+                # Ordering is normalized here but NOTHING is dropped, hence the
+                # explicit dropping=False. These strings carry the authorization
+                # role bindings:
+                #   config.roles = [{"id":"bluecore_workflows/Viewer","required":false}]
+                # Letting DROP_KEYS reach inside would delete that `id` and erase
+                # the binding under test -- every Allow-* policy would collapse to
+                # [{"required": false}] and rebinding Allow-Viewer to SuperAdmin,
+                # or pointing a policy at a nonexistent role, would pass silently.
+                return json.dumps(clean(parsed, None, dropping=False))
         return node
     return node
 
@@ -207,17 +273,38 @@ json.dump(clean(json.load(sys.stdin)), sys.stdout, indent=2, sort_keys=True)
 sys.stdout.write("\n")
 PY
 
-strip_intended() {
+_canonicalize() {
   docker run --rm -i "$YQ_IMAGE" -o=json -I=0 '.' < "$1" \
     | python3 -c "$CANONICALIZE_PY"
 }
 
-# strip_intended ignores the *contents* of Keycloak's default clients and client
-# scopes, so prove separately that they all still exist. This is what would catch
-# config-cli treating "absent from the config" as "delete" -- the real hazard of
-# declaring only bluecore_api and bluecore_workflows under IMPORT_MANAGED_*=full.
-# Reads the raw export rather than the normalized one, because normalize drops
-# entities that match its reference realm and would hide them either way.
+# Drop the intended differences, then canonicalize ordering. For equivalence.
+strip_intended() {
+  CANONICALIZE_MODE=full _canonicalize "$1"
+}
+
+# Canonicalize ordering only, dropping nothing. For convergence.
+#
+# Java's String.hashCode is unsalted, so HashSet iteration order is stable run to
+# run, but collections assembled from JPA queries without a total ORDER BY can
+# still shift row order after the second apply's UPDATEs. Comparing ordered JSON
+# instead of raw YAML text removes that latent flake without weakening the check:
+# convergence still compares every field equivalence drops, which is what makes
+# it the stronger of the two.
+canonicalize_order_only() {
+  CANONICALIZE_MODE=order-only _canonicalize "$1"
+}
+
+# Prove that Keycloak's default clients and client scopes all still exist. This is
+# what would catch config-cli treating "absent from the config" as "delete" -- the
+# real hazard of declaring only bluecore_api and bluecore_workflows under
+# IMPORT_MANAGED_*=full. Reads the raw export rather than the normalized one,
+# because normalize omits any entity matching its reference realm, so a default
+# entity being deleted and a default entity being pristine look identical there.
+#
+# Must be called after EVERY apply, not just the first. Delete-missing logic only
+# engages against an already-existing realm, so the second apply is the path where
+# deletion can actually happen -- checking only the first would guard the wrong one.
 read -r -d '' ASSERT_DEFAULTS_PY <<'PY' || true
 import json, os, sys
 
@@ -242,8 +329,7 @@ check_equivalence() {
   info "Equivalence: does keycloak/realm/ reproduce the committed export?"
   [[ -f keycloak/realm/bluecore.yaml ]] || fail "keycloak/realm/bluecore.yaml does not exist"
 
-  mkdir -p "$WORK/baseline"
-  ./scripts/keycloak/normalize.sh "$COMMITTED_EXPORT" "$WORK/baseline" >/dev/null
+  prune_and_normalize "$COMMITTED_EXPORT" "$WORK/baseline"
 
   reset_stack
   apply_config || fail "config-cli apply failed"
@@ -269,10 +355,17 @@ check_convergence() {
   export_and_normalize "$WORK/candidate"
   apply_config || fail "second apply failed"
   export_and_normalize "$WORK/second"
+  # The second apply is the one that can delete: delete-missing logic only runs
+  # against an already-existing realm.
+  assert_defaults_present "$WORK/export/bluecore-realm.json"
 
-  if diff -u "$WORK/candidate"/*.yaml "$WORK/second"/*.yaml > "$WORK/convergence.diff"; then
+  canonicalize_order_only "$WORK/candidate"/*.yaml > "$WORK/candidate.ordered.json"
+  canonicalize_order_only "$WORK/second"/*.yaml > "$WORK/second.ordered.json"
+  if diff -u "$WORK/candidate.ordered.json" "$WORK/second.ordered.json" \
+      > "$WORK/convergence.diff"; then
     pass "second apply changed nothing"
   else
+    echo "--- differences (see $WORK/convergence.diff) ---"
     cat "$WORK/convergence.diff"
     fail "second apply mutated the realm; config is not idempotent"
   fi
