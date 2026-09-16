@@ -23,6 +23,8 @@ info() { echo -e "${BLUE}==>${NC} $1"; }
 
 compose() { docker compose -f "$VERIFY_COMPOSE" "$@"; }
 
+trap 'compose down --volumes >/dev/null 2>&1 || true' EXIT
+
 reset_stack() {
   info "Resetting throwaway Keycloak"
   compose down --volumes >/dev/null 2>&1 || true
@@ -67,6 +69,7 @@ apply_config() {
 # Export the live bluecore realm from the throwaway Keycloak, then normalize it.
 export_and_normalize() {
   local outdir="$1"
+  rm -rf "$WORK/export"
   mkdir -p "$WORK/export" "$outdir"
 
   compose stop verify-keycloak >/dev/null
@@ -141,6 +144,3 @@ case "${1:-all}" in
   all) check_equivalence; check_convergence; check_user_safety ;;
   *) echo "usage: $0 [equivalence|convergence|user-safety|all]" >&2; exit 2 ;;
 esac
-
-info "Cleaning up"
-compose down --volumes >/dev/null 2>&1 || true
