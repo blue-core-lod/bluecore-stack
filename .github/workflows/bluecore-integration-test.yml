@@ -651,7 +651,7 @@ jobs:
     name: Verify Keycloak realm config
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Verify equivalence, convergence, user safety, and dev users
         run: ./scripts/keycloak/verify-realm.sh all
       # ========================================================================
