@@ -90,6 +90,16 @@ apply_config() {
 # bluecore_workflows) ARE in config-cli's tracked state for this file, so
 # leaving IMPORT_MANAGED_* at the upstream `full` default here (as apply_config
 # does) would let this pass delete them. Every policy below must stay no-delete.
+#
+# This is the complete set of 19 ImportManagedProperties fields in
+# keycloak-config-cli 6.5.1, not just the ones that seemed obviously relevant.
+# clientAuthorizationPolicies and clientAuthorizationScopes matter concretely:
+# bluecore_workflows has authorizationServicesEnabled: true with real policies
+# and scopes, and this file declares no clients at all, so those two would
+# fall back to the upstream `full` default and could delete them. The other
+# three (messageBundles, organization, workflow) have nothing in this realm
+# today, but are included anyway so the set is complete and nobody has to
+# re-derive it later.
 apply_dev_users() {
   docker run --rm \
     --network bluecore-kc-verify_default \
@@ -114,6 +124,11 @@ apply_dev_users() {
     -e IMPORT_MANAGED_GROUP=no-delete \
     -e IMPORT_MANAGED_SUB_GROUP=no-delete \
     -e IMPORT_MANAGED_CLIENT_AUTHORIZATION_RESOURCES=no-delete \
+    -e IMPORT_MANAGED_CLIENT_AUTHORIZATION_POLICIES=no-delete \
+    -e IMPORT_MANAGED_CLIENT_AUTHORIZATION_SCOPES=no-delete \
+    -e IMPORT_MANAGED_MESSAGE_BUNDLES=no-delete \
+    -e IMPORT_MANAGED_ORGANIZATION=no-delete \
+    -e IMPORT_MANAGED_WORKFLOW=no-delete \
     "$CONFIG_CLI_IMAGE"
 }
 
@@ -425,6 +440,50 @@ check_user_safety() {
   fi
 }
 
+# The exact realm-role and bluecore_workflows client-role sets each seed user
+# is declared with in bluecore-dev-users.yaml. Kept here (not derived from the
+# YAML) so this check is an independent read of what SHOULD be true, not an
+# echo of the file it is checking. Role reconciliation is on by default (see
+# Step 5 of the task-5 brief), so the config is authoritative: these are
+# equality checks, not "at least contains" checks -- an extra undeclared role
+# is exactly as wrong here as a missing one.
+expected_realm_roles() {
+  case "$1" in
+    developer) echo "create default-roles-bluecore export update" ;;
+    dev_op|dev_user|dev_viewer|dev_public) echo "default-roles-bluecore" ;;
+  esac
+}
+
+expected_client_roles() {
+  case "$1" in
+    developer) echo "Admin create update" ;;
+    dev_op) echo "Op" ;;
+    dev_user) echo "User" ;;
+    dev_viewer) echo "Viewer" ;;
+    dev_public) echo "Public" ;;
+  esac
+}
+
+# Read back a user's actual realm roles and bluecore_workflows client roles
+# and compare against expected_realm_roles/expected_client_roles above. This
+# is what would have caught developer losing its Admin/create/update client
+# roles, or a dev_op<->dev_viewer role swap -- existence alone proves neither.
+assert_user_roles() {
+  local u="$1" expected_realm expected_client actual_realm actual_client
+  expected_realm="$(expected_realm_roles "$u" | tr ' ' '\n' | sort | tr '\n' ' ' | xargs)"
+  expected_client="$(expected_client_roles "$u" | tr ' ' '\n' | sort | tr '\n' ' ' | xargs)"
+
+  actual_realm="$(kcadm get-roles -r bluecore --uusername "$u" --fields name \
+    | python3 -c 'import json,sys; print(" ".join(sorted(r["name"] for r in json.load(sys.stdin))))')"
+  actual_client="$(kcadm get-roles -r bluecore --uusername "$u" --cclientid bluecore_workflows --fields name \
+    | python3 -c 'import json,sys; print(" ".join(sorted(r["name"] for r in json.load(sys.stdin))))')"
+
+  [[ "$actual_realm" == "$expected_realm" ]] \
+    || fail "user $u realm roles are [$actual_realm], expected [$expected_realm]"
+  [[ "$actual_client" == "$expected_client" ]] \
+    || fail "user $u bluecore_workflows client roles are [$actual_client], expected [$expected_client]"
+}
+
 check_dev_users() {
   info "Dev users: are the five seed accounts created with their roles?"
   reset_stack
@@ -437,6 +496,11 @@ check_dev_users() {
       | grep -q "$u" || fail "seed user $u was not created"
   done
   pass "all five seed users exist"
+
+  for u in developer dev_op dev_user dev_viewer dev_public; do
+    assert_user_roles "$u"
+  done
+  pass "all five seed users hold exactly their declared realm and client roles"
 
   # Realm settings must have survived the second, minimal file.
   kcadm get realms/bluecore --fields sslRequired | grep -q external \
