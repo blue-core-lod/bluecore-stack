@@ -1,12 +1,16 @@
 #!/bin/bash
 # Verify the declarative bluecore realm config against a throwaway Keycloak.
 #
-#   ./scripts/keycloak/verify-realm.sh [equivalence|convergence|user-safety|all]
+#   ./scripts/keycloak/verify-realm.sh [equivalence|convergence|user-safety|dev-users|tamper|all]
 #
 # equivalence  - applying keycloak/realm/ reproduces the committed export
 # convergence  - applying twice is idempotent (proves safe re-apply)
 # user-safety  - a user absent from the config survives an apply
 # dev-users    - the dev/CI seed users overlay applies additively
+# tamper       - proves equivalence actually fails on a broken role binding,
+#                then that it passes again once reverted. Not part of `all`:
+#                it is insurance that the oracle itself works, not a config
+#                check, so it is invoked separately (see CI).
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
@@ -63,6 +67,7 @@ kcadm_login() {
 # first making that check fail.
 apply_config() {
   local extra_files="${1:-}"
+  local realm_dir="${2:-$ROOT_DIR/keycloak/realm}"
   local locations="/config/bluecore.yaml"
   if [[ -n "$extra_files" ]]; then
     locations="$locations,$extra_files"
@@ -70,7 +75,7 @@ apply_config() {
 
   docker run --rm \
     --network bluecore-kc-verify_default \
-    -v "$ROOT_DIR/keycloak/realm:/config:ro" \
+    -v "$realm_dir:/config:ro" \
     -e KEYCLOAK_URL=http://verify-keycloak:8080 \
     -e KEYCLOAK_USER=admin \
     -e KEYCLOAK_PASSWORD=admin \
@@ -397,6 +402,62 @@ check_equivalence() {
   fi
 }
 
+# Proves the equivalence check is actually looking, not just green by accident.
+# Copies keycloak/realm/bluecore.yaml, rebinds the Allow-Viewer authorization
+# policy from Viewer to SuperAdmin (the exact shape of Task 4's critical bug --
+# a role binding silently pointed at the wrong role), applies the tampered copy,
+# and asserts equivalence FAILS against the committed export. Then reverts and
+# re-applies the real, untouched keycloak/realm/ and asserts equivalence PASSES
+# again. A verification oracle that is never itself tested is the real risk here,
+# not the tamper itself.
+check_tamper() {
+  info "Tamper case: does the harness actually catch a broken role binding?"
+
+  local tamper_dir="$ROOT_DIR/$WORK/tamper-realm"
+  rm -rf "$tamper_dir"
+  mkdir -p "$tamper_dir"
+  cp keycloak/realm/bluecore.yaml "$tamper_dir/bluecore.yaml"
+
+  grep -q '\\"id\\":\\"bluecore_workflows/Viewer\\"' "$tamper_dir/bluecore.yaml" \
+    || fail "tamper target (Allow-Viewer -> bluecore_workflows/Viewer) not found; update check_tamper"
+
+  # bluecore_workflows/Viewer is unique in this file (checked above via grep),
+  # so a plain substitution only touches the Allow-Viewer policy's role binding.
+  sed -i.bak 's#bluecore_workflows/Viewer#bluecore_workflows/SuperAdmin#' "$tamper_dir/bluecore.yaml"
+  rm -f "$tamper_dir/bluecore.yaml.bak"
+
+  prune_and_normalize "$COMMITTED_EXPORT" "$WORK/baseline"
+
+  reset_stack
+  apply_config "" "$tamper_dir" || fail "tampered config-cli apply failed"
+  export_and_normalize "$WORK/tampered"
+  assert_defaults_present "$WORK/export/bluecore-realm.json"
+
+  strip_intended "$WORK/baseline"/*.yaml > "$WORK/baseline.canonical.json"
+  strip_intended "$WORK/tampered"/*.yaml > "$WORK/tampered.canonical.json"
+  if diff -u "$WORK/baseline.canonical.json" "$WORK/tampered.canonical.json" \
+      > "$WORK/tamper.diff"; then
+    fail "tampering the Allow-Viewer role binding produced no diff -- the harness cannot see this class of drift"
+  fi
+  pass "tampered role binding was detected (equivalence correctly FAILED)"
+
+  info "Reverting the tamper and confirming equivalence PASSES again"
+  reset_stack
+  apply_config || fail "reverted config-cli apply failed"
+  export_and_normalize "$WORK/reverted"
+  assert_defaults_present "$WORK/export/bluecore-realm.json"
+
+  strip_intended "$WORK/reverted"/*.yaml > "$WORK/reverted.canonical.json"
+  if diff -u "$WORK/baseline.canonical.json" "$WORK/reverted.canonical.json" \
+      > "$WORK/reverted.diff"; then
+    pass "equivalence passes again once the tamper is reverted"
+  else
+    echo "--- differences (see $WORK/reverted.diff) ---"
+    cat "$WORK/reverted.diff"
+    fail "equivalence did not pass after reverting the tamper"
+  fi
+}
+
 check_convergence() {
   info "Convergence: is a second apply idempotent?"
   reset_stack
@@ -515,6 +576,7 @@ case "${1:-all}" in
   convergence) check_convergence ;;
   user-safety) check_user_safety ;;
   dev-users) check_dev_users ;;
+  tamper) check_tamper ;;
   all) check_equivalence; check_convergence; check_user_safety; check_dev_users ;;
-  *) echo "usage: $0 [equivalence|convergence|user-safety|dev-users|all]" >&2; exit 2 ;;
+  *) echo "usage: $0 [equivalence|convergence|user-safety|dev-users|tamper|all]" >&2; exit 2 ;;
 esac
