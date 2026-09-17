@@ -38,54 +38,6 @@ kcadm_login() {
     --realm master --user admin --password admin >/dev/null
 }
 
-# Apply the dev-only users overlay with every managed policy set to no-delete,
-# so this pass can only add. Unlike apply_config, this file declares only
-# `realm` + `users` -- its own two custom clients (bluecore_api,
-# bluecore_workflows) ARE in config-cli's tracked state for this file, so
-# leaving IMPORT_MANAGED_* at the upstream `full` default here (as apply_config
-# does) would let this pass delete them. Every policy below must stay no-delete.
-#
-# This is the complete set of 19 ImportManagedProperties fields in
-# keycloak-config-cli 6.5.1, not just the ones that seemed obviously relevant.
-# clientAuthorizationPolicies and clientAuthorizationScopes matter concretely:
-# bluecore_workflows has authorizationServicesEnabled: true with real policies
-# and scopes, and this file declares no clients at all, so those two would
-# fall back to the upstream `full` default and could delete them. The other
-# three (messageBundles, organization, workflow) have nothing in this realm
-# today, but are included anyway so the set is complete and nobody has to
-# re-derive it later.
-apply_dev_users() {
-  docker run --rm \
-    --network bluecore-kc-verify_default \
-    -v "$ROOT_DIR/keycloak/realm:/config:ro" \
-    -e KEYCLOAK_URL=http://verify-keycloak:8080 \
-    -e KEYCLOAK_USER=admin \
-    -e KEYCLOAK_PASSWORD=admin \
-    -e IMPORT_VAR_SUBSTITUTION_ENABLED=true \
-    -e IMPORT_FILES_LOCATIONS=/config/bluecore-dev-users.yaml \
-    -e KEYCLOAK_DEV_USER_PASSWORD=123456 \
-    -e IMPORT_MANAGED_CLIENT=no-delete \
-    -e IMPORT_MANAGED_ROLE=no-delete \
-    -e IMPORT_MANAGED_CLIENT_SCOPE=no-delete \
-    -e IMPORT_MANAGED_SCOPE_MAPPING=no-delete \
-    -e IMPORT_MANAGED_CLIENT_SCOPE_MAPPING=no-delete \
-    -e IMPORT_MANAGED_COMPONENT=no-delete \
-    -e IMPORT_MANAGED_SUB_COMPONENT=no-delete \
-    -e IMPORT_MANAGED_AUTHENTICATION_FLOW=no-delete \
-    -e IMPORT_MANAGED_REQUIRED_ACTION=no-delete \
-    -e IMPORT_MANAGED_IDENTITY_PROVIDER=no-delete \
-    -e IMPORT_MANAGED_IDENTITY_PROVIDER_MAPPER=no-delete \
-    -e IMPORT_MANAGED_GROUP=no-delete \
-    -e IMPORT_MANAGED_SUB_GROUP=no-delete \
-    -e IMPORT_MANAGED_CLIENT_AUTHORIZATION_RESOURCES=no-delete \
-    -e IMPORT_MANAGED_CLIENT_AUTHORIZATION_POLICIES=no-delete \
-    -e IMPORT_MANAGED_CLIENT_AUTHORIZATION_SCOPES=no-delete \
-    -e IMPORT_MANAGED_MESSAGE_BUNDLES=no-delete \
-    -e IMPORT_MANAGED_ORGANIZATION=no-delete \
-    -e IMPORT_MANAGED_WORKFLOW=no-delete \
-    "$CONFIG_CLI_IMAGE"
-}
-
 check_equivalence() {
   info "Equivalence: does keycloak/realm/ reproduce the committed export?"
   [[ -f keycloak/realm/bluecore.yaml ]] || fail "keycloak/realm/bluecore.yaml does not exist"

@@ -105,6 +105,48 @@ if [[ -n "$KC_CID" ]] \
   LIVE_KEYCLOAK_WAS_RUNNING="1"
 fi
 
+# ---------------------------------------------------------------------------
+# Mirror the target environment's server-level KC_* settings onto the
+# throwaway verify-keycloak. Two differently-configured Keycloak SERVERS
+# derive different realm-level defaults (e.g. browserSecurityHeaders) from
+# identical declarative config, so without this the diff below manufactures
+# drift that is a server-config difference, not a realm-config one.
+#
+# Reading these off the live container is more faithful than trusting .env:
+# .env is what compose-dev.yaml/compose.yaml are TOLD to run with, but the
+# container's own Config.Env is what is actually running. .env (already
+# sourced above) is kept only as a fallback for a target container that does
+# not exist yet (a truly fresh environment, nothing to inspect).
+KC_SERVER_VARS="KC_PROXY KC_PROXY_HEADERS KC_HTTP_RELATIVE_PATH KC_HOSTNAME KC_HOSTNAME_STRICT KC_HTTP_ENABLED"
+if [[ -n "$KC_CID" ]]; then
+  LIVE_KC_ENV="$(docker inspect -f '{{range .Config.Env}}{{println .}}{{end}}' "$KC_CID" 2>/dev/null || true)"
+  for kc_var in $KC_SERVER_VARS; do
+    kc_val="$(printf '%s\n' "$LIVE_KC_ENV" | sed -n "s/^${kc_var}=//p" | tail -1)"
+    if [[ -n "$kc_val" ]]; then
+      export "$kc_var=$kc_val"
+    fi
+  done
+fi
+
+# Only the keys that actually have a value (live container, or .env as
+# fallback) go into the override, so any key neither source provides is left
+# out entirely -- verify-keycloak then falls back to its own upstream
+# default for it, exactly as it does today when this override is absent (as
+# it is for verify-realm.sh).
+SERVER_CONFIG_OVERRIDE="$ROOT_DIR/$WORK/verify-server-config.yaml"
+python3 - "$SERVER_CONFIG_OVERRIDE" $KC_SERVER_VARS <<'PY'
+import json, os, sys
+
+out = sys.argv[1]
+keys = sys.argv[2:]
+env = {k: os.environ[k] for k in keys if os.environ.get(k)}
+doc = {"services": {"verify-keycloak": {"environment": env}}}
+with open(out, "w") as f:
+    json.dump(doc, f)
+PY
+VERIFY_COMPOSE_EXTRA="$SERVER_CONFIG_OVERRIDE"
+info "Mirroring target server config on the throwaway Keycloak ($(basename "$SERVER_CONFIG_OVERRIDE"))"
+
 docker compose -f "$COMPOSE_FILE" stop keycloak
 
 # Task 6 removed compose-dev.yaml's KEYCLOAK_REALM_DIR volume from the
@@ -130,6 +172,20 @@ prune_and_normalize "$WORK/export/bluecore-realm.json" "$WORK/baseline"
 info "Applying keycloak/realm/ to a throwaway Keycloak with '${ENVIRONMENT}' values"
 reset_stack
 apply_config || { echo "config-cli apply failed" >&2; exit 1; }
+
+# development's real stack runs keycloak-config-users (compose-dev.yaml)
+# immediately after keycloak-config on every boot; this second apply is not
+# optional to reproduce here. Reapplying a realm-scoped import resets any
+# realm attribute the first apply's file doesn't declare (e.g.
+# browserSecurityHeaders) to config-cli's own default, regardless of what the
+# first apply alone left there -- so a throwaway that only ever runs the
+# first apply is not comparable to a real development realm, independent of
+# server config. staging/production have no keycloak-config-users
+# equivalent (compose.yaml never runs it), so skip this there.
+if [[ "$ENVIRONMENT" == "development" ]]; then
+  apply_dev_users || { echo "dev-users config-cli apply failed" >&2; exit 1; }
+fi
+
 export_and_normalize "$WORK/expected"
 assert_defaults_present "$VERIFY_WORK/export/bluecore-realm.json"
 

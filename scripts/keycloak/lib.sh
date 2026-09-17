@@ -41,7 +41,20 @@ info() { echo -e "${BLUE}==>${NC} $1"; }
 VERIFY_COMPOSE="compose-keycloak-verify.yaml"
 VERIFY_WORK="tmp/kc-verify"
 
-compose() { docker compose -f "$VERIFY_COMPOSE" "$@"; }
+# Set by drift-check.sh to the path of a generated compose override that
+# makes the throwaway verify-keycloak mirror the target environment's server-
+# level KC_* settings (KC_PROXY, KC_HOSTNAME, etc). Left empty by
+# verify-realm.sh, so compose() below behaves exactly as before for it --
+# see drift-check.sh for why this override exists at all.
+VERIFY_COMPOSE_EXTRA="${VERIFY_COMPOSE_EXTRA:-}"
+
+compose() {
+  if [[ -n "$VERIFY_COMPOSE_EXTRA" ]]; then
+    docker compose -f "$VERIFY_COMPOSE" -f "$VERIFY_COMPOSE_EXTRA" "$@"
+  else
+    docker compose -f "$VERIFY_COMPOSE" "$@"
+  fi
+}
 
 reset_stack() {
   info "Resetting throwaway Keycloak"
@@ -67,6 +80,14 @@ reset_stack() {
 # applies renders the same $(env:...) substitutions the live realm actually
 # has -- otherwise a real difference in, say, KEYCLOAK_PUBLIC_BASE_URL would
 # show up as false drift on every redirect URI.
+#
+# KC_HTTP_RELATIVE_PATH defaults to empty here, matching verify-keycloak's own
+# default context root ("/"). drift-check.sh exports the target's real value
+# (e.g. "/keycloak/") via VERIFY_COMPOSE_EXTRA's server-config override, and
+# this must follow it -- config-cli talks to whatever path Keycloak is
+# actually serving the admin REST API on, same as compose-base.yaml's
+# keycloak-config service does for the real stack (KEYCLOAK_URL:
+# http://keycloak:8080/keycloak/).
 apply_config() {
   local extra_files="${1:-}"
   local realm_dir="${2:-$ROOT_DIR/keycloak/realm}"
@@ -78,7 +99,7 @@ apply_config() {
   docker run --rm \
     --network bluecore-kc-verify_default \
     -v "$realm_dir:/config:ro" \
-    -e KEYCLOAK_URL=http://verify-keycloak:8080 \
+    -e KEYCLOAK_URL="http://verify-keycloak:8080${KC_HTTP_RELATIVE_PATH:+$KC_HTTP_RELATIVE_PATH}" \
     -e KEYCLOAK_USER=admin \
     -e KEYCLOAK_PASSWORD=admin \
     -e KEYCLOAK_AVAILABILITYCHECK_ENABLED=true \
@@ -88,6 +109,67 @@ apply_config() {
     -e KEYCLOAK_SSL_REQUIRED="${KEYCLOAK_SSL_REQUIRED:-external}" \
     -e KEYCLOAK_PUBLIC_BASE_URL="${KEYCLOAK_PUBLIC_BASE_URL:-http://localhost}" \
     -e AIRFLOW_KEYCLOAK_CLIENT_SECRET="${AIRFLOW_KEYCLOAK_CLIENT_SECRET:-verify-only-secret}" \
+    "$CONFIG_CLI_IMAGE"
+}
+
+# Apply the dev-only users overlay with every managed policy set to no-delete,
+# so this pass can only add. Unlike apply_config, this file declares only
+# `realm` + `users` -- its own two custom clients (bluecore_api,
+# bluecore_workflows) ARE in config-cli's tracked state for this file, so
+# leaving IMPORT_MANAGED_* at the upstream `full` default here (as apply_config
+# does) would let this pass delete them. Every policy below must stay no-delete.
+#
+# This is the complete set of 19 ImportManagedProperties fields in
+# keycloak-config-cli 6.5.1, not just the ones that seemed obviously relevant.
+# clientAuthorizationPolicies and clientAuthorizationScopes matter concretely:
+# bluecore_workflows has authorizationServicesEnabled: true with real policies
+# and scopes, and this file declares no clients at all, so those two would
+# fall back to the upstream `full` default and could delete them. The other
+# three (messageBundles, organization, workflow) have nothing in this realm
+# today, but are included anyway so the set is complete and nobody has to
+# re-derive it later.
+#
+# drift-check.sh calls this too, for the development environment only, right
+# after apply_config: development's real stack runs keycloak-config-users
+# (this exact overlay) immediately after keycloak-config on every boot, and
+# that SECOND config-cli apply measurably changes realm-level state beyond
+# just adding users -- reapplying a realm-scoped import with IMPORT_MANAGED_
+# REALM at its upstream default resets any realm attribute the file doesn't
+# declare (e.g. browserSecurityHeaders) to config-cli's own empty default,
+# regardless of what the first apply or Keycloak's own create-time default
+# left there. Skipping this step is what made drift-check.sh's throwaway
+# diverge from a real development realm: it only ever ran the first apply.
+# staging/production have no keycloak-config-users equivalent (compose.yaml
+# never runs it), so drift-check.sh must not call this for those environments.
+apply_dev_users() {
+  docker run --rm \
+    --network bluecore-kc-verify_default \
+    -v "$ROOT_DIR/keycloak/realm:/config:ro" \
+    -e KEYCLOAK_URL="http://verify-keycloak:8080${KC_HTTP_RELATIVE_PATH:+$KC_HTTP_RELATIVE_PATH}" \
+    -e KEYCLOAK_USER=admin \
+    -e KEYCLOAK_PASSWORD=admin \
+    -e IMPORT_VAR_SUBSTITUTION_ENABLED=true \
+    -e IMPORT_FILES_LOCATIONS=/config/bluecore-dev-users.yaml \
+    -e KEYCLOAK_DEV_USER_PASSWORD=123456 \
+    -e IMPORT_MANAGED_CLIENT=no-delete \
+    -e IMPORT_MANAGED_ROLE=no-delete \
+    -e IMPORT_MANAGED_CLIENT_SCOPE=no-delete \
+    -e IMPORT_MANAGED_SCOPE_MAPPING=no-delete \
+    -e IMPORT_MANAGED_CLIENT_SCOPE_MAPPING=no-delete \
+    -e IMPORT_MANAGED_COMPONENT=no-delete \
+    -e IMPORT_MANAGED_SUB_COMPONENT=no-delete \
+    -e IMPORT_MANAGED_AUTHENTICATION_FLOW=no-delete \
+    -e IMPORT_MANAGED_REQUIRED_ACTION=no-delete \
+    -e IMPORT_MANAGED_IDENTITY_PROVIDER=no-delete \
+    -e IMPORT_MANAGED_IDENTITY_PROVIDER_MAPPER=no-delete \
+    -e IMPORT_MANAGED_GROUP=no-delete \
+    -e IMPORT_MANAGED_SUB_GROUP=no-delete \
+    -e IMPORT_MANAGED_CLIENT_AUTHORIZATION_RESOURCES=no-delete \
+    -e IMPORT_MANAGED_CLIENT_AUTHORIZATION_POLICIES=no-delete \
+    -e IMPORT_MANAGED_CLIENT_AUTHORIZATION_SCOPES=no-delete \
+    -e IMPORT_MANAGED_MESSAGE_BUNDLES=no-delete \
+    -e IMPORT_MANAGED_ORGANIZATION=no-delete \
+    -e IMPORT_MANAGED_WORKFLOW=no-delete \
     "$CONFIG_CLI_IMAGE"
 }
 
