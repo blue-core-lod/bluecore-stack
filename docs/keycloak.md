@@ -4,9 +4,12 @@ The `bluecore` realm is defined declaratively in
 [`keycloak/realm/bluecore.yaml`](../keycloak/realm/bluecore.yaml). A one-shot
 `keycloak-config` compose service applies that file over the Keycloak Admin
 REST API (via [keycloak-config-cli](https://github.com/adorsys/keycloak-config-cli))
-every time you run `up`, in every environment. Services that need the realm to
-exist (Airflow, Blue Core API, …) gate on
-`keycloak-config: service_completed_successfully`.
+every time you run `up`, currently in development and CI only (it is defined
+in `compose-dev.yaml`, not `compose-base.yaml`). Services that need the realm
+to exist (Airflow, Blue Core API, …) gate on
+`keycloak-config: service_completed_successfully` in those environments.
+Staging and production still run Keycloak with `--import-realm`; see the
+note below.
 
 In development and CI only, a second service, `keycloak-config-users`, applies
 [`keycloak/realm/bluecore-dev-users.yaml`](../keycloak/realm/bluecore-dev-users.yaml)

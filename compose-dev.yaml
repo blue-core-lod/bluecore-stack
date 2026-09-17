@@ -2,6 +2,47 @@ include:
   - compose-base.yaml
 
 services:
+  # Applies the declarative bluecore realm over the Admin REST API. Runs once
+  # and exits; services that need a configured realm gate on it completing.
+  # Development and CI only: staging/production compose.yaml never includes
+  # this file, so they keep using the --import-realm path in compose.yaml
+  # until their own cutover (follow-on work).
+  keycloak-config:
+    image: ${KEYCLOAK_CONFIG_CLI_IMAGE:-adorsys/keycloak-config-cli:6.5.1-26.1.0}
+    env_file:
+      - ./.env
+    environment:
+      KEYCLOAK_URL: http://keycloak:8080/keycloak/
+      KEYCLOAK_USER: ${KEYCLOAK_ADMIN:-admin}
+      KEYCLOAK_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD}
+      # config-cli retries on its own, so it tolerates Keycloak being
+      # healthy-but-not-ready rather than racing it.
+      KEYCLOAK_AVAILABILITYCHECK_ENABLED: "true"
+      KEYCLOAK_AVAILABILITYCHECK_TIMEOUT: 120s
+      # Defaults to false upstream; the templating no-ops silently without it.
+      IMPORT_VAR_SUBSTITUTION_ENABLED: "true"
+      IMPORT_FILES_LOCATIONS: /config/bluecore.yaml
+    volumes:
+      - ./keycloak/realm:/config:ro
+    depends_on:
+      keycloak:
+        condition: service_healthy
+    restart: "no"
+
+  # Gates that reference keycloak-config, added on top of compose-base.yaml's
+  # entries for bc_api and airflow-apiserver. Compose merges depends_on maps
+  # by key, so this adds the keycloak-config condition without clobbering the
+  # base file's other depends_on entries.
+  bc_api:
+    depends_on:
+      keycloak-config:
+        condition: service_completed_successfully
+
+  airflow-apiserver:
+    depends_on:
+      keycloak-config:
+        condition: service_completed_successfully
+
   postgres:
     image: postgres:16
     environment:
