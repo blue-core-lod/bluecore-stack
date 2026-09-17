@@ -30,9 +30,28 @@ and nothing to commit back.
 
 ## 1️⃣ Rotate the Airflow client secret
 
-The `bluecore_workflows` client secret lives in one place:
-`AIRFLOW_KEYCLOAK_CLIENT_SECRET` in the environment's `.env`. It used to be
-copied across five places by hand; now there is one.
+The `bluecore_workflows` client secret is one value **per environment**,
+held in that environment's `.env` as `AIRFLOW_KEYCLOAK_CLIENT_SECRET`. It is
+no longer embedded in the realm config itself (`keycloak/realm/bluecore.yaml`
+references it via `$(env:AIRFLOW_KEYCLOAK_CLIENT_SECRET)`, not a literal), so
+rotating it is a one-line `.env` edit plus a reapply — not a hand-edit of the
+realm.
+
+That said, for the **development** secret specifically, the literal value
+also appears in a handful of places that exist independently of the realm
+config and are not updated by the steps below. When rotating the dev secret,
+update these too:
+
+- `scripts/dev/env-templates/bluecore-stack.env`
+- `scripts/dev/env-templates/bluecore-workflows.env` (the sibling
+  `bluecore-workflows` repo's own `.env` template — Airflow needs this copy)
+- `.github/workflows/bluecore-integration-test.yml` (CI's own `.env`
+  equivalent; Airflow needs this copy too)
+
+`docs/deploy.md` and `backup.env` also contain copies of the current dev
+secret, but those are stale reference material, not live configuration —
+do not trust them as the current value, and do not treat updating them as
+part of this procedure.
 
 1. Generate a new secret value (any sufficiently random string).
 2. Set it in that environment's `.env`:
@@ -48,6 +67,9 @@ copied across five places by hand; now there is one.
    ```
 
 4. Restart Airflow so it picks up the new secret from `.env`.
+5. If you rotated the **development** secret, also update the env templates
+   and CI workflow listed above so new checkouts and CI runs don't drift
+   onto the old value.
 
 > ⚠️ **Gotcha:** keycloak-config-cli caches a checksum of the last file it
 > successfully applied to a realm and skips reprocessing entirely when the
