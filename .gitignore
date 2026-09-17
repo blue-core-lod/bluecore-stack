@@ -13,9 +13,11 @@ tests/playwright/.venv/
 /config/*
 !/config/.keepme
 /.idea/
-# ignore every keycloak export except development
+# ignore every keycloak export
 /keycloak-export/*/
-!/keycloak-export/development/
 cbd_files/**/*
 sinopia_templates/**/*
 .ipynb_checkpoints*
+# Scratch output from scripts/keycloak/verify-realm.sh and drift-check.sh
+/tmp/kc-verify/
+/tmp/kc-drift/
