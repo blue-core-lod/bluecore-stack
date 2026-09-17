@@ -23,8 +23,8 @@ YQ_IMAGE="${YQ_IMAGE:-mikefarah/yq:4.44.3}"
 # Entities Keycloak creates by itself on every realm. keycloak/realm/bluecore.yaml
 # deliberately declares none of them, so assert_defaults_present checks that an
 # apply never removes them. Their contents ARE still compared -- see prune_legacy_defaults.
-export DEFAULT_CLIENTS="${DEFAULT_CLIENTS:-account account-console admin-cli broker realm-management security-admin-console}"
-export DEFAULT_CLIENT_SCOPES="${DEFAULT_CLIENT_SCOPES:-acr address basic email microprofile-jwt offline_access organization phone profile role_list roles saml_organization service_account web-origins}"
+export DEFAULT_CLIENTS="account account-console admin-cli broker realm-management security-admin-console"
+export DEFAULT_CLIENT_SCOPES="acr address basic email microprofile-jwt offline_access organization phone profile role_list roles saml_organization service_account web-origins"
 
 GREEN='\033[0;32m'; RED='\033[0;31m'; BLUE='\033[1;34m'; NC='\033[0m'
 pass() { echo -e "${GREEN}PASS${NC}: $1"; }
@@ -41,19 +41,8 @@ info() { echo -e "${BLUE}==>${NC} $1"; }
 VERIFY_COMPOSE="compose-keycloak-verify.yaml"
 VERIFY_WORK="tmp/kc-verify"
 
-# Set by drift-check.sh to the path of a generated compose override that
-# makes the throwaway verify-keycloak mirror the target environment's server-
-# level KC_* settings (KC_PROXY, KC_HOSTNAME, etc). Left empty by
-# verify-realm.sh, so compose() below behaves exactly as before for it --
-# see drift-check.sh for why this override exists at all.
-VERIFY_COMPOSE_EXTRA="${VERIFY_COMPOSE_EXTRA:-}"
-
 compose() {
-  if [[ -n "$VERIFY_COMPOSE_EXTRA" ]]; then
-    docker compose -f "$VERIFY_COMPOSE" -f "$VERIFY_COMPOSE_EXTRA" "$@"
-  else
-    docker compose -f "$VERIFY_COMPOSE" "$@"
-  fi
+  docker compose -f "$VERIFY_COMPOSE" "$@"
 }
 
 reset_stack() {
@@ -80,14 +69,6 @@ reset_stack() {
 # applies renders the same $(env:...) substitutions the live realm actually
 # has -- otherwise a real difference in, say, KEYCLOAK_PUBLIC_BASE_URL would
 # show up as false drift on every redirect URI.
-#
-# KC_HTTP_RELATIVE_PATH defaults to empty here, matching verify-keycloak's own
-# default context root ("/"). drift-check.sh exports the target's real value
-# (e.g. "/keycloak/") via VERIFY_COMPOSE_EXTRA's server-config override, and
-# this must follow it -- config-cli talks to whatever path Keycloak is
-# actually serving the admin REST API on, same as compose-base.yaml's
-# keycloak-config service does for the real stack (KEYCLOAK_URL:
-# http://keycloak:8080/keycloak/).
 apply_config() {
   local extra_files="${1:-}"
   local realm_dir="${2:-$ROOT_DIR/keycloak/realm}"
@@ -99,7 +80,7 @@ apply_config() {
   docker run --rm \
     --network bluecore-kc-verify_default \
     -v "$realm_dir:/config:ro" \
-    -e KEYCLOAK_URL="http://verify-keycloak:8080${KC_HTTP_RELATIVE_PATH:+$KC_HTTP_RELATIVE_PATH}" \
+    -e KEYCLOAK_URL="http://verify-keycloak:8080" \
     -e KEYCLOAK_USER=admin \
     -e KEYCLOAK_PASSWORD=admin \
     -e KEYCLOAK_AVAILABILITYCHECK_ENABLED=true \
@@ -145,7 +126,7 @@ apply_dev_users() {
   docker run --rm \
     --network bluecore-kc-verify_default \
     -v "$ROOT_DIR/keycloak/realm:/config:ro" \
-    -e KEYCLOAK_URL="http://verify-keycloak:8080${KC_HTTP_RELATIVE_PATH:+$KC_HTTP_RELATIVE_PATH}" \
+    -e KEYCLOAK_URL="http://verify-keycloak:8080" \
     -e KEYCLOAK_USER=admin \
     -e KEYCLOAK_PASSWORD=admin \
     -e IMPORT_VAR_SUBSTITUTION_ENABLED=true \
