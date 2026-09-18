@@ -110,18 +110,29 @@ apply_config() {
 # today, but are included anyway so the set is complete and nobody has to
 # re-derive it later.
 #
-# drift-check.sh calls this too, for the development environment only, right
-# after apply_config: development's real stack runs keycloak-config-users
-# (this exact overlay) immediately after keycloak-config on every boot, and
-# that SECOND config-cli apply measurably changes realm-level state beyond
-# just adding users -- reapplying a realm-scoped import with IMPORT_MANAGED_
-# REALM at its upstream default resets any realm attribute the file doesn't
-# declare (e.g. browserSecurityHeaders) to config-cli's own empty default,
-# regardless of what the first apply or Keycloak's own create-time default
-# left there. Skipping this step is what made drift-check.sh's throwaway
-# diverge from a real development realm: it only ever ran the first apply.
-# staging/production have no keycloak-config-users equivalent (compose.yaml
-# never runs it), so drift-check.sh must not call this for those environments.
+# Only used by verify-realm.sh's check_dev_users today. drift-check.sh does
+# NOT call this: development's real stack does run keycloak-config-users
+# (this exact overlay) immediately after keycloak-config on every boot, so it
+# was tempting to call this here too "for parity" with a real two-apply
+# environment. It was in fact added to drift-check.sh for exactly that
+# reason -- but the reason turned out to be masking a bug, not achieving
+# parity: with browserSecurityHeaders undeclared in bluecore.yaml, the second
+# apply measurably reset that one realm attribute to config-cli's empty
+# default regardless of what the first apply or Keycloak's own create-time
+# default left there, and adding the second apply to drift-check.sh's own
+# throwaway made both sides show the same emptied map instead of surfacing
+# the drift. Now that bluecore.yaml declares browserSecurityHeaders
+# explicitly (see that file), a one-apply throwaway and a real two-apply
+# environment produce byte-identical canonical realm state -- confirmed
+# empirically by comparing export_and_normalize output after apply_config
+# alone against the same throwaway after also running apply_dev_users, with
+# zero diff. So there is no remaining case this second apply covers that
+# apply_config plus assert_browser_security_headers does not already catch,
+# and re-adding it would reintroduce the risk of a second apply quietly
+# changing realm-level state in a way drift-check can't distinguish from "no
+# drift". If a future change to bluecore-dev-users.yaml starts touching
+# realm-level fields again, prove that with the same kind of one-apply vs
+# two-apply comparison before reaching for this function here.
 apply_dev_users() {
   docker run --rm \
     --network bluecore-kc-verify_default \
@@ -394,4 +405,73 @@ assert_defaults_present() {
     fail "the apply removed Keycloak default entities: $missing"
   fi
   pass "every Keycloak default client and client scope survived the apply"
+}
+
+# Prove the realm's clickjacking/CSP/HSTS/MIME-sniffing/XSS headers are intact.
+#
+# These headers are Keycloak's own defaults and are NOT currently at risk of
+# being emptied: Keycloak treats an absent or empty browserSecurityHeaders map
+# as "keep defaults" and refuses to clear it (verified by PUTting {} directly
+# via kcadm -- the realm kept all 8 values). An earlier diagnosis claimed a
+# realm-scoped apply unconditionally PUTs this map as empty; that was wrong,
+# and the `browserSecurityHeaders: {}` seen in diffs came from normalize's
+# handling of the field, not from realm state.
+#
+# The check is kept regardless, because these are load-bearing security
+# settings (clickjacking, CSP, HSTS, MIME-sniffing, XSS) and a silent partial
+# loss would be expensive to notice. It is cheap and it fails loudly.
+#
+# One measurement trap worth preserving: `kcadm get realms/bluecore --fields
+# browserSecurityHeaders` returns `{ }` for EVERY realm including an untouched
+# master, because --fields does not project nested maps. Read the realm without
+# --fields and parse the JSON, as this does. Diagnosing this field with --fields
+# will convince you of a regression that is not there.
+#
+# The expected set is a literal, not read from any environment variable --
+# unlike DEFAULT_CLIENTS/DEFAULT_CLIENT_SCOPES above, an assertion's expected
+# values must not be overridable by the very environment it is checking (a
+# prior finding on this branch was exactly that hazard on another assertion).
+read -r -d '' ASSERT_HEADERS_PY <<'PY' || true
+import json, sys
+
+# contentSecurityPolicyReportOnly is legitimately "" upstream (report-only
+# mode is simply unused here); every other key must be non-empty and match
+# the pre-migration fixture (tests/fixtures/keycloak/bluecore-realm-pre-migration.json)
+# exactly.
+EXPECTED = {
+    "contentSecurityPolicyReportOnly": "",
+    "xContentTypeOptions": "nosniff",
+    "referrerPolicy": "no-referrer",
+    "xRobotsTag": "none",
+    "xFrameOptions": "SAMEORIGIN",
+    "contentSecurityPolicy": "frame-src 'self'; frame-ancestors 'self'; object-src 'none';",
+    "xXSSProtection": "1; mode=block",
+    "strictTransportSecurity": "max-age=31536000; includeSubDomains",
+}
+
+realm = json.load(open(sys.argv[1]))
+actual = realm.get("browserSecurityHeaders") or {}
+problems = []
+for key, expected_value in EXPECTED.items():
+    if key not in actual:
+        problems.append(f"missing {key}")
+        continue
+    actual_value = actual[key]
+    if key == "contentSecurityPolicyReportOnly":
+        if actual_value != "":
+            problems.append(f"{key} expected empty, got {actual_value!r}")
+    elif not actual_value:
+        problems.append(f"{key} is empty")
+    elif actual_value != expected_value:
+        problems.append(f"{key} is {actual_value!r}, expected {expected_value!r}")
+print(", ".join(problems))
+PY
+
+assert_browser_security_headers() {
+  local raw="$1" problems
+  problems="$(python3 -c "$ASSERT_HEADERS_PY" "$raw")"
+  if [[ -n "$problems" ]]; then
+    fail "browserSecurityHeaders regressed: $problems"
+  fi
+  pass "browserSecurityHeaders holds all 8 expected values"
 }

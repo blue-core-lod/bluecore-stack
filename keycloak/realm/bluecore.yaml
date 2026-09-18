@@ -40,6 +40,36 @@ attributes:
   clientOfflineSessionIdleTimeout: "0"
   clientOfflineSessionMaxLifespan: "0"
 
+# Browser security headers, carried over verbatim from the pre-migration realm
+# export (now frozen at tests/fixtures/keycloak/bluecore-realm-pre-migration.json).
+# These are Keycloak's own defaults, so the realm gets them whether or not we
+# declare them -- Keycloak treats an absent or empty map as "keep defaults" and
+# will not clear them. They are declared here anyway for two reasons:
+#
+#   1. They are load-bearing security settings (clickjacking, CSP, HSTS,
+#      MIME-sniffing and XSS protections). Pinning them explicitly means a
+#      change to them shows up as a reviewable diff instead of silently
+#      inheriting whatever a future Keycloak version defaults to.
+#   2. Declaring them keeps this field byte-identical to normalize's reference
+#      realm, so it stops surfacing as `browserSecurityHeaders: {}` noise in
+#      equivalence and drift diffs.
+#
+# contentSecurityPolicyReportOnly is legitimately "" upstream; every other
+# header here must be non-empty. scripts/keycloak/lib.sh asserts exactly that.
+#
+# NOTE: do NOT "simplify" this to `browserSecurityHeaders: {}`. An empty map
+# reads as "no security headers configured" to anyone reviewing this file, and
+# would become a real regression the day Keycloak starts honouring it literally.
+browserSecurityHeaders:
+  contentSecurityPolicyReportOnly: ""
+  xContentTypeOptions: "nosniff"
+  referrerPolicy: "no-referrer"
+  xRobotsTag: "none"
+  xFrameOptions: "SAMEORIGIN"
+  contentSecurityPolicy: "frame-src 'self'; frame-ancestors 'self'; object-src 'none';"
+  xXSSProtection: "1; mode=block"
+  strictTransportSecurity: "max-age=31536000; includeSubDomains"
+
 roles:
   realm:
     - name: "create"

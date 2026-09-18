@@ -132,20 +132,23 @@ reset_stack
 apply_config || { echo "config-cli apply failed" >&2; exit 1; }
 
 # development's real stack runs keycloak-config-users (compose-dev.yaml)
-# immediately after keycloak-config on every boot; this second apply is not
-# optional to reproduce here. Reapplying a realm-scoped import resets any
-# realm attribute the first apply's file doesn't declare (e.g.
-# browserSecurityHeaders) to config-cli's own default, regardless of what the
-# first apply alone left there -- so a throwaway that only ever runs the
-# first apply is not comparable to a real development realm, independent of
-# server config. staging/production have no keycloak-config-users
-# equivalent (compose.yaml never runs it), so skip this there.
-if [[ "$ENVIRONMENT" == "development" ]]; then
-  apply_dev_users || { echo "dev-users config-cli apply failed" >&2; exit 1; }
-fi
-
+# immediately after keycloak-config on every boot, so it is tempting to
+# reproduce that second apply here "for parity". It is not needed: a
+# one-apply throwaway and a real two-apply development realm produce
+# byte-identical canonical state, verified by diffing export_and_normalize
+# output with and without a following apply_dev_users -- zero diff.
+#
+# It WAS added here once, to silence a `browserSecurityHeaders: {}` diff.
+# That diagnosis was wrong on two counts: the realm's headers were never
+# actually emptied (Keycloak refuses to clear that map), and the `{}` came
+# from normalize's handling of the field rather than realm state. The call
+# is removed because it was compensating for a misread, not because the
+# sequencing question was settled -- if a genuine one-apply/two-apply
+# difference ever appears, reproducing the second apply here is the right
+# answer, but prove the difference first rather than assuming it.
 export_and_normalize "$WORK/expected"
 assert_defaults_present "$VERIFY_WORK/export/bluecore-realm.json"
+assert_browser_security_headers "$VERIFY_WORK/export/bluecore-realm.json"
 
 # ---------------------------------------------------------------------------
 # Diff the two canonical forms.

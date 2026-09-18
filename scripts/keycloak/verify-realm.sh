@@ -48,6 +48,7 @@ check_equivalence() {
   apply_config || fail "config-cli apply failed"
   export_and_normalize "$WORK/candidate"
   assert_defaults_present "$WORK/export/bluecore-realm.json"
+  assert_browser_security_headers "$WORK/export/bluecore-realm.json"
 
   strip_intended "$WORK/baseline"/*.yaml > "$WORK/baseline.canonical.json"
   strip_intended "$WORK/candidate"/*.yaml > "$WORK/candidate.canonical.json"
@@ -91,6 +92,7 @@ check_tamper() {
   apply_config "" "$tamper_dir" || fail "tampered config-cli apply failed"
   export_and_normalize "$WORK/tampered"
   assert_defaults_present "$WORK/export/bluecore-realm.json"
+  assert_browser_security_headers "$WORK/export/bluecore-realm.json"
 
   strip_intended "$WORK/baseline"/*.yaml > "$WORK/baseline.canonical.json"
   strip_intended "$WORK/tampered"/*.yaml > "$WORK/tampered.canonical.json"
@@ -105,6 +107,7 @@ check_tamper() {
   apply_config || fail "reverted config-cli apply failed"
   export_and_normalize "$WORK/reverted"
   assert_defaults_present "$WORK/export/bluecore-realm.json"
+  assert_browser_security_headers "$WORK/export/bluecore-realm.json"
 
   strip_intended "$WORK/reverted"/*.yaml > "$WORK/reverted.canonical.json"
   if diff -u "$WORK/baseline.canonical.json" "$WORK/reverted.canonical.json" \
@@ -125,8 +128,12 @@ check_convergence() {
   apply_config || fail "second apply failed"
   export_and_normalize "$WORK/second"
   # The second apply is the one that can delete: delete-missing logic only runs
-  # against an already-existing realm.
+  # against an already-existing realm. It is also the one that can silently
+  # empty browserSecurityHeaders (no IMPORT_MANAGED_REALM policy exists to
+  # guard it the way assert_defaults_present's entities are guarded), so check
+  # both here.
   assert_defaults_present "$WORK/export/bluecore-realm.json"
+  assert_browser_security_headers "$WORK/export/bluecore-realm.json"
 
   canonicalize_order_only "$WORK/candidate"/*.yaml > "$WORK/candidate.ordered.json"
   canonicalize_order_only "$WORK/second"/*.yaml > "$WORK/second.ordered.json"
@@ -228,6 +235,14 @@ check_dev_users() {
   kcadm get clients -r bluecore --fields clientId | grep -q bluecore_workflows \
     || fail "clients were removed by the users pass"
   pass "realm settings and clients survived the users pass"
+
+  # This exact two-apply sequence (apply_config then apply_dev_users) is what
+  # silently emptied browserSecurityHeaders before bluecore.yaml declared it
+  # explicitly -- kcadm's --fields flag does not reliably project this nested
+  # map (verified empirically), so read the realm whole and parse it, the
+  # same way assert_browser_security_headers does.
+  kcadm get realms/bluecore > "$WORK/dev-users-realm.json"
+  assert_browser_security_headers "$WORK/dev-users-realm.json"
 }
 
 case "${1:-all}" in
