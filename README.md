@@ -120,7 +120,7 @@ graph LR;
 
 5. Sign in with local development credentials.
 
-   Airflow uses the imported Keycloak realm. Use username `developer` and password `123456`. See [docs/keycloak.md](docs/keycloak.md) for all local accounts and realm export steps.
+   Airflow uses the declaratively-applied Keycloak realm. Use username `developer` and password `123456`. See [docs/keycloak.md](docs/keycloak.md) for all local accounts and how to change the realm.
 
 6. Additional training resources, including some helpful jupyter notebooks, are located in the [training](training) folder.
 
@@ -135,7 +135,7 @@ graph LR;
 | Load sample or remote JSON-LD data | `./scripts/dev/load-data` (**Airflow running required**)                                                          |
 | Load Sinopia resource templates | `./scripts/dev/load-profiles` ([Local development](docs/local-development.md#-load-resource-templates))            |
 | Run integration tests | `./scripts/test/integration-tests.sh`                                                                             |
-| Export local Keycloak realm config | `./scripts/export-keycloak-realm.sh`                                                                              |
+| Check for Keycloak realm drift | `./scripts/keycloak/drift-check.sh` ([Keycloak](docs/keycloak.md#-changing-the-realm))                           |
 
 ## 📚 Documentation
 
@@ -143,7 +143,7 @@ graph LR;
 - 🚀 [Deployment](docs/deploy.md): env values to change before a public-facing deploy.
 - 🧑‍💻 [Local development](docs/local-development.md): local-source mode, image mode, subset starts, live reload, and data loading.
 - 🧱 [Developing bluecore-models](docs/bluecore-models.md): local model-code reload behavior and migrations.
-- 🔐 [Keycloak](docs/keycloak.md): local users, admin login, realm import/export, and Airflow auth.
+- 🔐 [Keycloak](docs/keycloak.md): local users, admin login, the declarative realm config, and Airflow auth.
 - 🧪 [Integration testing](docs/integration-testing.md): local test runner, dev mode, branch refs, local sources, and workflow parity.
 - 🖥️ [UI testing](docs/ui-testing.md): browser-driven tests and Playwright debugging.
 - 🏗️ [Architecture](docs/architecture.md): compose files, service topology, and Nginx routing.

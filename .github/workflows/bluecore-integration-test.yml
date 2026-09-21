@@ -511,6 +511,10 @@ jobs:
             BLUECORE_STACK_KEYCLOAK_REDIRECT_URI=http://localhost/marva/util/auth/callback
             KEYCLOAK_MIDDLEWARE_BASE=http://marva-keycloak-middleware:9401/marva/util
             CORS_ORIGIN: "*"
+            KEYCLOAK_SSL_REQUIRED=none
+            KEYCLOAK_PUBLIC_BASE_URL=http://localhost
+            KEYCLOAK_DEV_USER_PASSWORD=123456
+            KEYCLOAK_CONFIG_CLI_IMAGE=adorsys/keycloak-config-cli:6.5.1-26.1.0
           EOF
 
       # ========================================================================
@@ -636,3 +640,25 @@ jobs:
         run: |
           docker compose -f compose-dev.yaml -f compose-integration-test.yaml ps -a || true
           docker compose -f compose-dev.yaml -f compose-integration-test.yaml logs --tail=300 || true
+
+  # ==========================================================================
+  # Runs independently of the integration stack: brings up its own throwaway
+  # Keycloak+Postgres, applies keycloak-config-cli, and asserts the declarative
+  # realm config is equivalent to the old imperative realm, converges to a
+  # no-op on reapply, and is safe for existing users and dev seed users.
+  # --------------------------------------------------------------------------
+  verify-realm:
+    name: Verify Keycloak realm config
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Verify equivalence, convergence, user safety, and dev users
+        run: ./scripts/keycloak/verify-realm.sh all
+      # ========================================================================
+      # Insurance that the equivalence oracle above is actually looking: rebinds
+      # a role, asserts the harness FAILS, reverts, asserts it PASSES again. Run
+      # separately from `all` so a permanently-green suite never hides the check
+      # that would have caught it silently passing.
+      # ------------------------------------------------------------------------
+      - name: Verify the harness catches a broken role binding (tamper case)
+        run: ./scripts/keycloak/verify-realm.sh tamper
