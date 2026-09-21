@@ -19,3 +19,5 @@ tests/playwright/.venv/
 cbd_files/**/*
 sinopia_templates/**/*
 .ipynb_checkpoints*
+/nginx/bcdb/*
+!/nginx/bcdb/.keepme
