@@ -139,6 +139,32 @@ absent services; disabled routes return `502`, and the landing page greys them o
 | Marva | `http://localhost/marva/` | Vite HMR |
 | Marva middleware | internal | `node --watch` |
 | Sinopia | `http://localhost/sinopia/` | webpack dev server through Nginx |
+| Graph toolbox | `http://localhost/toolbox/` | **None** — run `./scripts/dev/toolbox` after editing (see below) |
+
+### 🧰 Graph toolbox: rebuild after editing
+
+The toolbox is the one piece with no live reload, because the page Nginx serves 
+is built, not hand-written. `nginx/toolbox/index.html` is *generated* — 
+`src/generate.py` stitches the templates in `nginx/toolbox/src/templates/` 
+(footer, menubar, toolbars, modals) into that single file.
+
+So editing a template changes nothing on screen until you regenerate. Restarting 
+Nginx won't help either: the file on disk genuinely hasn't changed yet.
+
+```bash
+./scripts/dev/toolbox           # rebuild once
+./scripts/dev/toolbox --watch   # rebuild automatically on every save
+```
+
+`--watch` needs `fswatch` (`brew install fswatch`); the one-shot version needs 
+nothing extra. No Nginx restart either way — `./nginx` is mounted into the 
+container, so the new file is picked up on the next request. Hard-reload the 
+browser (`Cmd-Shift-R`) if you still see the old page.
+
+Remember these edits belong to the submodule, so they commit to `graph-toolbox`, 
+not to `bluecore-stack`. Commit the regenerated `index.html` along with the 
+template changes — it's tracked, and without it the deployed site won't show 
+your edits for exactly the same reason.
 
 ## 🛑 Bring the Stack Down
 
@@ -163,6 +189,9 @@ If you change compose files or Nginx configuration, recreate the stack:
 ./scripts/dev/down
 ./scripts/dev/run <flags>
 ```
+
+This does *not* apply to toolbox page edits — those need `./scripts/dev/toolbox`, 
+not a restart.
 
 ## 📥 Load Data
 
