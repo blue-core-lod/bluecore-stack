@@ -42,6 +42,43 @@ kcadm_login() {
     --realm master --user admin --password admin >/dev/null
 }
 
+# Assert a kcadm query's output contains a pattern, keeping the evidence when
+# it does not.
+#
+# This replaces `kcadm ... | grep -q pattern || fail "<specific cause>"`, which
+# has two problems that together make a CI-only failure undiagnosable:
+#
+#   1. grep -q consumes the output, so the one thing that would explain the
+#      failure is discarded.
+#   2. It reports one specific cause ("clients were removed by the users pass")
+#      for two very different events: the query failed, or the query succeeded
+#      and the entity really is absent. Only the second justifies that wording.
+#
+# A `clients were removed by the users pass` failure in CI was un-actionable for
+# exactly this reason -- assert_user_roles had resolved --cclientid
+# bluecore_workflows three seconds earlier, so the client demonstrably existed
+# and the message was pointing at the wrong thing.
+#
+# stderr is folded into the captured output so a kcadm error is visible. That
+# means the pattern is matched against stderr too; acceptable here because the
+# patterns are entity names that a kcadm error would not contain.
+kcadm_assert_contains() {
+  local pattern="$1" description="$2"
+  shift 2
+  local output status=0
+  output="$(kcadm "$@" 2>&1)" || status=$?
+  if [[ $status -ne 0 ]]; then
+    echo "--- kcadm $* (exit $status) ---" >&2
+    echo "$output" >&2
+    fail "$description -- but the kcadm query itself failed (exit $status), so this is a harness/Keycloak problem, not necessarily a realm one"
+  fi
+  if ! grep -q -- "$pattern" <<<"$output"; then
+    echo "--- kcadm $* ---" >&2
+    echo "$output" >&2
+    fail "$description ('$pattern' absent from the kcadm output above)"
+  fi
+}
+
 check_equivalence() {
   info "Equivalence: does keycloak/realm/ reproduce the committed export?"
   [[ -f keycloak/realm/bluecore.yaml ]] || fail "keycloak/realm/bluecore.yaml does not exist"
@@ -158,13 +195,24 @@ check_user_safety() {
 
   kcadm_login
   kcadm create users -r bluecore -s username=drift_probe -s enabled=true >/dev/null
-  kcadm get users -r bluecore -q username=drift_probe --fields username \
-    | grep -q drift_probe || fail "could not create probe user"
+  kcadm_assert_contains drift_probe "could not create probe user" \
+    get users -r bluecore -q username=drift_probe --fields username
 
   apply_config || fail "re-apply failed"
 
-  if kcadm get users -r bluecore -q username=drift_probe --fields username \
-      | grep -q drift_probe; then
+  # Not kcadm_assert_contains: absence is this check's actual finding, so the
+  # query failing and the user being gone must stay distinguishable -- reporting
+  # "upsert-only behaviour has regressed" because kcadm errored would be a
+  # false accusation against the config.
+  local probe status=0
+  probe="$(kcadm get users -r bluecore -q username=drift_probe --fields username 2>&1)" \
+    || status=$?
+  if [[ $status -ne 0 ]]; then
+    echo "--- kcadm get users (exit $status) ---" >&2
+    echo "$probe" >&2
+    fail "could not read back the probe user (kcadm exit $status); cannot tell whether it survived"
+  fi
+  if grep -q drift_probe <<<"$probe"; then
     pass "undeclared user drift_probe survived the apply"
   else
     fail "undeclared user was deleted — upsert-only behaviour has regressed"
@@ -223,8 +271,8 @@ check_dev_users() {
 
   kcadm_login
   for u in developer dev_op dev_user dev_viewer dev_public; do
-    kcadm get users -r bluecore -q "username=$u" --fields username \
-      | grep -q "$u" || fail "seed user $u was not created"
+    kcadm_assert_contains "$u" "seed user $u was not created" \
+      get users -r bluecore -q "username=$u" --fields username
   done
   pass "all five seed users exist"
 
@@ -234,10 +282,10 @@ check_dev_users() {
   pass "all five seed users hold exactly their declared realm and client roles"
 
   # Realm settings must have survived the second, minimal file.
-  kcadm get realms/bluecore --fields sslRequired | grep -q external \
-    || fail "sslRequired was blanked by the users pass"
-  kcadm get clients -r bluecore --fields clientId | grep -q bluecore_workflows \
-    || fail "clients were removed by the users pass"
+  kcadm_assert_contains external "sslRequired was blanked by the users pass" \
+    get realms/bluecore --fields sslRequired
+  kcadm_assert_contains bluecore_workflows "clients were removed by the users pass" \
+    get clients -r bluecore --fields clientId
   pass "realm settings and clients survived the users pass"
 
   # This exact two-apply sequence (apply_config then apply_dev_users) is what
