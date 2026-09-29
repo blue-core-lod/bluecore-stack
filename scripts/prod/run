@@ -123,9 +123,20 @@ else
 fi
 export HOSTNAME
 
+cert="/etc/letsencrypt/live/$HOSTNAME/fullchain.pem"
 if [[ ! -d "/etc/letsencrypt/live/$HOSTNAME" ]]; then
   echo "    WARNING: /etc/letsencrypt/live/$HOSTNAME does not exist - nginx will"
   echo "             fail to start until that certificate is in place."
+elif command -v openssl >/dev/null && [[ -r "$cert" ]]; then
+  # nginx/canonical-redirects.conf answers https://www.$HOSTNAME with this same
+  # certificate, so without the www SAN a www visitor gets a name-mismatch
+  # warning before the 301 ever reaches the browser. Not fatal - nginx starts.
+  if ! openssl x509 -in "$cert" -noout -ext subjectAltName 2>/dev/null \
+       | grep -qF "DNS:www.$HOSTNAME"; then
+    echo "    WARNING: the $HOSTNAME certificate does not list www.$HOSTNAME as a SAN,"
+    echo "             so https://www.$HOSTNAME warns before redirecting. Reissue with:"
+    echo "               certbot certonly -d $HOSTNAME -d www.$HOSTNAME"
+  fi
 fi
 
 # Second domain (optional). Only nginx reads these; see nginx/server-alt.conf.
