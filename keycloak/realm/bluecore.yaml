@@ -76,6 +76,18 @@ roles:
       description: ""
       composite: false
       clientRole: false
+    - name: "template_create"
+      description: ""
+      composite: false
+      clientRole: false
+    - name: "template_delete"
+      description: ""
+      composite: false
+      clientRole: false
+    - name: "template_edit"
+      description: ""
+      composite: false
+      clientRole: false
     - name: "update"
       description: ""
       composite: false
@@ -130,6 +142,30 @@ roles:
         description: ""
         composite: false
         clientRole: true
+
+# Template management groups, carried over from the pre-migration realm export.
+# Membership in a group grants its realmRoles, so these are the only thing that
+# binds the template_* realm roles above to actual users -- no user or client
+# references them directly.
+#
+# `attributes` and `clientRoles` are deliberately omitted: both are empty in the
+# export, and normalize drops an empty map, so declaring them would add nothing
+# to compare. `path` is derived by Keycloak from `name` plus the parent group; it
+# is declared here to keep this section shaped like the export it reproduces.
+groups:
+  - name: "Template editors"
+    path: "/Template editors"
+    realmRoles:
+      - "template_create"
+      - "template_edit"
+    subGroups: []
+  - name: "Template managers"
+    path: "/Template managers"
+    realmRoles:
+      - "template_create"
+      - "template_delete"
+      - "template_edit"
+    subGroups: []
 
 clients:
   - clientId: "bluecore_workflows"
