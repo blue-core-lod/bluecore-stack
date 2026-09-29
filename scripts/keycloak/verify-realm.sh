@@ -13,17 +13,9 @@
 #                check, so it is invoked separately (see CI).
 set -euo pipefail
 
-# keycloak-config-cli applies keycloak/realm/ over the Admin REST API.
-# Pinned as a pair with KEYCLOAK_IMAGE; there is no build for Keycloak 26.1.2,
-# so 26.1.0 (same minor) is used.
-KEYCLOAK_CONFIG_CLI_IMAGE=adorsys/keycloak-config-cli:6.5.1-26.1.0
-
 # Environment-specific realm values consumed by keycloak/realm/bluecore.yaml.
 KEYCLOAK_SSL_REQUIRED=external
 KEYCLOAK_PUBLIC_BASE_URL=http://localhost
-
-# Shared password for the five development seed users. Development only.
-KEYCLOAK_DEV_USER_PASSWORD=123456
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "$ROOT_DIR"

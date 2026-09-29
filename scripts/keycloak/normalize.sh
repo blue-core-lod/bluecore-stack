@@ -63,7 +63,19 @@ OUTPUT_DIR="$2"
 mkdir -p "$OUTPUT_DIR"
 OUTPUT_ABS="$(cd "$OUTPUT_DIR" && pwd)"
 
+# --user is required, not cosmetic. The image's default user is nobody (uid
+# 65534), and $OUTPUT_ABS is a host directory owned by whoever invoked this
+# script. Docker Desktop on macOS remaps bind-mount ownership to the container
+# user, so the default user can write there and this runs fine locally -- but
+# on Linux (notably the GitHub Actions runner) real host uids pass through, so
+# uid 65534 gets r-x on a 0755 runner-owned directory and config-cli dies with
+# "/work/out/bluecore.yaml (Permission denied)". It logs that to stdout and
+# exits 1, which is invisible if the caller is redirecting stdout, so the
+# symptom is a silent exit 1. Running as the invoking user writes output owned
+# correctly on both platforms. An unknown uid is fine here: config-cli needs no
+# home directory (verified by running it as 4242:4242).
 docker run --rm \
+  --user "$(id -u):$(id -g)" \
   -v "${INPUT}:/work/in/realm.json:ro" \
   -v "${OUTPUT_ABS}:/work/out" \
   "$CONFIG_CLI_IMAGE" \

@@ -226,12 +226,25 @@ with open(sys.argv[2], "w") as out:
 PY
 
 # Prune the legacy default-entity keys from a raw realm export, then normalize it.
+#
+# normalize.sh is deliberately noisy on success (config-cli logs a WARN per
+# default role it did not find in the export), so its output is captured to a
+# log rather than shown. It must NOT be sent to /dev/null: config-cli reports
+# its own failures on stdout and nothing on stderr, so discarding stdout turns
+# every normalize failure into a bare exit 1 with no explanation -- which is
+# exactly how a Linux-only bind-mount permission failure hid for three CI runs.
+# Dump the log on failure instead.
 prune_and_normalize() {
   local raw="$1" outdir="$2"
   local pruned="$VERIFY_WORK/$(basename "$outdir").pruned.json"
+  local log="$VERIFY_WORK/$(basename "$outdir").normalize.log"
   mkdir -p "$VERIFY_WORK" "$outdir"
   python3 -c "$PRUNE_LEGACY_PY" "$raw" "$pruned"
-  ./scripts/keycloak/normalize.sh "$pruned" "$outdir" >/dev/null
+  if ! ./scripts/keycloak/normalize.sh "$pruned" "$outdir" > "$log" 2>&1; then
+    echo "--- normalize.sh output ($log) ---" >&2
+    cat "$log" >&2
+    fail "normalize.sh failed on $raw"
+  fi
 }
 
 # Export the live bluecore realm from the throwaway Keycloak, then normalize it.
