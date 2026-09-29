@@ -11,6 +11,13 @@ to exist (Airflow, Blue Core API, …) gate on
 Staging and production still run Keycloak with `--import-realm`; see the
 note below.
 
+Because that gate overrides `bc_api` and `airflow-apiserver` from
+`compose-base.yaml`, `compose-dev.yaml` is an overlay rather than a standalone
+project and must be layered with `-f compose-base.yaml -f compose-dev.yaml`.
+Passing `compose-dev.yaml` on its own fails with *"service bc_api has neither
+an image nor a build context specified"*. See `compose-dev.yaml`'s header for
+why `include:` cannot be used here.
+
 In development and CI only, a second service, `keycloak-config-users`, applies
 [`keycloak/realm/bluecore-dev-users.yaml`](../keycloak/realm/bluecore-dev-users.yaml)
 to seed the five test accounts below. It never runs against staging or
@@ -73,7 +80,7 @@ Realm structure (clients, roles, authorization policies, …) is config-as-code.
 3. Apply it locally to see the change take effect:
 
    ```bash
-   docker compose -f compose-dev.yaml up -d keycloak-config
+   docker compose -f compose-base.yaml -f compose-dev.yaml up -d keycloak-config
    ```
 
 Console edits are exactly the kind of drift this setup exists to catch —

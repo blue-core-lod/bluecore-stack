@@ -571,7 +571,7 @@ jobs:
           SINOPIA_IMAGE: ${{ steps.resolve.outputs.sinopia_image }}
           KEYCLOAK_IMAGE: ${{ steps.resolve.outputs.keycloak_image }}
         run: |
-          docker compose -f compose-dev.yaml -f compose-integration-test.yaml config | grep -E "AIRFLOW__LOGGING__BASE_LOG_FOLDER|AIRFLOW__LOGGING__DAG_PROCESSOR_CHILD_PROCESS_LOG_DIRECTORY|AIRFLOW__API_AUTH__JWT_SECRET|AIRFLOW__CORE__INTERNAL_API_SECRET_KEY" || true
+          docker compose -f compose-base.yaml -f compose-dev.yaml -f compose-integration-test.yaml config | grep -E "AIRFLOW__LOGGING__BASE_LOG_FOLDER|AIRFLOW__LOGGING__DAG_PROCESSOR_CHILD_PROCESS_LOG_DIRECTORY|AIRFLOW__API_AUTH__JWT_SECRET|AIRFLOW__CORE__INTERNAL_API_SECRET_KEY" || true
 
       # ========================================================================
       # Run the terraform integration test script with the resolved refs/images/env.
@@ -638,8 +638,8 @@ jobs:
           SINOPIA_IMAGE: ${{ steps.resolve.outputs.sinopia_image }}
           KEYCLOAK_IMAGE: ${{ steps.resolve.outputs.keycloak_image }}
         run: |
-          docker compose -f compose-dev.yaml -f compose-integration-test.yaml ps -a || true
-          docker compose -f compose-dev.yaml -f compose-integration-test.yaml logs --tail=300 || true
+          docker compose -f compose-base.yaml -f compose-dev.yaml -f compose-integration-test.yaml ps -a || true
+          docker compose -f compose-base.yaml -f compose-dev.yaml -f compose-integration-test.yaml logs --tail=300 || true
 
   # ==========================================================================
   # Runs independently of the integration stack: brings up its own throwaway

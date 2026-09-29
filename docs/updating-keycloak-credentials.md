@@ -63,7 +63,7 @@ part of this procedure.
 3. Re-run the config apply so Keycloak picks it up:
 
    ```bash
-   docker compose -f compose-dev.yaml up -d keycloak-config
+   docker compose -f compose-base.yaml -f compose-dev.yaml up -d keycloak-config
    ```
 
 4. Restart Airflow so it picks up the new secret from `.env`.
@@ -103,7 +103,7 @@ against staging or production).
 2. Re-run the seed apply:
 
    ```bash
-   docker compose -f compose-dev.yaml up -d keycloak-config-users
+   docker compose -f compose-base.yaml -f compose-dev.yaml up -d keycloak-config-users
    ```
 
 > ⚠️ Same checksum-cache gotcha as above. A real password change always

@@ -53,9 +53,14 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
+# An array, not a single filename: development's stack is compose-base.yaml
+# layered with compose-dev.yaml. compose-dev.yaml overrides base's bc_api and
+# airflow-apiserver, which only merges under `-f` layering, so it is not a
+# standalone project (see compose-dev.yaml's header). compose.yaml still
+# `include`s base and remains a single file.
 case "$ENVIRONMENT" in
-  development) COMPOSE_FILE="compose-dev.yaml" ;;
-  staging|production) COMPOSE_FILE="compose.yaml" ;;
+  development) COMPOSE_FILES=(-f "compose-base.yaml" -f "compose-dev.yaml") ;;
+  staging|production) COMPOSE_FILES=(-f "compose.yaml") ;;
   *) echo "Unknown environment: $ENVIRONMENT" >&2; exit 2 ;;
 esac
 
@@ -86,7 +91,7 @@ LIVE_KEYCLOAK_RESTORED="0"
 restore_live_keycloak() {
   if [[ "$LIVE_KEYCLOAK_WAS_RUNNING" == "1" && "$LIVE_KEYCLOAK_RESTORED" == "0" ]]; then
     info "Restoring '${ENVIRONMENT}' keycloak to its running state"
-    docker compose -f "$COMPOSE_FILE" start keycloak >/dev/null 2>&1 || true
+    docker compose "${COMPOSE_FILES[@]}" start keycloak >/dev/null 2>&1 || true
     LIVE_KEYCLOAK_RESTORED="1"
   fi
 }
@@ -99,13 +104,13 @@ trap cleanup EXIT
 
 info "Exporting live '${ENVIRONMENT}' realm (read-only)"
 
-KC_CID="$(docker compose -f "$COMPOSE_FILE" ps -q keycloak 2>/dev/null || true)"
+KC_CID="$(docker compose "${COMPOSE_FILES[@]}" ps -q keycloak 2>/dev/null || true)"
 if [[ -n "$KC_CID" ]] \
     && [[ "$(docker inspect -f '{{.State.Running}}' "$KC_CID" 2>/dev/null)" == "true" ]]; then
   LIVE_KEYCLOAK_WAS_RUNNING="1"
 fi
 
-docker compose -f "$COMPOSE_FILE" stop keycloak
+docker compose "${COMPOSE_FILES[@]}" stop keycloak
 
 # Task 6 removed compose-dev.yaml's KEYCLOAK_REALM_DIR volume from the
 # keycloak service entirely, so relying on it here would write the export
@@ -115,7 +120,7 @@ docker compose -f "$COMPOSE_FILE" stop keycloak
 # compose.yaml (staging/production) still mounts KEYCLOAK_REALM_DIR at this
 # same in-container path for its own --import-realm use, so a container path
 # that nothing else claims (/tmp/kc-drift-export) avoids colliding with it.
-docker compose -f "$COMPOSE_FILE" run --user root --rm \
+docker compose "${COMPOSE_FILES[@]}" run --user root --rm \
   -v "$ROOT_DIR/$WORK/export:/tmp/kc-drift-export" \
   keycloak export --dir=/tmp/kc-drift-export --realm=bluecore --users=realm_file
 

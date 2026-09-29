@@ -5,6 +5,11 @@ set -euo pipefail
 ##  PATHS & BASE FILES   ##
 ###########################
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+# compose-dev.yaml is an overlay, not a standalone project: it overrides
+# bc_api and airflow-apiserver (defined in compose-base.yaml) to add the
+# keycloak-config startup gate. That override only merges under `-f` layering,
+# so compose-base.yaml must be passed first -- see compose-dev.yaml's header.
+BASE_COMPOSE_FILE="${BASE_COMPOSE_FILE:-compose-base.yaml}"
 COMPOSE_FILE="${COMPOSE_FILE:-compose-dev.yaml}"
 LOCAL_OVERRIDE_FILE="${LOCAL_OVERRIDE_FILE:-compose-integration-test.yaml}"
 ARM64_OVERRIDE_FILE="${ARM64_OVERRIDE_FILE:-compose-arm64-workflows.yaml}"
@@ -369,7 +374,7 @@ resolve_latest_release_tag() {
     | tail -n 1
 }
 
-compose_args=(-f "$COMPOSE_FILE")
+compose_args=(-f "$BASE_COMPOSE_FILE" -f "$COMPOSE_FILE")
 if [[ -f "$ROOT_DIR/$LOCAL_OVERRIDE_FILE" ]]; then
   compose_args+=(-f "$LOCAL_OVERRIDE_FILE")
 fi
@@ -934,7 +939,7 @@ fi
 if [[ "$INTEGRATION_DEV_MODE_STOP" == "1" ]]; then
   log_banner "🧹 Stopping dev-mode stack and removing resources..."
   echo "Compose project name: $COMPOSE_PROJECT_NAME"
-  echo "Compose files: $COMPOSE_FILE, $LOCAL_OVERRIDE_FILE${ARM64_OVERRIDE_FILE:+, $ARM64_OVERRIDE_FILE}"
+  echo "Compose files: $BASE_COMPOSE_FILE, $COMPOSE_FILE, $LOCAL_OVERRIDE_FILE${ARM64_OVERRIDE_FILE:+, $ARM64_OVERRIDE_FILE}"
   run_compose_compact down -v --remove-orphans --rmi all || true
   if [[ "$COMPACT_LOG_OUTPUT" == "1" ]]; then
     echo "Dev-mode stack cleanup complete."
@@ -1046,7 +1051,7 @@ if [[ "$AUTO_START_STACK" == "1" ]]; then
       echo "Images pulled."
     fi
   fi
-  log_banner "🚀 Starting stack with docker compose ($COMPOSE_FILE)..."
+  log_banner "🚀 Starting stack with docker compose ($BASE_COMPOSE_FILE + $COMPOSE_FILE)..."
   print_service_image_plan
   run_compose_compact up -d
   if [[ "$COMPACT_LOG_OUTPUT" == "1" ]]; then

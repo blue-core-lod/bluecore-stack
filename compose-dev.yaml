@@ -1,6 +1,26 @@
-include:
-  - compose-base.yaml
-
+# Development/CI overlay. MUST be layered on compose-base.yaml with -f:
+#
+#   docker compose -f compose-base.yaml -f compose-dev.yaml ...
+#
+# This file used to `include: compose-base.yaml` instead, which is why the
+# bc_api and airflow-apiserver blocks below broke CI. Compose's `include`
+# imports a file as a separate resource and rejects any attempt by the
+# including file to redefine one of its services ("services.bc_api conflicts
+# with imported resource"). That is version-dependent -- Compose 5.x merges
+# such overrides, Compose 2.38.2 (what the GitHub ubuntu-24.04 runner ships)
+# errors -- so it passed locally and failed in CI. `-f` layering is Compose's
+# actual override mechanism and merges partial service definitions on every
+# version.
+#
+# Consequence: this file is NOT a standalone project. bc_api and
+# airflow-apiserver below are partial overrides with no image, so running
+# `docker compose -f compose-dev.yaml` alone fails with "service bc_api has
+# neither an image nor a build context specified". Always pass
+# compose-base.yaml first.
+#
+# compose.yaml (staging/production) deliberately keeps `include:` -- it
+# overrides no base service, and it is the default file name, so plain
+# `docker compose up` has to keep working there.
 services:
   # Applies the declarative bluecore realm over the Admin REST API. Runs once
   # and exits; services that need a configured realm gate on it completing.
@@ -32,7 +52,8 @@ services:
   # Gates that reference keycloak-config, added on top of compose-base.yaml's
   # entries for bc_api and airflow-apiserver. Compose merges depends_on maps
   # by key, so this adds the keycloak-config condition without clobbering the
-  # base file's other depends_on entries.
+  # base file's other depends_on entries -- but only under `-f` layering, not
+  # `include` (see the header).
   bc_api:
     depends_on:
       keycloak-config:
