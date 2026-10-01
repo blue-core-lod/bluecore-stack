@@ -932,7 +932,7 @@ else
   default_require_vector_backend="${INTEGRATION_REQUIRE_VECTOR_BACKEND:-0}"
 fi
 default_postgres_port="${POSTGRES_HOST_PORT:-15432}"
-integration_database_url="${INTEGRATION_DATABASE_URL:-postgresql+psycopg2://airflow:airflow@localhost:${default_postgres_port}/${INTEGRATION_DB_NAME}}"
+integration_database_url="${INTEGRATION_DATABASE_URL:-postgresql+psycopg://airflow:airflow@localhost:${default_postgres_port}/${INTEGRATION_DB_NAME}}"
 
 compose_env=(
   "COMPOSE_PROJECT_NAME=$COMPOSE_PROJECT_NAME"

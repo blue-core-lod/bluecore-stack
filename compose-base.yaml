@@ -9,8 +9,8 @@ x-airflow-common:
     &airflow-common-env
     AIRFLOW__CORE__EXECUTOR: CeleryExecutor
     AIRFLOW__CORE__AUTH_MANAGER: airflow.providers.keycloak.auth_manager.keycloak_auth_manager.KeycloakAuthManager
-    AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://${DATABASE_USERNAME:-airflow}:${DATABASE_PASSWORD:-airflow}@${DATABASE_HOSTNAME:-postgres}:${DATABASE_PORT:-5432}/airflow
-    AIRFLOW_CONN_BLUECORE_DB: postgresql+psycopg2://${DATABASE_USERNAME:-airflow}:${DATABASE_PASSWORD:-airflow}@${DATABASE_HOSTNAME:-postgres}:${DATABASE_PORT:-5432}/bluecore
+    AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg://${DATABASE_USERNAME:-airflow}:${DATABASE_PASSWORD:-airflow}@${DATABASE_HOSTNAME:-postgres}:${DATABASE_PORT:-5432}/airflow
+    AIRFLOW_CONN_BLUECORE_DB: postgresql+psycopg://${DATABASE_USERNAME:-airflow}:${DATABASE_PASSWORD:-airflow}@${DATABASE_HOSTNAME:-postgres}:${DATABASE_PORT:-5432}/bluecore
     AIRFLOW__CELERY__RESULT_BACKEND: db+postgresql://${DATABASE_USERNAME:-airflow}:${DATABASE_PASSWORD:-airflow}@${DATABASE_HOSTNAME:-postgres}:${DATABASE_PORT:-5432}/airflow
     AIRFLOW__CELERY__BROKER_URL: redis://:@redis:6379/0
     AIRFLOW__CORE__FERNET_KEY: ''
@@ -82,7 +82,7 @@ services:
       - ./.env
     environment:
       AIRFLOW_UID: ${AIRFLOW_UID:-50000}
-      DATABASE_URL: postgresql+psycopg2://${DATABASE_USERNAME:-airflow}:${DATABASE_PASSWORD:-airflow}@${DATABASE_HOSTNAME:-postgres}:${DATABASE_PORT:-5432}/bluecore
+      DATABASE_URL: postgresql+psycopg://${DATABASE_USERNAME:-airflow}:${DATABASE_PASSWORD:-airflow}@${DATABASE_HOSTNAME:-postgres}:${DATABASE_PORT:-5432}/bluecore
     user: "${AIRFLOW_UID}:0"
     volumes:
        - ${AIRFLOW_PROJ_DIR:-.}/uploads:/bluecore_api/uploads
