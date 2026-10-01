@@ -45,7 +45,7 @@ BLUECORE_URL=http://localhost
 
 # Client 2: airflow_client
 AIRFLOW_KEYCLOAK_CLIENT_ID=bluecore_workflows
-AIRFLOW_KEYCLOAK_CLIENT_SECRET=KIu8gWa8rtjlT0Zl7zkNzsObFZGJ2IsJ
+AIRFLOW_KEYCLOAK_CLIENT_SECRET=<see .env; generated per environment>
 KEYCLOAK_INTERNAL_URL=http://keycloak:8080/keycloak/
 KEYCLOAK_EXTERNAL_URL=http://localhost/keycloak/
 

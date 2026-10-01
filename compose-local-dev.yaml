@@ -6,8 +6,20 @@
 ##                            from your LOCAL repo checkouts and its source is
 ##                            bind-mounted for live reload (autoreload / dev servers).
 ##
-## It pulls in the whole dev stack (base services + Postgres/Keycloak/Nginx).
-## Overrides the Blue Core services with local build + live-mount definitions.
+## It layers on the whole dev stack (base services + Postgres/Keycloak/Nginx)
+## and overrides the Blue Core services with local build + live-mount definitions.
+##
+## MUST be layered with -f, in this order:
+##
+##   docker compose -f compose-base.yaml -f compose-dev.yaml -f compose-local-dev.yaml ...
+##
+## This file used to `include: compose-dev.yaml`, which cannot work: Compose
+## rejects an including file redefining a service it imported, and everything
+## below (bc_api, the airflow-* services, nginx, redis) overrides a service
+## from compose-base.yaml or compose-dev.yaml. Compose 5.x tolerates it,
+## Compose 2.38.2 fails with "services.airflow-apiserver conflicts with
+## imported resource". See compose-dev.yaml's header. scripts/dev/run passes
+## the files in the right order; prefer it over invoking compose by hand.
 ##
 ## Repo locations come from these env vars:
 ##
@@ -19,13 +31,13 @@
 ##
 ## Defaults live in scripts/dev/local-repo-paths. scripts/dev/run is the
 ## intended entrypoint.
-## To run `docker compose -f compose-local-dev.yaml up --build` directly instead,
-## set those five vars yourself (env or a .env file in this directory).
+## To run compose directly instead, set those five vars yourself (env or a
+## .env file in this directory) and pass all three files:
+##
+##   docker compose -f compose-base.yaml -f compose-dev.yaml \
+##     -f compose-local-dev.yaml up --build
 ################################################################################
 
-
-include:
-  - compose-dev.yaml
 
 # All Airflow/workflows services share one locally-built image plus the live
 # DAG/task code mount. Defined once here, merged into each service below.

@@ -26,7 +26,11 @@ services:
       # KEYCLOAK_REALM_DIR selects it per environment; defaults to production.
       # Set it in the server's .env for staging ( e.g. KEYCLOAK_REALM_DIR=./keycloak-export/staging).
       # An empty dir simply imports nothing. Seed <KEYCLOAK_REALM_DIR>/bluecore-realm.json beforethe first start.
-      # "./scripts/export-keycloak-realm.sh --env=<env>" writes to it.
+      # keycloak/realm/ is the source of truth now; this --import-realm path is
+      # legacy and staging/production's own cutover is follow-on work. Use
+      # ./scripts/keycloak/drift-check.sh --env=<env> to compare a running
+      # environment's realm against keycloak/realm/ instead of hand-seeding
+      # this directory from an export.
       - ${KEYCLOAK_REALM_DIR:-./keycloak-export/production}:/opt/keycloak/data/import
       - ${KEYCLOAK_REALM_DIR:-./keycloak-export/production}:/opt/keycloak/data/export
 
