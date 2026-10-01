@@ -53,7 +53,7 @@ services:
       keycloak:
         condition: service_healthy
     environment:
-      DATABASE_URL: postgresql+psycopg2://airflow:airflow@postgres:5432/${INTEGRATION_DB_NAME:-bluecore_integration_test}
+      DATABASE_URL: postgresql+psycopg://airflow:airflow@postgres:5432/${INTEGRATION_DB_NAME:-bluecore_integration_test}
       UV_CACHE_DIR: /tmp/uv-cache
       # bc_api authenticates to Airflow's /auth/token with these to trigger DAGs.
       # Override the .env value (injected via env_file) so it matches the FAB user
@@ -65,7 +65,7 @@ services:
 
   airflow-apiserver:
     environment:
-      AIRFLOW_CONN_BLUECORE_DB: postgresql+psycopg2://airflow:airflow@postgres:5432/${INTEGRATION_DB_NAME:-bluecore_integration_test}
+      AIRFLOW_CONN_BLUECORE_DB: postgresql+psycopg://airflow:airflow@postgres:5432/${INTEGRATION_DB_NAME:-bluecore_integration_test}
       AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: "false"
       AIRFLOW__LOGGING__BASE_LOG_FOLDER: /tmp/airflow-logs
       AIRFLOW__CORE__INTERNAL_API_SECRET_KEY: ${INTEGRATION_AIRFLOW_INTERNAL_API_SECRET_KEY:-integration-internal-api-secret}
@@ -83,7 +83,7 @@ services:
 
   airflow-scheduler:
     environment:
-      AIRFLOW_CONN_BLUECORE_DB: postgresql+psycopg2://airflow:airflow@postgres:5432/${INTEGRATION_DB_NAME:-bluecore_integration_test}
+      AIRFLOW_CONN_BLUECORE_DB: postgresql+psycopg://airflow:airflow@postgres:5432/${INTEGRATION_DB_NAME:-bluecore_integration_test}
       AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: "false"
       AIRFLOW__LOGGING__BASE_LOG_FOLDER: /tmp/airflow-logs
       AIRFLOW__CORE__INTERNAL_API_SECRET_KEY: ${INTEGRATION_AIRFLOW_INTERNAL_API_SECRET_KEY:-integration-internal-api-secret}
@@ -99,7 +99,7 @@ services:
 
   airflow-dag-processor:
     environment:
-      AIRFLOW_CONN_BLUECORE_DB: postgresql+psycopg2://airflow:airflow@postgres:5432/${INTEGRATION_DB_NAME:-bluecore_integration_test}
+      AIRFLOW_CONN_BLUECORE_DB: postgresql+psycopg://airflow:airflow@postgres:5432/${INTEGRATION_DB_NAME:-bluecore_integration_test}
       AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: "false"
       AIRFLOW__LOGGING__BASE_LOG_FOLDER: /tmp/airflow-logs
       AIRFLOW__LOGGING__DAG_PROCESSOR_CHILD_PROCESS_LOG_DIRECTORY: /tmp/airflow-logs/dag_processor
@@ -124,7 +124,7 @@ services:
       airflow-init:
         condition: service_completed_successfully
     environment:
-      AIRFLOW_CONN_BLUECORE_DB: postgresql+psycopg2://airflow:airflow@postgres:5432/${INTEGRATION_DB_NAME:-bluecore_integration_test}
+      AIRFLOW_CONN_BLUECORE_DB: postgresql+psycopg://airflow:airflow@postgres:5432/${INTEGRATION_DB_NAME:-bluecore_integration_test}
       AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: "false"
       AIRFLOW__LOGGING__BASE_LOG_FOLDER: /tmp/airflow-logs
       AIRFLOW__CORE__INTERNAL_API_SECRET_KEY: ${INTEGRATION_AIRFLOW_INTERNAL_API_SECRET_KEY:-integration-internal-api-secret}
@@ -143,7 +143,7 @@ services:
 
   airflow-init:
     environment:
-      AIRFLOW_CONN_BLUECORE_DB: postgresql+psycopg2://airflow:airflow@postgres:5432/${INTEGRATION_DB_NAME:-bluecore_integration_test}
+      AIRFLOW_CONN_BLUECORE_DB: postgresql+psycopg://airflow:airflow@postgres:5432/${INTEGRATION_DB_NAME:-bluecore_integration_test}
       AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: "false"
       AIRFLOW__LOGGING__BASE_LOG_FOLDER: /tmp/airflow-logs
       AIRFLOW__CORE__INTERNAL_API_SECRET_KEY: ${INTEGRATION_AIRFLOW_INTERNAL_API_SECRET_KEY:-integration-internal-api-secret}
