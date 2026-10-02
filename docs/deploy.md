@@ -53,7 +53,7 @@ Move every browser-facing URL from `localhost` to the public HTTPS origin
 | `KC_HOSTNAME_STRICT` | `false` | `true` |
 | `MARVA_REDIRECT_BASE` | `http://localhost/marva/` | `https://bcld.info/marva/` |
 | `BLUECORE_STACK_KEYCLOAK_REDIRECT_URI` | `http://localhost/marva/util/auth/callback` | `https://bcld.info/marva/util/auth/callback` |
-| `HOSTNAME` | *(required)* | Your public domain, e.g. `bcld.info` (must match `/etc/letsencrypt/live/<HOSTNAME>`) |
+| `HOSTNAME` | *(required)* | Your public domain, e.g. `bcld.info` (must match `/etc/letsencrypt/live/<HOSTNAME>`, whose certificate should also cover `www.<HOSTNAME>` — see [www and plain-HTTP redirects](#-www-and-plain-http-redirects)) |
 | `HOSTNAME_ALT` | *(unset)* | Only for a host answering to a second domain — see [Two domains on one host](#-two-domains-on-one-host) |
 | `NGINX_EXTRA_SERVERS` | *(unset)* | Only for a host answering to a second domain — see [Two domains on one host](#-two-domains-on-one-host) |
 | `MARVA_BASE_URL` | `http://localhost/marva/` | `https://bcld.info/marva/` |
@@ -63,6 +63,53 @@ Move every browser-facing URL from `localhost` to the public HTTPS origin
 > ✅ Leave the internal service URLs as-is — `KEYCLOAK_INTERNAL_URL`,
 > `KEYCLOAK_MIDDLEWARE_BASE`, and `AIRFLOW_INTERNAL_URL` use Docker service names
 > and don't change between environments.
+
+---
+
+## 🔁 `www` and plain-HTTP redirects
+
+`nginx/canonical-redirects.conf` is mounted on every deploy and issues **301 permanent**
+redirects to the naked domain:
+
+| Request | Redirects to |
+|---|---|
+| `https://www.<HOSTNAME>/path?q=1` | `https://<HOSTNAME>/path?q=1` |
+| `http://<HOSTNAME>/path` | `https://<HOSTNAME>/path` |
+| `http://www.<HOSTNAME>/path` | `https://<HOSTNAME>/path` |
+| `http://` with an unrecognized `Host` (e.g. by IP) | `https://<HOSTNAME>/path` |
+
+Nothing listened on port 80 before, so plain HTTP simply failed; it now redirects. The path and
+query string are preserved.
+
+> ⚠️ **The certificate must cover the `www` name.** TLS is negotiated *before* the HTTP request, so
+> `https://www.<HOSTNAME>` only redirects cleanly if `/etc/letsencrypt/live/<HOSTNAME>/` lists
+> `www.<HOSTNAME>` as a SAN. Issue one lineage with both names — the redirect block deliberately
+> reuses the `<HOSTNAME>` cert directory, because pointing at a lineage that doesn't exist on disk
+> would stop nginx from starting:
+>
+> ```bash
+> certbot certonly -d <HOSTNAME> -d www.<HOSTNAME>
+> ```
+>
+> Without the SAN, a www visitor sees a certificate-name warning and *then* the redirect. DNS must
+> also resolve `www.<HOSTNAME>` to this host.
+
+HTTP-01 renewals still work while the stack is up: `/.well-known/acme-challenge/` is served from
+`/var/www/html` (bind-mounted from `./nginx`) *before* the redirect, so
+`certbot certonly --webroot -w ./nginx -d <HOSTNAME> -d www.<HOSTNAME>` can be used.
+
+On a host with a second domain (below), `nginx/server-alt.conf` carries the matching blocks so
+`http://<HOSTNAME_ALT>` and `https://www.<HOSTNAME_ALT>` land on `https://<HOSTNAME_ALT>` instead of
+being bounced cross-domain to the canonical host.
+
+Verify after deploying:
+
+```bash
+for url in "http://$HOSTNAME/" "http://www.$HOSTNAME/" "https://www.$HOSTNAME/deep/path?q=1"; do
+  printf '%-46s %s\n' "$url" \
+    "$(curl -sk -o /dev/null -w '%{http_code} -> %{redirect_url}' "$url")"
+done
+```
 
 ---
 
@@ -169,8 +216,9 @@ and expect interactive logins to settle on the canonical domain.
 | `nginx/base.conf` | Shared skeleton: one server block plus an `include` for optional extra blocks |
 | `nginx/site-body.conf` | Every proxy route and error page, shared by any server block that serves the app |
 | `nginx/server.conf` | The canonical HTTPS block (`${HOSTNAME}`, `default_server`) |
-| `nginx/server-alt.conf` | The second HTTPS block (`${HOSTNAME_ALT}`), which includes the same site body |
+| `nginx/server-alt.conf` | The second HTTPS block (`${HOSTNAME_ALT}`), which includes the same site body, plus that domain's `www`/HTTP redirects |
 | `nginx/no-extra-servers.conf` | Comment-only placeholder used when `NGINX_EXTRA_SERVERS` is unset |
+| `nginx/canonical-redirects.conf` | Always mounted: 301s `www.${HOSTNAME}` and all plain HTTP to `https://${HOSTNAME}` — see [www and plain-HTTP redirects](#-www-and-plain-http-redirects) |
 
 ---
 

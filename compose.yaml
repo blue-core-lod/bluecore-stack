@@ -56,5 +56,8 @@ services:
       # comment-only placeholder, i.e. a single domain (production).
       # Set NGINX_EXTRA_SERVERS=server-alt.conf for a second cert pair.
       - ./nginx/${NGINX_EXTRA_SERVERS:-no-extra-servers.conf}:/etc/nginx/templates/env/extra/extra.conf.template
+      # Always on: 301s www.${HOSTNAME} and all plain HTTP to https://${HOSTNAME}.
+      # Needs www.${HOSTNAME} in the ${HOSTNAME} certificate's SANs.
+      - ./nginx/canonical-redirects.conf:/etc/nginx/templates/env/extra/canonical-redirects.conf.template
       - ./nginx:/var/www/html
     restart: always
