@@ -1,6 +1,11 @@
 services:
   # Mount local API source and run FastAPI in autoreload mode for dev-mode reruns.
   bc_api:
+    # The image installs bluecore_api non-editable into /opt/venv, and fastapi dev
+    # only puts src/bluecore_api/app on sys.path (no __init__.py files). Prepend the
+    # mounted src so every bluecore_api module, not just main.py, reloads from it.
+    environment:
+      PYTHONPATH: /bluecore_api/src
     command:
       - uv
       - run
