@@ -27,6 +27,11 @@ DATABASE_PASSWORD=airflow
 DATABASE_HOSTNAME=postgres
 DATABASE_PORT=5432
 
+# Log the plan of slow queries. Watch them with scripts/dev/database/explain.
+# -1 (or not set here) is off, 0 logs every query, 200 logs queries slower than 200 ms, etc.
+# Recreate Postgres after changing it
+#POSTGRES_EXPLAIN_SLOW_QUERY_MS=200
+
 ###########################
 ## Airflow Configuration ##
 ###########################
