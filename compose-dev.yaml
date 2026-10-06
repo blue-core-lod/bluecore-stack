@@ -4,6 +4,17 @@ include:
 services:
   postgres:
     image: postgres:16
+    # Logs the plan of slow queries. Watch them with scripts/dev/database/explain.
+    # Set POSTGRES_EXPLAIN_SLOW_QUERY_MS in .env: -1 is off (default), 0 logs every
+    # query, 200 logs queries slower than 200 ms
+    command:
+      - postgres
+      - -c
+      - shared_preload_libraries=auto_explain
+      - -c
+      - auto_explain.log_min_duration=${POSTGRES_EXPLAIN_SLOW_QUERY_MS:--1}
+      - -c
+      - auto_explain.log_analyze=on
     environment:
       POSTGRES_USER: ${DATABASE_USERNAME:-airflow}
       POSTGRES_PASSWORD: ${DATABASE_PASSWORD:-airflow}

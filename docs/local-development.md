@@ -212,3 +212,37 @@ It only removes *data*. The schema and `alembic_version` survive, so the running
 API does not re-migrate and the stack keeps serving. To throw away everything, 
 including the Keycloak realm, Airflow history, and the Postgres volume itself, 
 use `./scripts/dev/down --volumes` instead.
+
+## 🐢 Find Slow Queries
+
+Postgres can log how it ran each slow query (its plan), so you can see whether 
+a query used an index or scanned the whole table. This is off by default and is 
+for local dev only.
+
+1. In `.env`, set how slow a query must be (in milliseconds) before it is logged:
+
+   ```bash
+   POSTGRES_EXPLAIN_SLOW_QUERY_MS=200  # queries slower than 200 ms
+   POSTGRES_EXPLAIN_SLOW_QUERY_MS=0    # every query
+   POSTGRES_EXPLAIN_SLOW_QUERY_MS=-1   # off (the default, also when not set)
+   ```
+
+2. Recreate Postgres so it picks up the change.
+
+
+3. Follow the plans in color, then run a search (or anything else) in the API:
+
+   ```bash
+   ./scripts/dev/database/explain              # new plans only
+   ./scripts/dev/database/explain --since 10m  # also the last 10 minutes
+   ```
+
+The script starts by showing the `.env` value next to the one Postgres is using, 
+and warns if logging is off or Postgres still needs a restart. In the plans:
+
+| Color | Meaning |
+|---|---|
+| Yellow | How long the query took (red when 100 ms or more) |
+| Cyan / magenta | The SQL and its parameters |
+| Red | Full table scans and rows thrown away (usually the slow part) |
+| Green | Index lookups (usually the fast part) |
