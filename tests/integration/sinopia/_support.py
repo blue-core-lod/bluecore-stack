@@ -37,22 +37,18 @@ def interop_nonce() -> str:
 # ========================================================================
 # Build a compacted Sinopia Resource Template JSON-LD document.
 #
-# Carries its own @context so the API's JSON-LD loader expands the sinopia
-# prefixes rather than falling back to the Blue Core default context. The
-# nonce lands in the label + resource id so the profile is searchable.
+# Uses full IRIs with no @context: bluecore-models refuses inline contexts,
+# and the bibframe-json context it accepts has no sinopia prefix. The nonce
+# lands in the label + resource id so the profile is searchable.
 # ------------------------------------------------------------------------
 def build_resource_template_jsonld(nonce: str) -> dict[str, Any]:
     resource_id = original_resource_id(nonce)
     return {
-        "@context": {
-            "sinopia": SINOPIA,
-            "rdfs": "http://www.w3.org/2000/01/rdf-schema#",
-        },
         "@id": original_resource_uri(nonce),
-        "@type": "sinopia:ResourceTemplate",
-        "rdfs:label": f"Blue Core Sinopia interop probe {nonce}",
-        "sinopia:hasResourceId": resource_id,
-        "sinopia:hasClass": {"@id": BF_WORK},
+        "@type": RESOURCE_TEMPLATE_TYPE,
+        RDFS_LABEL: f"Blue Core Sinopia interop probe {nonce}",
+        f"{SINOPIA}hasResourceId": resource_id,
+        f"{SINOPIA}hasClass": {"@id": BF_WORK},
     }
 
 

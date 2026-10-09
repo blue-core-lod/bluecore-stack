@@ -13,6 +13,10 @@ SAMPLE_BATCH_JSONLD_URL = (
 
 SAMPLE_SEARCH_QUERY = "joli"
 
+# bluecore-models (>= 0.35.0) refuses inline @context dicts; it only accepts no
+# @context or a context URL bibframe-json ships, resolved from the package.
+BIBFRAME_CONTEXT_URL = "https://bibframe-json.org/v0.1/context/bibframe.jsonld"
+
 # The sample batch is deterministic (dedup by derivedFrom yields stable Bluecore
 # URIs), so ~24 tests calling this would otherwise each re-trigger the DAG and
 # re-poll search — the same work done dozens of times. Cache the outcome per
@@ -105,10 +109,7 @@ def build_minimal_rdfxml(marker: str) -> str:
 # ------------------------------------------------------------------------
 def build_work_jsonld(marker: str) -> str:
     payload = {
-        "@context": {
-            "bf": "http://id.loc.gov/ontologies/bibframe/",
-            "rdfs": "http://www.w3.org/2000/01/rdf-schema#",
-        },
+        "@context": BIBFRAME_CONTEXT_URL,
         "@id": f"https://example.org/external/work/{marker}",
         "@type": "bf:Work",
         "rdfs:label": f"Integration work {marker}",
@@ -121,10 +122,7 @@ def build_work_jsonld(marker: str) -> str:
 # ------------------------------------------------------------------------
 def build_instance_jsonld(marker: str) -> str:
     payload = {
-        "@context": {
-            "bf": "http://id.loc.gov/ontologies/bibframe/",
-            "rdfs": "http://www.w3.org/2000/01/rdf-schema#",
-        },
+        "@context": BIBFRAME_CONTEXT_URL,
         "@id": f"https://example.org/external/instance/{marker}",
         "@type": "bf:Instance",
         "rdfs:label": f"Integration instance {marker}",
