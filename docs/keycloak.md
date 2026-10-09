@@ -68,3 +68,39 @@ The export environment defaults to `development` when `--env` is omitted.
 
 To change client secrets, user passwords, or the admin login and save them back
 to the realm export, see [updating-keycloak-credentials.md](updating-keycloak-credentials.md).
+
+## ⬆️ Upgrading Keycloak
+
+The Keycloak server version is pinned in three places, and nothing flags new releases. Change all three together:
+
+| File | Pin |
+|---|---|
+| `compose.yaml` | `KEYCLOAK_IMAGE` default |
+| `compose-dev.yaml` | `KEYCLOAK_IMAGE` default |
+| `.github/workflows/bluecore-integration-test.yml` | `keycloak_image=` in the resolve step |
+
+A server's `.env` can override `KEYCLOAK_IMAGE`, so check staging and production too.
+
+### Before upgrading
+
+- **Back up the `keycloak` database.** Keycloak migrates its schema on startup and the migration is one-way; rolling back means restoring the backup.
+- **Read the release notes** for every version between the current one and the target, especially across a major (e.g. 26 → 27).
+- **Export the realm** (see [Export Realm Configuration](#-export-realm-configuration)) so you have a fresh copy.
+
+### After upgrading
+
+- `--import-realm` skips a realm that already exists, so the upgrade leaves the realm's data as-is. Re-export and diff against the previous export to catch format changes the new version made.
+- Log in through each client: Airflow (`bluecore_workflows`), Sinopia, Marva, the API's `/docs` Authorize button, and **Export to Catalog** on a Blue Core Instance page.
+
+### Browser clients (keycloak-js)
+
+Since Keycloak 26, the browser adapter `keycloak-js` is released separately from the server, and each 26.x release supports all current server versions. It doesn't need to match the server exactly, but check it on a major upgrade:
+
+| Repo | Where | Kept current by |
+|---|---|---|
+| sinopia_editor | `package.json` / `package-lock.json` | npm |
+| bluecore_api | `src/bluecore_api/app/views/templates/_fields.html` (jsDelivr URL + `sha384` in the import map) | The "Update keycloak-js pin" step in `.github/workflows/dependency-updates.yml`, within `KEYCLOAK_JS_MAJOR` |
+
+On a server major upgrade, raise `KEYCLOAK_JS_MAJOR` in bluecore_api's `dependency-updates.yml`; the weekly run then moves the pin and its hash to the new major.
+
+The Airflow login uses `apache-airflow-providers-keycloak` (bluecore-workflows `pyproject.toml`); check its compatibility on a major upgrade too.
