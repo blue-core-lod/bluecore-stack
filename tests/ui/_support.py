@@ -18,6 +18,10 @@ def sinopia_url() -> str:
     return os.getenv("INTEGRATION_SINOPIA_BASE_URL", f"{bluecore_url()}/sinopia").rstrip("/")
 
 
+def marva_url() -> str:
+    return os.getenv("INTEGRATION_MARVA_BASE_URL", f"{bluecore_url()}/marva").rstrip("/")
+
+
 def keycloak_username() -> str:
     return os.getenv("INTEGRATION_KEYCLOAK_USERNAME", "developer")
 

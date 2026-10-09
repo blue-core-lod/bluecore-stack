@@ -11,29 +11,25 @@ import pytest
 from tests.ui._support import (
     bluecore_url,
     full_stack_enabled,
+    marva_url,
     poll_interval,
     ready_timeout,
     sinopia_url,
 )
 
 # Browser fixtures (page/context/browser) come from the installed
-# pytest-playwright plugin; this conftest only adds a readiness gate so the UI
-# suite waits for the Sinopia route before driving it. No pytest options are
-# registered here, so the UI suite composes cleanly with tests/integration in a
-# single pytest run.
+# pytest-playwright plugin; this conftest only adds readiness gates so the UI
+# suite waits for the Sinopia and Marva routes before driving them. No pytest
+# options are registered here, so the UI suite composes cleanly with
+# tests/integration in a single pytest run.
 
 
 # ==============================================================================
-# Block the UI suite until the Sinopia editor route is served through Nginx.
-# Only runs when a full-stack (Nginx + Sinopia) run is active; lightweight runs
+# Block the UI suite until the editor routes are served through Nginx.
+# Only runs when a full-stack (Nginx + editors) run is active; lightweight runs
 # skip the UI tests, so this never fires there.
 # ------------------------------------------------------------------------------
-@pytest.fixture(scope="session", autouse=True)
-def wait_for_sinopia_ui() -> None:
-    if not full_stack_enabled():
-        return
-
-    url = f"{sinopia_url()}/"
+def _wait_for_ui(name: str, url: str) -> None:
     deadline = time.time() + ready_timeout()
     last_error: Exception | None = None
 
@@ -43,7 +39,7 @@ def wait_for_sinopia_ui() -> None:
                 if response.status == 200:
                     return
         except urllib.error.HTTPError as exc:
-            # Any non-5xx means Nginx/Sinopia are answering.
+            # Any non-5xx means Nginx and the editor are answering.
             if exc.code < 500:
                 return
             last_error = exc
@@ -52,8 +48,20 @@ def wait_for_sinopia_ui() -> None:
         time.sleep(poll_interval())
 
     raise AssertionError(
-        f"Timed out waiting for the Sinopia UI at {url}. Last error: {last_error!r}."
+        f"Timed out waiting for the {name} UI at {url}. Last error: {last_error!r}."
     )
+
+
+@pytest.fixture(scope="session", autouse=True)
+def wait_for_sinopia_ui() -> None:
+    if full_stack_enabled():
+        _wait_for_ui("Sinopia", f"{sinopia_url()}/")
+
+
+@pytest.fixture(scope="session", autouse=True)
+def wait_for_marva_ui() -> None:
+    if full_stack_enabled():
+        _wait_for_ui("Marva", f"{marva_url()}/")
 
 
 # ==============================================================================

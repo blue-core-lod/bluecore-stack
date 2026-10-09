@@ -15,7 +15,7 @@ both run together under the same commands.
 - Embedding create/read behavior when the vector backend is enabled.
 - Sinopia interoperability: the Resource Template / Profile API behavior Sinopia
   depends on, plus Sinopia editor reachability.
-- Sinopia browser UI flows: see [UI testing](ui-testing.md).
+- Sinopia and Marva browser UI flows: see [UI testing](ui-testing.md).
 
 ## 🏃 Local Runner
 
