@@ -1,0 +1,61 @@
+#!/usr/bin/env bash
+set -euo pipefail
+################################################################################
+## Rebuild the graph-toolbox static site from its Jinja templates.
+##
+## nginx/toolbox/index.html is a GENERATED file: nginx/toolbox/src/generate.py
+## renders src/templates/index.html (which includes footer.html, menubar.html,
+## the toolbars, and the modals) into it. Nginx bind-mounts ./nginx as
+## /var/www/html and serves that generated index.html directly, so edits to the
+## templates are invisible until the generator re-runs. Restarting the nginx
+## container does NOT help -- the file on disk simply hasn't changed.
+##
+##   ./scripts/dev/toolbox           # rebuild once
+##   ./scripts/dev/toolbox --watch   # rebuild on every template save (may need "brew install fswatch")
+##
+## No nginx restart is needed either way; the bind mount picks up the new file
+## on the next request. Hard-reload the browser (Cmd-Shift-R) to bypass the
+## page cache.
+################################################################################
+
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+TOOLBOX_DIR="$ROOT_DIR/nginx/toolbox"
+
+WATCH=0
+for arg in "$@"; do
+  case "$arg" in
+    --watch|-w) WATCH=1 ;;
+    -h|--help)  sed -n '3,20p' "${BASH_SOURCE[0]}" | sed 's/^## \{0,1\}//'; exit 0 ;;
+    *) echo "unknown flag: $arg" >&2; exit 1 ;;
+  esac
+done
+
+if [[ ! -f "$TOOLBOX_DIR/src/generate.py" ]]; then
+  echo "error: $TOOLBOX_DIR/src/generate.py not found." >&2
+  echo "The toolbox submodule looks uninitialized. Run:" >&2
+  echo "  git submodule update --init --recursive" >&2
+  exit 1
+fi
+
+# generate.py resolves both the template loader ("src/templates") and its output
+# path relative to the working directory, so it must run from the toolbox root.
+build() {
+  ( cd "$TOOLBOX_DIR" && uv run --quiet python src/generate.py >/dev/null )
+  echo "[toolbox] rebuilt index.html  $(date +%H:%M:%S)"
+}
+
+build
+
+if [[ "$WATCH" -eq 0 ]]; then
+  exit 0
+fi
+
+if ! command -v fswatch >/dev/null 2>&1; then
+  echo "error: --watch needs fswatch. Install it with: brew install fswatch" >&2
+  exit 1
+fi
+
+echo "[toolbox] watching $TOOLBOX_DIR/src/templates ... (ctrl-c to stop)"
+fswatch -o "$TOOLBOX_DIR/src/templates" | while read -r _; do
+  build
+done
