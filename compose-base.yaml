@@ -51,8 +51,6 @@ x-airflow-common:
     - ${AIRFLOW_PROJ_DIR:-.}/uploads:/opt/airflow/uploads
     - ${AIRFLOW_PROJ_DIR:-.}/nginx/bcdb:/opt/airflow/bcdb
     - ${AIRFLOW_PROJ_DIR:-.}/config:/opt/airflow/config
-    # /workflows/health: reports the bluecore-workflows version (see the file)
-    - ${AIRFLOW_PROJ_DIR:-.}/airflow-plugins/bluecore_health.py:/opt/airflow/plugins/bluecore_health.py:ro
 
   user: "${AIRFLOW_UID}:0"
   depends_on:
