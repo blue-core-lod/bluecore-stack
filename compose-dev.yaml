@@ -1,5 +1,7 @@
 include:
-  - compose-base.yaml
+  - path:
+      - compose-base.yaml
+      - compose-dev-overrides.yaml
 
 services:
   postgres:
@@ -29,7 +31,7 @@ services:
       interval: 10s
       retries: 5
       start_period: 5s
-    restart: always
+    restart: "no"
 
   keycloak:
     image: ${KEYCLOAK_IMAGE:-quay.io/keycloak/keycloak:26.1.2}
@@ -75,7 +77,7 @@ services:
       - ./nginx/site-body.conf:/etc/nginx/site-body.conf
       - ./nginx/local.conf:/etc/nginx/conf.d/env/server.conf
       - ./nginx:/var/www/html
-    restart: always
+    restart: "no"
 
 volumes:
   postgres-db-volume:
