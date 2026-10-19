@@ -3,6 +3,11 @@ services:
     environment:
       POSTGRES_MULTIPLE_DB: airflow,keycloak,bluecore,${INTEGRATION_DB_NAME:-bluecore_integration_test}
 
+  keycloak-config:
+    environment:
+      # Integration tests run over plain HTTP on localhost.
+      KEYCLOAK_SSL_REQUIRED: none
+
   # Keep local integration runs lightweight;
   # for API->Workflows->Keycloak integration checks.
   sinopia:

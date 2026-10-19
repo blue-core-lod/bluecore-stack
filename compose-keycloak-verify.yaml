@@ -1,0 +1,45 @@
+# Throwaway Keycloak used only by scripts/keycloak/verify-realm.sh.
+#
+# This intentionally does NOT include compose-base.yaml. The verification needs
+# a clean Keycloak against an empty database so that the realm under test is the
+# only thing present — including the rest of the stack would make the
+# equivalence diff meaningless.
+name: bluecore-kc-verify
+
+services:
+  verify-postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: keycloak
+      POSTGRES_PASSWORD: keycloak
+      POSTGRES_DB: keycloak
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "keycloak"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  verify-keycloak:
+    image: ${KEYCLOAK_IMAGE:-quay.io/keycloak/keycloak:26.1.2}
+    command: ["start-dev"]
+    environment:
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://verify-postgres:5432/keycloak
+      KC_DB_USERNAME: keycloak
+      KC_DB_PASSWORD: keycloak
+      KC_HEALTH_ENABLED: "true"
+      # Keycloak 26 bootstrap variable names.
+      KC_BOOTSTRAP_ADMIN_USERNAME: admin
+      KC_BOOTSTRAP_ADMIN_PASSWORD: admin
+    ports:
+      - "18081:8080"
+    healthcheck:
+      test: ["CMD-SHELL", "exec 3<> /dev/tcp/127.0.0.1/9000; echo -e 'GET /health/ready HTTP/1.1\\r\\nhost: http://localhost\\r\\nConnection: close\\r\\n\\r\\n' >&3; if [ $? -eq 0 ]; then exit 0; else exit 1; fi;"]
+      interval: 5s
+      timeout: 10s
+      retries: 40
+    depends_on:
+      verify-postgres:
+        condition: service_healthy
+    volumes:
+      - ./tmp/kc-verify:/data

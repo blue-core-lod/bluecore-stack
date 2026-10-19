@@ -5,6 +5,11 @@ set -euo pipefail
 ##  PATHS & BASE FILES   ##
 ###########################
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+# compose-dev.yaml is an overlay, not a standalone project: it overrides
+# bc_api and airflow-apiserver (defined in compose-base.yaml) to add the
+# keycloak-config startup gate. That override only merges under `-f` layering,
+# so compose-base.yaml must be passed first -- see compose-dev.yaml's header.
+BASE_COMPOSE_FILE="${BASE_COMPOSE_FILE:-compose-base.yaml}"
 COMPOSE_FILE="${COMPOSE_FILE:-compose-dev.yaml}"
 LOCAL_OVERRIDE_FILE="${LOCAL_OVERRIDE_FILE:-compose-integration-test.yaml}"
 ARM64_OVERRIDE_FILE="${ARM64_OVERRIDE_FILE:-compose-arm64-workflows.yaml}"
@@ -103,13 +108,6 @@ BLUECORE_API_REPO_URL="${BLUECORE_API_REPO_URL:-https://github.com/blue-core-lod
 BLUECORE_WORKFLOWS_REPO_URL="${BLUECORE_WORKFLOWS_REPO_URL:-https://github.com/blue-core-lod/bluecore-workflows.git}"
 MARVA_REPO_URL="${MARVA_REPO_URL:-https://github.com/blue-core-lod/marva_editor.git}"
 BLUECORE_MODELS_REPO_URL="${BLUECORE_MODELS_REPO_URL:-https://github.com/blue-core-lod/bluecore-models.git}"
-
-###########################
-##   KEYCLOAK SETTINGS   ##
-###########################
-KEYCLOAK_SSL_REQUIRED_OVERRIDE="${KEYCLOAK_SSL_REQUIRED_OVERRIDE:-NONE}"
-INTEGRATION_KEYCLOAK_ADMIN_USER="${INTEGRATION_KEYCLOAK_ADMIN_USER:-${KEYCLOAK_ADMIN:-admin}}"
-INTEGRATION_KEYCLOAK_ADMIN_PASSWORD="${INTEGRATION_KEYCLOAK_ADMIN_PASSWORD:-${KEYCLOAK_ADMIN_PASSWORD:-gracious-professed}}"
 
 ###########################
 ##  EFFECTIVE OVERRIDES  ##
@@ -376,7 +374,7 @@ resolve_latest_release_tag() {
     | tail -n 1
 }
 
-compose_args=(-f "$COMPOSE_FILE")
+compose_args=(-f "$BASE_COMPOSE_FILE" -f "$COMPOSE_FILE")
 if [[ -f "$ROOT_DIR/$LOCAL_OVERRIDE_FILE" ]]; then
   compose_args+=(-f "$LOCAL_OVERRIDE_FILE")
 fi
@@ -666,29 +664,6 @@ apply_bluecore_models_migrations() {
   rm -f "$temp_alembic_config"
 }
 
-configure_keycloak_ssl_requirement() {
-  if [[ -z "$KEYCLOAK_SSL_REQUIRED_OVERRIDE" ]]; then
-    return 0
-  fi
-
-  local deadline
-  deadline=$((SECONDS + POSTGRES_READY_TIMEOUT_SECONDS))
-  while (( SECONDS < deadline )); do
-    if run_compose exec -T keycloak /opt/keycloak/bin/kcadm.sh config credentials \
-      --server http://localhost:8080/keycloak \
-      --realm master \
-      --user "$INTEGRATION_KEYCLOAK_ADMIN_USER" \
-      --password "$INTEGRATION_KEYCLOAK_ADMIN_PASSWORD" >/dev/null 2>&1 &&
-      run_compose exec -T keycloak /opt/keycloak/bin/kcadm.sh update realms/bluecore -s "sslRequired=$KEYCLOAK_SSL_REQUIRED_OVERRIDE" >/dev/null 2>&1; then
-      return 0
-    fi
-    sleep 2
-  done
-
-  echo "Timed out configuring Keycloak sslRequired to '$KEYCLOAK_SSL_REQUIRED_OVERRIDE'."
-  return 1
-}
-
 pytest_passthrough_args=()
 pytest_passthrough_count=0
 base_url_arg_already_set="0"
@@ -964,7 +939,7 @@ fi
 if [[ "$INTEGRATION_DEV_MODE_STOP" == "1" ]]; then
   log_banner "🧹 Stopping dev-mode stack and removing resources..."
   echo "Compose project name: $COMPOSE_PROJECT_NAME"
-  echo "Compose files: $COMPOSE_FILE, $LOCAL_OVERRIDE_FILE${ARM64_OVERRIDE_FILE:+, $ARM64_OVERRIDE_FILE}"
+  echo "Compose files: $BASE_COMPOSE_FILE, $COMPOSE_FILE, $LOCAL_OVERRIDE_FILE${ARM64_OVERRIDE_FILE:+, $ARM64_OVERRIDE_FILE}"
   run_compose_compact down -v --remove-orphans --rmi all || true
   if [[ "$COMPACT_LOG_OUTPUT" == "1" ]]; then
     echo "Dev-mode stack cleanup complete."
@@ -1076,7 +1051,7 @@ if [[ "$AUTO_START_STACK" == "1" ]]; then
       echo "Images pulled."
     fi
   fi
-  log_banner "🚀 Starting stack with docker compose ($COMPOSE_FILE)..."
+  log_banner "🚀 Starting stack with docker compose ($BASE_COMPOSE_FILE + $COMPOSE_FILE)..."
   print_service_image_plan
   run_compose_compact up -d
   if [[ "$COMPACT_LOG_OUTPUT" == "1" ]]; then
@@ -1097,10 +1072,6 @@ if [[ "$APPLY_MODELS_MIGRATIONS" == "1" ]]; then
   echo "Migration DB URL: $integration_database_url"
   apply_bluecore_models_migrations
 fi
-
-log_banner "🔐 Configuring Keycloak realm sslRequired"
-echo "sslRequired: $KEYCLOAK_SSL_REQUIRED_OVERRIDE"
-configure_keycloak_ssl_requirement
 
 cleanup() {
   if [[ "$AUTO_START_STACK" == "1" && "$KEEP_STACK_UP" != "1" ]]; then

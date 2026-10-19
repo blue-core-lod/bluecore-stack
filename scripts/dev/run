@@ -46,8 +46,8 @@ done
 
 if [[ "$mode" == "image" ]]; then
   echo "🐳 Image mode: GHCR images via compose-dev.yaml (full stack)"
-  docker compose -f compose-dev.yaml pull
-  docker compose -f compose-dev.yaml up
+  docker compose -f compose-base.yaml -f compose-dev.yaml pull
+  docker compose -f compose-base.yaml -f compose-dev.yaml up
   exit $?
 fi
 
@@ -61,4 +61,4 @@ fi
 echo "🏗️  Local mode (compose-local-dev.yaml)"
 echo "   always: postgres, keycloak, nginx, bc_api"
 echo "   profiles: ${COMPOSE_PROFILES:-<none — core only>}"
-docker compose -f compose-local-dev.yaml up --build
+docker compose -f compose-base.yaml -f compose-dev.yaml -f compose-local-dev.yaml up --build
