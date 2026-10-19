@@ -16,6 +16,9 @@ from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
 
 TERRAFORM_ROOT = Path(__file__).resolve().parents[2]
 SAMPLE_BATCH_SOURCE_CANDIDATES: tuple[Path, ...] = (
+    Path(os.getenv("LOCAL_BLUECORE_API_DIR", TERRAFORM_ROOT.parent / "bluecore_api"))
+    / "sample"
+    / "batch-small.jsonld",
     TERRAFORM_ROOT.parent / "bluecore_api" / "sample" / "batch-small.jsonld",
     TERRAFORM_ROOT / "external" / "bluecore_api" / "sample" / "batch-small.jsonld",
 )
