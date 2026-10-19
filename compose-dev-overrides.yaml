@@ -1,0 +1,14 @@
+# compose-base.yaml sets `restart: always` for production. Locally that makes
+# containers come back every time Docker starts, so turn it off for dev.
+services:
+  redis: { restart: "no" }
+  bc_api: { restart: "no" }
+  sinopia: { restart: "no" }
+  marva: { restart: "no" }
+  marva-keycloak-middleware: { restart: "no" }
+  airflow-apiserver: { restart: "no" }
+  airflow-scheduler: { restart: "no" }
+  airflow-dag-processor: { restart: "no" }
+  airflow-worker: { restart: "no" }
+  airflow-triggerer: { restart: "no" }
+  flower: { restart: "no" }
