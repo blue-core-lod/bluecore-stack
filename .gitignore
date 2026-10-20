@@ -12,6 +12,7 @@ tests/playwright/.venv/
 .secrets
 /config/*
 !/config/.keepme
+!/config/airflow_local_settings.py
 /.idea/
 # ignore every keycloak export except development
 /keycloak-export/*/
