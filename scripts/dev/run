@@ -4,7 +4,7 @@ set -euo pipefail
 ## Bring up the dev stack. Default: build every Blue Core service from the LOCAL
 ## repo checkouts below, with live-reload source mounts.
 ##
-##   ./scripts/dev/run                 # full local stack (everything)
+##   ./scripts/dev/run                 # full local stack (all but the editor)
 ##   ./scripts/dev/run --image         # GHCR-published images instead
 ##
 ## Run a SUBSET (local mode only). postgres, keycloak, nginx and the bluecore
@@ -15,8 +15,10 @@ set -euo pipefail
 ##   ./scripts/dev/run --sinopia       # core + Sinopia
 ##   ./scripts/dev/run --airflow       # core + Airflow
 ##   ./scripts/dev/run --marva --sinopia   # combine as needed
+##   ./scripts/dev/run --editor        # core + bluecore-editor (opt-in only)
 ##
-## No subset flag = everything. Subset flags are ignored in --image mode.
+## No subset flag = everything except bluecore-editor, which is new enough that
+## not everyone has a checkout of it yet. Subset flags are ignored in --image mode.
 ## bluecore-models is mounted into the local API and Airflow services automatically.
 ################################################################################
 
@@ -39,7 +41,8 @@ for arg in "$@"; do
     --marva)   selected=1; profiles+=("marva") ;;
     --sinopia) selected=1; profiles+=("sinopia") ;;
     --airflow) selected=1; profiles+=("airflow") ;;
-    -h|--help) sed -n '3,21p' "${BASH_SOURCE[0]}"; exit 0 ;;
+    --editor)  selected=1; profiles+=("editor") ;;
+    -h|--help) sed -n '3,24p' "${BASH_SOURCE[0]}"; exit 0 ;;
     *) echo "Unknown option: $arg" >&2; exit 1 ;;
   esac
 done

@@ -25,6 +25,7 @@ By default, local source mode expects sibling repositories:
   |-- bluecore-models/
   |-- marva_editor/
   |-- sinopia_editor/
+  |-- bluecore-editor/   <- only needed for --editor
 ```
 
 `bluecore-models` is included because the local API and workflows import it 
@@ -45,6 +46,7 @@ export LOCAL_BLUECORE_WORKFLOWS_DIR=/path/to/bluecore-workflows
 export LOCAL_BLUECORE_MODELS_DIR=/path/to/bluecore-models
 export LOCAL_MARVA_DIR=/path/to/marva_editor
 export LOCAL_SINOPIA_DIR=/path/to/sinopia_editor
+export LOCAL_BLUECORE_EDITOR_DIR=/path/to/bluecore-editor
 export LOCAL_GRAPH_TOOLBOX_DIR=/path/to/graph-toolbox  # defaults to nginx/toolbox (submodule)
 ```
 `scripts/dev/run`, `scripts/dev/update-stack`, and `scripts/dev/load-data` use 
@@ -112,7 +114,8 @@ already present. For each repository it:
 
 ## 🚀 Run the Stack
 
-No flag starts all local-source services. Subset flags are local-source only; 
+No flag starts all local-source services except bluecore-editor, which only
+runs with `--editor`. Subset flags are local-source only; 
 `--image` always runs the full published-image stack.
 
 ```bash
@@ -122,6 +125,7 @@ No flag starts all local-source services. Subset flags are local-source only;
 ./scripts/dev/run --sinopia          # core + Sinopia
 ./scripts/dev/run --airflow          # core + Airflow
 ./scripts/dev/run --marva --sinopia  # combine flags
+./scripts/dev/run --editor           # core + bluecore-editor (opt-in only)
 ./scripts/dev/run --image            # published images via compose-dev.yaml
 ```
 
@@ -139,6 +143,7 @@ absent services; disabled routes return `502`, and the landing page greys them o
 | Marva | `http://localhost/marva/` | Vite HMR |
 | Marva middleware | internal | `node --watch` |
 | Sinopia | `http://localhost/sinopia/` | webpack dev server through Nginx |
+| bluecore-editor | `http://localhost/editor/` | Vite HMR, signs in with the `bluecore_api` Keycloak client, as Sinopia does |
 
 ## 🛑 Bring the Stack Down
 
