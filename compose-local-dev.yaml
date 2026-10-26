@@ -17,11 +17,12 @@
 ##   LOCAL_MARVA_DIR               -> marva_editor repo
 ##   LOCAL_SINOPIA_DIR             -> sinopia_editor repo
 ##   LOCAL_DCTAP_DANCER_DIR        -> dctap-dancer repo (blue-core-lod fork)
+##   LOCAL_BLUECORE_EDITOR_DIR     -> bluecore-editor repo
 ##
 ## Defaults live in scripts/dev/local-repo-paths. scripts/dev/run is the
 ## intended entrypoint.
 ## To run `docker compose -f compose-local-dev.yaml up --build` directly instead,
-## set those six vars yourself (env or a .env file in this directory).
+## set those vars yourself (env or a .env file in this directory).
 ################################################################################
 
 
@@ -172,6 +173,26 @@ services:
       USE_FIXTURES: "false"
     volumes:
       - ${LOCAL_SINOPIA_DIR}:/app
+      - /app/node_modules
+
+  # bluecore-editor's Vite dev server, served through Nginx at
+  # http://localhost/editor/ with HMR. Vite is configured with base /editor/, so
+  # Nginx passes the prefix through unchanged and the HMR websocket rides the
+  # same path. The editor talks to the API and Keycloak on the same origin, so
+  # no CORS is involved. On its own: scripts/dev/run --editor.
+  editor:
+    image: node:24.4.0
+    profiles: ["editor"]
+    working_dir: /app
+    command: sh -lc "npm ci && npm run dev -- --host 0.0.0.0 --port 5173"
+    environment:
+      VITE_BLUECORE_URL: http://localhost/
+      VITE_KEYCLOAK_URL: http://localhost/keycloak/
+      # Signs in as Sinopia does, for now.
+      VITE_KEYCLOAK_CLIENT_ID: bluecore_api
+      VITE_HMR_CLIENT_PORT: "80"
+    volumes:
+      - ${LOCAL_BLUECORE_EDITOR_DIR:-../bluecore-editor}:/app
       - /app/node_modules
 
   # Dev mode swaps in an Nginx config that serves the Sinopia dev server with

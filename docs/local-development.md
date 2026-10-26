@@ -26,6 +26,7 @@ By default, local source mode expects sibling repositories:
   |-- marva_editor/
   |-- sinopia_editor/
   |-- dctap-dancer/   <- blue-core-lod/dctap-dancer (runs with Marva)
+  |-- bluecore-editor/
 ```
 
 `bluecore-models` is included because the local API and workflows import it 
@@ -47,6 +48,7 @@ export LOCAL_BLUECORE_MODELS_DIR=/path/to/bluecore-models
 export LOCAL_MARVA_DIR=/path/to/marva_editor
 export LOCAL_SINOPIA_DIR=/path/to/sinopia_editor
 export LOCAL_DCTAP_DANCER_DIR=/path/to/dctap-dancer
+export LOCAL_BLUECORE_EDITOR_DIR=/path/to/bluecore-editor
 export LOCAL_GRAPH_TOOLBOX_DIR=/path/to/graph-toolbox  # defaults to nginx/toolbox (submodule)
 ```
 `scripts/dev/run`, `scripts/dev/update-stack`, and `scripts/dev/load-data` use 
@@ -67,6 +69,7 @@ The script knows the default repository paths and base branches:
 | `sinopia_editor` | `LOCAL_SINOPIA_DIR` | sibling `../sinopia_editor` | `main` |
 | `marva_editor` | `LOCAL_MARVA_DIR` | sibling `../marva_editor` | `bluecore-dev-mvp` |
 | `dctap-dancer` | `LOCAL_DCTAP_DANCER_DIR` | sibling `../dctap-dancer` | `bluecore-dev-mvp` |
+| `bluecore-editor` | `LOCAL_BLUECORE_EDITOR_DIR` | sibling `../bluecore-editor` | `main` |
 | `graph-toolbox` | `LOCAL_GRAPH_TOOLBOX_DIR` | **submodule** `nginx/toolbox` | `main` |
 
 ```bash
@@ -125,6 +128,7 @@ No flag starts all local-source services. Subset flags are local-source only;
 ./scripts/dev/run --sinopia          # core + Sinopia
 ./scripts/dev/run --airflow          # core + Airflow
 ./scripts/dev/run --marva --sinopia  # combine flags
+./scripts/dev/run --editor           # core + bluecore-editor
 ./scripts/dev/run --image            # published images via compose-dev.yaml
 ```
 
@@ -147,6 +151,7 @@ placeholder folders. Install them with `./scripts/dev/update-stack --install`.
 | Marva | `http://localhost/marva/` | Vite HMR |
 | Marva middleware | internal | `node --watch` |
 | Sinopia | `http://localhost/sinopia/` | webpack dev server through Nginx |
+| bluecore-editor | `http://localhost/editor/` | Vite HMR, signs in with the `bluecore_api` Keycloak client, as Sinopia does |
 
 ## 🛑 Bring the Stack Down
 
