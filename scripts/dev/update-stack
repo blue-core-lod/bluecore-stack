@@ -136,13 +136,15 @@ Updates sibling Blue Core repositories:
   sinopia_editor        base branch: main
   marva_editor          base branch: bluecore-dev-mvp
   dctap-dancer          base branch: bluecore-dev-mvp
+  bluecore-editor       base branch: main
   toolbox (graph-toolbox, submodule at nginx/toolbox)
                         base branch: main
 
 Repository paths default to the standard sibling layout and can be overridden
 with LOCAL_BLUECORE_API_DIR, LOCAL_BLUECORE_WORKFLOWS_DIR,
 LOCAL_BLUECORE_MODELS_DIR, LOCAL_MARVA_DIR, LOCAL_SINOPIA_DIR,
-LOCAL_DCTAP_DANCER_DIR, and LOCAL_GRAPH_TOOLBOX_DIR.
+LOCAL_DCTAP_DANCER_DIR, LOCAL_BLUECORE_EDITOR_DIR, and
+LOCAL_GRAPH_TOOLBOX_DIR.
 
 graph-toolbox is a submodule rather than a sibling checkout, so it differs:
   - --install initializes it (git submodule update --init), never clones it.
@@ -217,6 +219,7 @@ repos=(
   "$LOCAL_SINOPIA_DIR:main:https://github.com/blue-core-lod/sinopia_editor.git"
   "$LOCAL_MARVA_DIR:bluecore-dev-mvp:https://github.com/blue-core-lod/marva_editor.git"
   "$LOCAL_DCTAP_DANCER_DIR:bluecore-dev-mvp:https://github.com/blue-core-lod/dctap-dancer.git"
+  "$LOCAL_BLUECORE_EDITOR_DIR:main:https://github.com/blue-core-lod/bluecore-editor.git"
   "$LOCAL_GRAPH_TOOLBOX_DIR:main:https://github.com/blue-core-lod/graph-toolbox.git"
 )
 
