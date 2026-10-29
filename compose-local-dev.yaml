@@ -157,7 +157,7 @@ services:
     image: node:24.4.0
     profiles: ["editor"]
     working_dir: /app
-    command: sh -lc "npm install && npm run dev -- --host 0.0.0.0 --port 5173"
+    command: sh -lc "npm ci && npm run dev -- --host 0.0.0.0 --port 5173"
     environment:
       VITE_BLUECORE_URL: http://localhost/
       VITE_KEYCLOAK_URL: http://localhost/keycloak/
