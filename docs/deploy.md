@@ -235,6 +235,19 @@ Seed `<KEYCLOAK_REALM_DIR>/bluecore-realm.json` **before** the first `docker com
 and update its public redirect URIs / web origins for the deploy host. 
 Full steps: [updating-keycloak-credentials.md](updating-keycloak-credentials.md).
 
+### The editor
+
+The editor (`/editor/`) signs in with the `bluecore_api` client, as Sinopia does. On a host
+whose realm is already imported, add its redirect URI to that client by hand (Keycloak admin →
+bluecore realm → Clients → `bluecore_api` → Valid redirect URIs):
+
+```
+https://<HOSTNAME>/editor/*
+```
+
+(and `https://<HOSTNAME_ALT>/editor/*` on a host with a second domain). It needs no web origin:
+it calls Keycloak on its own origin.
+
 ---
 
 ## 🚨 Rotate before going public
