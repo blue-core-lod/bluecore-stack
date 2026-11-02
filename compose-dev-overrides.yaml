@@ -4,6 +4,7 @@ services:
   redis: { restart: "no" }
   bc_api: { restart: "no" }
   sinopia: { restart: "no" }
+  editor: { restart: "no" }
   marva: { restart: "no" }
   marva-keycloak-middleware: { restart: "no" }
   dctap-dancer: { restart: "no" }
