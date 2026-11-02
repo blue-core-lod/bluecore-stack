@@ -1,23 +1,44 @@
 #!/usr/bin/env bash
 set -euo pipefail
 ################################################################################
-## Bring up the dev stack. Default: build every Blue Core service from the LOCAL
-## repo checkouts below, with live-reload source mounts.
+## Bring up the dev stack. There are three modes.
 ##
-##   ./scripts/dev/run                 # full local stack (everything)
-##   ./scripts/dev/run --image         # GHCR-published images instead
+## 1. LOCAL (default) -- every Blue Core service is built from your LOCAL repo
+##    checkouts with its source bind-mounted for live reload. Day-to-day mode.
 ##
-## Run a SUBSET (local mode only). postgres, keycloak, nginx and the bluecore
-## API (which runs DB migrations on start) are ALWAYS up; pick what else runs:
+##      ./scripts/dev/run                      # everything
+##      ./scripts/dev/run --api                # core + API only (no airflow)
+##      ./scripts/dev/run --marva              # core + Marva (+ middleware)
+##      ./scripts/dev/run --sinopia            # core + Sinopia
+##      ./scripts/dev/run --airflow            # core + Airflow
+##      ./scripts/dev/run --marva --sinopia    # combine as needed
 ##
-##   ./scripts/dev/run --api           # core + API only (no airflow)
-##   ./scripts/dev/run --marva         # core + Marva (+ middleware)
-##   ./scripts/dev/run --sinopia       # core + Sinopia
-##   ./scripts/dev/run --airflow       # core + Airflow
-##   ./scripts/dev/run --marva --sinopia   # combine as needed
+##    postgres, keycloak, nginx and the bluecore API (which runs DB migrations
+##    on start) are ALWAYS up; the flags pick what else runs. No flag =
+##    everything. bluecore-models is mounted into the local API and Airflow
+##    services automatically.
 ##
-## No subset flag = everything. Subset flags are ignored in --image mode.
-## bluecore-models is mounted into the local API and Airflow services automatically.
+## 2. IMAGE — the whole stack from the GHCR-published images.
+##
+##      ./scripts/dev/run --image
+##
+## 3. LOCAL-IMAGES — like --image, except the services you name are BUILT from
+##    the real Dockerfiles in your local checkouts and tagged
+##    `<name>:built-dev-image`. Everything else still comes from GHCR.
+##
+##      ./scripts/dev/run --local-images --sinopia          # build Sinopia
+##      ./scripts/dev/run --local-images --api              # build the API
+##      ./scripts/dev/run --local-images --marva --sinopia  # build both
+##      ./scripts/dev/run --local-images                    # build all of them
+##
+##    Use it when what you are changing IS the Dockerfile or the production
+##    build, which local mode never exercises (it bind-mounts your source into
+##    a stock base image instead). There is no live reload, so after each change
+##    rebuild the image and recreate just those containers with --rebuild:
+##
+##      ./scripts/dev/run --local-images --sinopia --rebuild
+##
+##    Add --no-cache to either form to force a clean rebuild.
 ################################################################################
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
@@ -29,21 +50,159 @@ cd "$ROOT_DIR"
 . "$ROOT_DIR/scripts/dev/local-repo-paths"
 export AIRFLOW_UID=50000
 
+# Tag applied to every locally built image, so `restart` and friends can tell a
+# build of yours apart from a published one.
+BUILT_TAG="${BUILT_DEV_IMAGE_TAG:-built-dev-image}"
+
 mode="local"
-selected=0  # 1 once any subset flag is seen (so no flag = everything)
+selected=0  # 1 once any service flag is seen (so no flag = everything)
+rebuild=0
 profiles=()
+targets=()
+build_flags=()
 for arg in "$@"; do
   case "$arg" in
-    --image)   mode="image" ;;
-    --api)     selected=1 ;;  # core only
-    --marva)   selected=1; profiles+=("marva") ;;
-    --sinopia) selected=1; profiles+=("sinopia") ;;
-    --airflow) selected=1; profiles+=("airflow") ;;
-    -h|--help) sed -n '3,21p' "${BASH_SOURCE[0]}"; exit 0 ;;
+    # --local-images is --image plus locally built services, so it wins
+    # regardless of the order the two are given in.
+    --image)        [[ "$mode" == "local-images" ]] || mode="image" ;;
+    --local-images) mode="local-images" ;;
+    --rebuild)      rebuild=1 ;;
+    --no-cache)     build_flags+=("--no-cache") ;;
+    --api)     selected=1; targets+=("api") ;;  # core only in local mode
+    --marva)   selected=1; targets+=("marva");   profiles+=("marva") ;;
+    --sinopia) selected=1; targets+=("sinopia"); profiles+=("sinopia") ;;
+    --airflow) selected=1; targets+=("airflow"); profiles+=("airflow") ;;
+    -h|--help) sed -n '3,43p' "${BASH_SOURCE[0]}"; exit 0 ;;
     *) echo "Unknown option: $arg" >&2; exit 1 ;;
   esac
 done
 
+# ==============================================================================
+# ################  LOCAL-IMAGES HELPERS  ######################################
+# ==============================================================================
+
+# Compose services backed by each buildable target. Airflow shares one image
+# across every service in the x-airflow-common anchor, so one build covers them.
+services_for_target() {
+  case "$1" in
+    api)     echo "bc_api" ;;
+    airflow) echo "airflow-apiserver airflow-scheduler airflow-dag-processor airflow-worker airflow-triggerer airflow-init" ;;
+    marva)   echo "marva marva-keycloak-middleware" ;;
+    sinopia) echo "sinopia" ;;
+  esac
+}
+
+require_checkout() {  # $1 = dir, $2 = dockerfile name, $3 = override var
+  if [[ ! -f "$1/$2" ]]; then
+    echo "No $2 at $1" >&2
+    echo "Clone the repo beside this one, or point $3 at your checkout." >&2
+    exit 1
+  fi
+}
+
+# Builds the target's image(s) and exports the matching *_IMAGE override that
+# compose-base.yaml reads, so the stack runs what we just built.
+build_target() {
+  case "$1" in
+    api)
+      require_checkout "$LOCAL_BLUECORE_API_DIR" Dockerfile LOCAL_BLUECORE_API_DIR
+      docker build -t "bluecore_api:$BUILT_TAG" \
+        "${build_flags[@]+"${build_flags[@]}"}" "$LOCAL_BLUECORE_API_DIR"
+      export BLUECORE_API_IMAGE="bluecore_api:$BUILT_TAG"
+      ;;
+    airflow)
+      require_checkout "$LOCAL_BLUECORE_WORKFLOWS_DIR" Dockerfile LOCAL_BLUECORE_WORKFLOWS_DIR
+      docker build -t "bluecore-workflows:$BUILT_TAG" \
+        "${build_flags[@]+"${build_flags[@]}"}" "$LOCAL_BLUECORE_WORKFLOWS_DIR"
+      export BLUECORE_WORKFLOWS_IMAGE="bluecore-workflows:$BUILT_TAG"
+      ;;
+    marva)
+      require_checkout "$LOCAL_MARVA_DIR" Dockerfile LOCAL_MARVA_DIR
+      require_checkout "$LOCAL_MARVA_DIR" Dockerfile.middleware LOCAL_MARVA_DIR
+      # Marva's only build arg; it defaults to "unversioned", and the UI shows
+      # it, so stamp the local commit to make a local build obvious.
+      local marva_version="${MARVA_VERSION:-local-$(git -C "$LOCAL_MARVA_DIR" rev-parse --short HEAD 2>/dev/null || echo dev)}"
+      docker build -t "marva:$BUILT_TAG" \
+        --build-arg "MARVA_VERSION=$marva_version" \
+        "${build_flags[@]+"${build_flags[@]}"}" "$LOCAL_MARVA_DIR"
+      docker build -f "$LOCAL_MARVA_DIR/Dockerfile.middleware" \
+        -t "marva-keycloak-middleware:$BUILT_TAG" \
+        "${build_flags[@]+"${build_flags[@]}"}" "$LOCAL_MARVA_DIR"
+      export MARVA_IMAGE="marva:$BUILT_TAG"
+      export MARVA_KEYCLOAK_MIDDLEWARE_IMAGE="marva-keycloak-middleware:$BUILT_TAG"
+      ;;
+    sinopia)
+      require_checkout "$LOCAL_SINOPIA_DIR" Dockerfile LOCAL_SINOPIA_DIR
+      # Sinopia is the one service whose config is baked into the webpack bundle
+      # at BUILD time (compose passes the container no runtime env). These
+      # defaults match the local Nginx routes; KEYCLOAK_URL in particular has no
+      # default in the Dockerfile, so auth breaks without it. Override via env.
+      docker build -t "sinopia:$BUILT_TAG" \
+        --build-arg "SINOPIA_URI=${SINOPIA_URI:-http://localhost/sinopia}" \
+        --build-arg "SINOPIA_API_BASE_URL=${SINOPIA_API_BASE_URL:-http://localhost/api}" \
+        --build-arg "KEYCLOAK_URL=${KEYCLOAK_URL:-http://localhost/keycloak}" \
+        --build-arg "SINOPIA_ENV=${SINOPIA_ENV:-bluecore}" \
+        --build-arg "USE_FIXTURES=${USE_FIXTURES:-false}" \
+        "${build_flags[@]+"${build_flags[@]}"}" "$LOCAL_SINOPIA_DIR"
+      export SINOPIA_IMAGE="sinopia:$BUILT_TAG"
+      ;;
+  esac
+}
+
+# ==============================================================================
+# ################  MODE: LOCAL-IMAGES  ########################################
+# ==============================================================================
+if [[ "$mode" == "local-images" ]]; then
+  # No service flag = build every one of them.
+  if [[ "$selected" == "0" ]]; then
+    targets=(api airflow marva sinopia)
+  fi
+
+  built_services=()
+  for target in "${targets[@]}"; do
+    for svc in $(services_for_target "$target"); do
+      built_services+=("$svc")
+    done
+  done
+
+  # Fail before spending a build on a stack that is not up.
+  if [[ "$rebuild" == "1" ]] && [[ -z "$(docker compose -f compose-dev.yaml ps -q 2>/dev/null)" ]]; then
+    echo "Nothing is running, so there is nothing to recreate." >&2
+    echo "Start the stack first: ./scripts/dev/run --local-images ${targets[*]/#/--}" >&2
+    exit 1
+  fi
+
+  echo "🏗️  Local-images mode: building ${targets[*]} from local checkouts (tag :$BUILT_TAG)"
+  for target in "${targets[@]}"; do
+    build_target "$target"
+  done
+
+  if [[ "$rebuild" == "1" ]]; then
+    echo "♻️  Recreating: ${built_services[*]}"
+    docker compose -f compose-dev.yaml up --detach --force-recreate --no-deps "${built_services[@]}"
+    exit $?
+  fi
+
+  # Pull everything EXCEPT what we just built: those tags are local-only and
+  # `pull` would abort the run trying to fetch them from a registry.
+  pull_services=()
+  while IFS= read -r svc; do
+    for built in "${built_services[@]}"; do
+      if [[ "$svc" == "$built" ]]; then
+        continue 2
+      fi
+    done
+    pull_services+=("$svc")
+  done < <(docker compose -f compose-dev.yaml config --services)
+  docker compose -f compose-dev.yaml pull "${pull_services[@]+"${pull_services[@]}"}"
+
+  docker compose -f compose-dev.yaml up
+  exit $?
+fi
+
+# ==============================================================================
+# ############  MODE: IMAGE (GitHub Release) ###################################
+# ==============================================================================
 if [[ "$mode" == "image" ]]; then
   echo "🐳 Image mode: GHCR images via compose-dev.yaml (full stack)"
   docker compose -f compose-dev.yaml pull
@@ -51,6 +210,9 @@ if [[ "$mode" == "image" ]]; then
   exit $?
 fi
 
+# ==============================================================================
+# ################  MODE: LOCAL  ###############################################
+# ==============================================================================
 # Local mode: select profiles. No subset flag => run everything.
 if [[ "$selected" == "0" ]]; then
   export COMPOSE_PROFILES="airflow,sinopia,marva"
