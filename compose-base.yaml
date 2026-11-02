@@ -98,6 +98,14 @@ services:
     depends_on:
       - bc_api
 
+  # The description editor: static files served by Nginx at /editor/. It finds
+  # Blue Core and Keycloak on the origin it's served from, so it needs no settings.
+  editor:
+    restart: always
+    image: ${BLUECORE_EDITOR_IMAGE:-ghcr.io/edsu/bluecore-editor:latest}
+    expose:
+      - 80
+
   marva:
     restart: always
     image: ${MARVA_IMAGE:-ghcr.io/blue-core-lod/marva:latest}
