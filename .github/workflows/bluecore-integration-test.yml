@@ -44,6 +44,12 @@ on:
         required: false
         default: "latest"
         type: string
+      # DCTap Dancer git ref-branch used when building the dctap-dancer image.
+      dancer_ref:
+        description: "dctap-dancer — Default tests ':latest' release image | Enter branch (e.g. bluecore-dev-mvp) to build & test it"
+        required: false
+        default: "latest"
+        type: string
       # Models ref (no image). 'latest' = migrate with the newest released tag and
       # keep the version pinned in each image. A branch is also mounted over the
       # pinned package so the services actually run that code.
@@ -67,11 +73,14 @@ on:
         default: ""
         type: string
 
-# Supersede an older running integration test when a newer one starts for the
-# same target.. so back-to-back pushes to the same PR cancel the prior stack run
-# instead of running both.
+# Only a newer run of the SAME target cancels a running test (e.g. a new push to
+# the same PR replaces its outdated run). Runs for other PRs, other repos, other
+# branches, and manual runs never cancel each other:
+#   - Manual runs (no run_name): their own group each (the run ID).
+#   - PR runs from other repos: grouped by every ref being tested.
+#   - Pushes to this repo: grouped by branch.
 concurrency:
-  group: bluecore-integration-${{ inputs.api_ref || github.ref }}
+  group: bluecore-integration-${{ github.event_name == 'workflow_dispatch' && inputs.run_name == '' && github.run_id || format('{0}|api={1}|workflows={2}|marva={3}|sinopia={4}|dancer={5}|models={6}', github.ref, inputs.api_ref, inputs.workflows_ref, inputs.marva_ref, inputs.sinopia_ref, inputs.dancer_ref, inputs.models_ref) }}
   cancel-in-progress: true
 
 jobs:
@@ -214,6 +223,7 @@ jobs:
           workflows_ref_input="${{ inputs.workflows_ref }}"
           marva_ref_input="${{ inputs.marva_ref }}"
           sinopia_ref_input="${{ inputs.sinopia_ref }}"
+          dancer_ref_input="${{ inputs.dancer_ref }}"
           models_ref_input="${{ inputs.models_ref }}"
           pytest_target_input="${{ inputs.pytest_target }}"
 
@@ -226,6 +236,7 @@ jobs:
           workflows_ref="${workflows_ref_input:-latest}"
           marva_ref="${marva_ref_input:-latest}"
           sinopia_ref="${sinopia_ref_input:-latest}"
+          dancer_ref="${dancer_ref_input:-latest}"
           models_ref="${models_ref_input:-latest}"
           compose_project_name="terraform_integration_ci"
           integration_db_name="bluecore_integration_test"
@@ -235,6 +246,7 @@ jobs:
           workflows_ref_tag="$(sanitize_tag_component "$workflows_ref")"
           marva_ref_tag="$(sanitize_tag_component "$marva_ref")"
           sinopia_ref_tag="$(sanitize_tag_component "$sinopia_ref")"
+          dancer_ref_tag="$(sanitize_tag_component "$dancer_ref")"
 
           # "latest" = newest release, used only to run migrations; the
           # containers keep the model version they are pinned with. Anything else is a
@@ -262,6 +274,7 @@ jobs:
           build_marva_image="false"
           build_marva_middleware_image="false"
           build_sinopia_image="false"
+          build_dancer_image="false"
           if [[ "$api_ref" != "latest" ]]; then
             build_api_image="true"
           fi
@@ -274,6 +287,9 @@ jobs:
           fi
           if [[ "$sinopia_ref" != "latest" ]]; then
             build_sinopia_image="true"
+          fi
+          if [[ "$dancer_ref" != "latest" ]]; then
+            build_dancer_image="true"
           fi
 
           # ====================================================================
@@ -310,11 +326,17 @@ jobs:
             sinopia_image="ghcr.io/blue-core-lod/sinopia:latest"
           fi
 
+          if [[ "$build_dancer_image" == "true" ]]; then
+            dancer_image="dctap-dancer:${dancer_ref_tag}-gha-${{ github.run_id }}-${{ github.run_attempt }}"
+          else
+            dancer_image="ghcr.io/blue-core-lod/dctap-dancer:latest"
+          fi
+
           # ====================================================================
           # Skip pulls when building locally so compose does not replace fresh images.
           # --------------------------------------------------------------------
           pull_before_up="1"
-          if [[ "$build_api_image" == "true" || "$build_workflows_image" == "true" || "$build_marva_image" == "true" || "$build_marva_middleware_image" == "true" || "$build_sinopia_image" == "true" ]]; then
+          if [[ "$build_api_image" == "true" || "$build_workflows_image" == "true" || "$build_marva_image" == "true" || "$build_marva_middleware_image" == "true" || "$build_sinopia_image" == "true" || "$build_dancer_image" == "true" ]]; then
             pull_before_up="0"
           fi
 
@@ -327,17 +349,20 @@ jobs:
             echo "marva_image=$marva_image"
             echo "marva_middleware_image=$marva_middleware_image"
             echo "sinopia_image=$sinopia_image"
+            echo "dancer_image=$dancer_image"
             echo "keycloak_image=$keycloak_image"
             echo "build_api_image=$build_api_image"
             echo "build_workflows_image=$build_workflows_image"
             echo "build_marva_image=$build_marva_image"
             echo "build_marva_middleware_image=$build_marva_middleware_image"
             echo "build_sinopia_image=$build_sinopia_image"
+            echo "build_dancer_image=$build_dancer_image"
             echo "api_ref=$api_ref"
             echo "api_checkout_ref=$api_checkout_ref"
             echo "workflows_ref=$workflows_ref"
             echo "marva_ref=$marva_ref"
             echo "sinopia_ref=$sinopia_ref"
+            echo "dancer_ref=$dancer_ref"
             echo "models_ref=$models_ref"
             echo "models_package_override=$models_package_override"
             echo "compose_project_name=$compose_project_name"
@@ -465,6 +490,28 @@ jobs:
           docker build -t "${{ steps.resolve.outputs.sinopia_image }}" external/sinopia_editor
 
       # ========================================================================
+      # Check out DCTap Dancer source only when this run needs to build its image.
+      # ------------------------------------------------------------------------
+      - name: Checkout dctap-dancer
+        if: ${{ steps.resolve.outputs.build_dancer_image == 'true' }}
+        uses: actions/checkout@v5
+        with:
+          repository: blue-core-lod/dctap-dancer
+          token: ${{ env.CHECKOUT_TOKEN }}
+          ref: ${{ steps.resolve.outputs.dancer_ref }}
+          path: external/dctap-dancer
+          fetch-depth: 1
+
+      # ========================================================================
+      # Build the DCTap Dancer image from the selected ref when requested, served
+      # under /marva/dancer/ like the published image.
+      # ------------------------------------------------------------------------
+      - name: Build DCTap Dancer image
+        if: ${{ steps.resolve.outputs.build_dancer_image == 'true' }}
+        run: |
+          docker build --build-arg VITE_BASE_PATH=/marva/dancer/ -t "${{ steps.resolve.outputs.dancer_image }}" external/dctap-dancer
+
+      # ========================================================================
       # Create a local .env for the integration stack if one does not exist yet.
       # ------------------------------------------------------------------------
       - name: Create integration .env
@@ -522,11 +569,13 @@ jobs:
           echo "Workflows ref:          ${{ steps.resolve.outputs.workflows_ref }}"
           echo "Marva ref:              ${{ steps.resolve.outputs.marva_ref }}"
           echo "Sinopia ref:            ${{ steps.resolve.outputs.sinopia_ref }}"
+          echo "DCTap Dancer ref:       ${{ steps.resolve.outputs.dancer_ref }}"
           echo "API image:              ${{ steps.resolve.outputs.api_image }}"
           echo "Workflows image:        ${{ steps.resolve.outputs.workflows_image }}"
           echo "Marva image:            ${{ steps.resolve.outputs.marva_image }}"
           echo "Marva middleware image: ${{ steps.resolve.outputs.marva_middleware_image }}"
           echo "Sinopia image:          ${{ steps.resolve.outputs.sinopia_image }}"
+          echo "DCTap Dancer image:     ${{ steps.resolve.outputs.dancer_image }}"
           echo "Models ref:             ${{ steps.resolve.outputs.models_ref }}"
           echo "API source label:       bluecore_api@${{ steps.resolve.outputs.api_ref }}"
           echo "WF source label:        bluecore-workflows@${{ steps.resolve.outputs.workflows_ref }}"
@@ -565,6 +614,7 @@ jobs:
           MARVA_IMAGE: ${{ steps.resolve.outputs.marva_image }}
           MARVA_KEYCLOAK_MIDDLEWARE_IMAGE: ${{ steps.resolve.outputs.marva_middleware_image }}
           SINOPIA_IMAGE: ${{ steps.resolve.outputs.sinopia_image }}
+          DCTAP_DANCER_IMAGE: ${{ steps.resolve.outputs.dancer_image }}
           KEYCLOAK_IMAGE: ${{ steps.resolve.outputs.keycloak_image }}
         run: |
           docker compose -f compose-dev.yaml -f compose-integration-test.yaml config | grep -E "AIRFLOW__LOGGING__BASE_LOG_FOLDER|AIRFLOW__LOGGING__DAG_PROCESSOR_CHILD_PROCESS_LOG_DIRECTORY|AIRFLOW__API_AUTH__JWT_SECRET|AIRFLOW__CORE__INTERNAL_API_SECRET_KEY" || true
@@ -579,6 +629,7 @@ jobs:
           MARVA_IMAGE: ${{ steps.resolve.outputs.marva_image }}
           MARVA_KEYCLOAK_MIDDLEWARE_IMAGE: ${{ steps.resolve.outputs.marva_middleware_image }}
           SINOPIA_IMAGE: ${{ steps.resolve.outputs.sinopia_image }}
+          DCTAP_DANCER_IMAGE: ${{ steps.resolve.outputs.dancer_image }}
           KEYCLOAK_IMAGE: ${{ steps.resolve.outputs.keycloak_image }}
           BLUECORE_API_ROOT: ${{ github.workspace }}/external/bluecore_api
           MODELS_DIR: ${{ github.workspace }}/external/bluecore-models
@@ -587,6 +638,7 @@ jobs:
           INTEGRATION_WORKFLOWS_REF: ${{ steps.resolve.outputs.workflows_ref }}
           INTEGRATION_MARVA_REF: ${{ steps.resolve.outputs.marva_ref }}
           INTEGRATION_SINOPIA_REF: ${{ steps.resolve.outputs.sinopia_ref }}
+          INTEGRATION_DANCER_REF: ${{ steps.resolve.outputs.dancer_ref }}
           INTEGRATION_MODELS_REF: ${{ steps.resolve.outputs.models_ref }}
           INTEGRATION_MODELS_PACKAGE_OVERRIDE: ${{ steps.resolve.outputs.models_package_override }}
           INTEGRATION_SAMPLE_BATCH_SOURCE: ${{ github.workspace }}/external/bluecore_api/sample/batch-small.jsonld
@@ -632,6 +684,7 @@ jobs:
           MARVA_IMAGE: ${{ steps.resolve.outputs.marva_image }}
           MARVA_KEYCLOAK_MIDDLEWARE_IMAGE: ${{ steps.resolve.outputs.marva_middleware_image }}
           SINOPIA_IMAGE: ${{ steps.resolve.outputs.sinopia_image }}
+          DCTAP_DANCER_IMAGE: ${{ steps.resolve.outputs.dancer_image }}
           KEYCLOAK_IMAGE: ${{ steps.resolve.outputs.keycloak_image }}
         run: |
           docker compose -f compose-dev.yaml -f compose-integration-test.yaml ps -a || true
