@@ -16,6 +16,11 @@ both run together under the same commands.
 - Sinopia interoperability: the Resource Template / Profile API behavior Sinopia
   depends on, plus Sinopia editor reachability.
 - Sinopia browser UI flows: see [UI testing](ui-testing.md).
+- DCTap Dancer: the editor route, its Keycloak
+  login setup (auth config, allowed redirect), the API's login check (token,
+  cookie, rejected URL tokens), the public profile routes Marva reads, the
+  seeded "Blue Core" workspace, and a create/delete round trip.
+- DCTap Dancer and Marva browser flows: see [UI testing](ui-testing.md).
 
 ## 🏃 Local Runner
 

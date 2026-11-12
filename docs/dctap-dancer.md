@@ -103,6 +103,27 @@ After changing dependencies (`package.json`), restart the container so it
 reinstalls them. Image mode (`scripts/dev/run --image`) runs the published GHCR
 image instead, with no hot reload.
 
+## 🧪 Tests
+
+| Suite | What |
+|---|---|
+| `tests/integration/dancer/` | HTTP checks through Nginx: route, login setup, API auth, profile routes, seeded workspace |
+| `tests/ui/dancer/` | Browser: login, workspaces, shapes, create, download, logout |
+| `tests/ui/marva/test_dancer.py` | Browser: Marva loading profiles from the dancer, the DCTap menu, "Edit Templates" |
+
+```bash
+# DCTap Dancer: HTTP checks
+./scripts/test/integration-tests.sh tests/integration/dancer
+
+# DCTap Dancer: browser
+./scripts/test/integration-tests.sh tests/ui/dancer
+
+# Marva's side of the dancer (browser)
+./scripts/test/integration-tests.sh tests/ui/marva/test_dancer.py
+```
+
+See [Integration testing](integration-testing.md) and [UI testing](ui-testing.md).
+
 ## 🚀 Releases
 Publishing the image is manual only; merges to the fork never publish. The
 fork's `.github/workflows/bluecore-publish.yml` builds it with
