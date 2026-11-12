@@ -376,7 +376,8 @@ def test_workspace_lifecycle_round_trip(
 
 # ========================================================================
 # "LC Latest" mirrors LC's profiles: it is served to Marva like any other
-# workspace, reports when it last synced, and is locked, so it can't be renamed, deleted or edited (each
+# workspace, its card shows when LC last changed it (with a link), and it
+# is locked, so it can't be renamed, deleted or edited (each
 # sync would replace those changes). Duplicating it gives an editable copy.
 # Needs a dancer image with the Blue Core sync (newer than v0.1.00).
 # ------------------------------------------------------------------------
@@ -415,15 +416,20 @@ def test_synced_lc_workspace_is_served_locked_and_can_be_duplicated(
     log_expected_actual("isLocked", True, details.json()["data"].get("isLocked"))
     assert details.json()["data"].get("isLocked") is True
 
-    status = _get(
-        request_context,
-        config,
-        f"{dancer_api_url()}/bluecore/lc-latest",
-        headers=headers,
-    ).json()["data"]
-    log_expected_actual("sync status", "available, checked", status)
-    assert status["available"] is True
-    assert status["checkedAt"] and status["lastSuccessAt"]
+    listed = next(
+        ws
+        for ws in _get(
+            request_context,
+            config,
+            f"{dancer_api_url()}/workspaces",
+            headers=headers,
+        ).json()["data"]
+        if ws["id"] == workspace_id
+    )
+    log_expected_actual("card source", "LC, with date and link", listed)
+    assert listed["sourceName"] == "Library of Congress Profiles"
+    assert listed["sourceUrl"].startswith("https://github.com/lcnetdev/marva-profiles")
+    assert listed["sourceUpdatedAt"] > 0
 
     for method, kwargs in (("PUT", {"json": {"name": "renamed"}}), ("DELETE", {})):
         blocked = send_request(

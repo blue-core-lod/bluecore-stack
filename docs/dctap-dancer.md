@@ -35,10 +35,12 @@ LC's marva-prod profiles:
 
 - The dancer checks LC's GitHub files at startup and every hour, and
   re-imports only when they changed.
-- Its **Modified** date on the dancer's home page is when LC last changed
-  the files (their last commit on GitHub), not when the dancer copied them.
-- The bar at the top of the dancer shows when it last matched LC (hover for
-  when LC last changed it).
+- Its card on the dancer's home page says **"Library of Congress Profiles
+  last updated on: <date>"**, the files' last commit on GitHub (in place of
+  Created/Modified, which would only show when the dancer copied them).
+  "Library of Congress Profiles" links to LC's profiles on GitHub.
+- If GitHub can't be reached, the current copy stays (Marva keeps using it)
+  and the next check tries again.
 - It's **read-only** (locked): it can't be edited, renamed or deleted, since
   the next update would replace it. **Duplicate** it to get an editable copy;
   copies are never touched.
