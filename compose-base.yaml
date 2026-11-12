@@ -115,6 +115,23 @@ services:
     env_file:
       - ./.env
 
+  # DCTap Dancer: profile/template editor for Marva, served at /marva/dancer/.
+  dctap-dancer:
+    restart: always
+    image: ${DCTAP_DANCER_IMAGE:-ghcr.io/blue-core-lod/dctap-dancer:latest}
+    expose:
+      - 3000
+    environment:
+      KEYCLOAK_URL: ${KEYCLOAK_EXTERNAL_URL:-http://localhost/keycloak/}
+      KEYCLOAK_INTERNAL_URL: ${KEYCLOAK_INTERNAL_URL:-http://keycloak:8080/keycloak/}
+      KEYCLOAK_REALM: ${KEYCLOAK_REALM:-bluecore}
+      KEYCLOAK_CLIENT_ID: ${DCTAP_DANCER_KEYCLOAK_CLIENT_ID:-bluecore_api}
+      SEED_WORKSPACE_NAME: "${DCTAP_DANCER_SEED_WORKSPACE-Blue Core}"
+      SEED_PROFILES_SOURCE: ${DCTAP_DANCER_SEED_PROFILES:-https://raw.githubusercontent.com/lcnetdev/marva-profiles/refs/heads/main/marva-prod/marva-profiles.json}
+      SEED_STARTING_POINTS_SOURCE: ${DCTAP_DANCER_SEED_STARTING_POINTS:-https://raw.githubusercontent.com/lcnetdev/marva-profiles/refs/heads/main/marva-prod/marva-starting.json}
+    volumes:
+      - ${DCTAP_DANCER_DATA_DIR:-./dctap-dancer-data}:/app/data
+
   airflow-apiserver:
     <<: *airflow-common
     command: api-server
