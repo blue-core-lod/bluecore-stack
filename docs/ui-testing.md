@@ -31,8 +31,9 @@ through Nginx. They live in `tests/ui/` and run in the same suite as the
 - "Edit Templates (DCTap Dancer)" opens the dancer already signed in.
 - A saved workspace that no longer exists falls back to "Blue Core".
 
-These skip on a Marva build without the dancer integration; build Marva from a
-branch (`--marva-ref` / `--dev-mode`) to run them.
+These fail (not skip) on a Marva build without the dancer integration, such as
+a published image that predates it. To test unpublished Marva changes, build
+Marva from a branch (`--marva-ref` / `--dev-mode`).
 
 Tests that change data create temporary `integration test …` workspaces and
 delete them afterwards, so "Blue Core" is never modified.

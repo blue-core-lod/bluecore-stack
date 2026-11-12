@@ -16,9 +16,10 @@ from tests.ui.dancer._support import SEEDED_WORKSPACE, dancer_url, submit_keyclo
 # default), the DCTap menu switches workspaces, and "Edit Templates" opens the
 # dancer. The dancer's own UI is tested in tests/ui/dancer.
 #
-# These need a Marva build with the Blue Core dancer integration. Older
-# builds (e.g. a published `:latest` that predates it) SKIP; build Marva from a
-# branch to run them: --marva-ref <branch> or --dev-mode.
+# These need a Marva build with the Blue Core dancer integration, and FAIL on
+# one without it (e.g. a published `:latest` that predates it) rather than
+# skipping, so a Marva that doesn't use the dancer is never reported as fine.
+# To test unpublished Marva changes: --marva-ref <branch> or --dev-mode.
 pytestmark = pytest.mark.skipif(
     not full_stack_enabled(),
     reason="Marva dancer UI tests require the full stack (Nginx + Marva + DCTap Dancer)",
@@ -61,9 +62,11 @@ class DancerTraffic:
                 return self.profile_loads[-1]
             page.wait_for_timeout(250)
         if not self.workspace_list_requested:
-            pytest.skip(
-                "This Marva build doesn't load profiles from the DCTap Dancer yet. "
-                "Build Marva from a branch (--marva-ref / --dev-mode) to run it."
+            raise AssertionError(
+                "Marva never asked the DCTap Dancer for its workspaces, so it isn't "
+                "loading profiles from the dancer. This Marva build may predate the "
+                "dancer integration; to test unpublished Marva changes, use "
+                "--marva-ref <branch> or --dev-mode."
             )
         raise AssertionError(
             "Marva asked for the dancer's workspaces but never loaded a profile"
