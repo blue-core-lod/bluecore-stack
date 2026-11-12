@@ -99,6 +99,7 @@ Since Keycloak 26, the browser adapter `keycloak-js` is released separately from
 | Repo | Where | Kept current by |
 |---|---|---|
 | sinopia_editor | `package.json` / `package-lock.json` | npm |
+| dctap-dancer | `frontend/package.json` / `package-lock.json` | npm |
 | bluecore_api | `src/bluecore_api/app/views/templates/_fields.html` (jsDelivr URL + `sha384` in the import map) | The "Update keycloak-js pin" step in `.github/workflows/dependency-updates.yml`, within `KEYCLOAK_JS_MAJOR` |
 
 On a server major upgrade, raise `KEYCLOAK_JS_MAJOR` in bluecore_api's `dependency-updates.yml`; the weekly run then moves the pin and its hash to the new major.
