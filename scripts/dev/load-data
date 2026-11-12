@@ -65,7 +65,7 @@ fi
 host="${BLUECORE_STACK_URL:-http://localhost}"
 host="${host%/}"
 
-uv tool run --directory "$api_project" --from bluecore-client bluecore --verbose \
+uv tool run --directory "$api_project" --from 'bluecore-client[cli]' bluecore --verbose \
   --bluecore-url "$host" \
   --api-url "$host/api" \
   --keycloak-url "$host/keycloak" \
