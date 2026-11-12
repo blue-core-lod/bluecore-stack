@@ -784,7 +784,7 @@
     "enabled" : true,
     "alwaysDisplayInConsole" : false,
     "clientAuthenticatorType" : "client-secret",
-    "redirectUris" : [ "http://localhost:8888/*", "http://localhost:8888", "http://localhost/sinopia", "http://localhost/marva/util/auth/callback", "http://localhost/api/oauth-authorized/keycloak", "http://localhost:8080/oauth-authorized/keycloak", "http://localhost/sinopia/*" ],
+    "redirectUris" : [ "http://localhost:8888/*", "http://localhost:8888", "http://localhost/sinopia", "http://localhost/marva/util/auth/callback", "http://localhost/api/oauth-authorized/keycloak", "http://localhost:8080/oauth-authorized/keycloak", "http://localhost/sinopia/*", "http://localhost/marva/dancer/*" ],
     "webOrigins" : [ "/*" ],
     "notBefore" : 0,
     "bearerOnly" : false,
@@ -802,7 +802,7 @@
       "client.secret.creation.time" : "1747168703",
       "backchannel.logout.session.required" : "true",
       "frontchannel.logout.session.required" : "true",
-      "post.logout.redirect.uris" : "http://localhost/marva/##http://localhost/sinopia##http://localhost/sinopia/*",
+      "post.logout.redirect.uris" : "http://localhost/marva/##http://localhost/sinopia##http://localhost/sinopia/*##http://localhost/marva/dancer/*",
       "display.on.consent.screen" : "false",
       "oauth2.device.authorization.grant.enabled" : "false",
       "backchannel.logout.revoke.offline.tokens" : "false"
