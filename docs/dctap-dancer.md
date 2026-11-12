@@ -28,6 +28,21 @@ So editing `Blue Core` changes Marva's templates for everyone who hasn't
 picked another workspace. To try changes safely, duplicate `Blue Core` in
 the dancer, edit the copy, and select it from Marva's DCTap menu.
 
+## 🔄 LC Latest
+`Blue Core` is a one-time copy of LC's profiles, so it doesn't get LC's later
+updates. The dancer also keeps a **`LC Latest`** workspace that always matches
+LC's marva-prod profiles:
+
+- The dancer checks LC's GitHub files at startup and every hour, and
+  re-imports only when they changed.
+- Its **Modified** date on the dancer's home page is when LC last changed
+  the files (their last commit on GitHub), not when the dancer copied them.
+- The bar at the top of the dancer shows when it last matched LC (hover for
+  when LC last changed it).
+- It's **read-only** (locked): it can't be edited, renamed or deleted, since
+  the next update would replace it. **Duplicate** it to get an editable copy;
+  copies are never touched.
+
 ## 🌱 Seeded workspace
 On first start the dancer creates `Blue Core` from LC's marva-prod profiles
 and starting points, before it starts serving requests. It never seeds again
@@ -107,7 +122,7 @@ image instead, with no hot reload.
 
 | Suite | What |
 |---|---|
-| `tests/integration/dancer/` | HTTP checks through Nginx: route, login setup, API auth, profile routes, seeded workspace |
+| `tests/integration/dancer/` | HTTP checks through Nginx: route, login setup, API auth, profile routes, seeded workspace, locked "LC Latest" |
 | `tests/ui/dancer/` | Browser: login, workspaces, shapes, create, download, logout |
 | `tests/ui/marva/test_dancer.py` | Browser: Marva loading profiles from the dancer, the DCTap menu, "Edit Templates" |
 

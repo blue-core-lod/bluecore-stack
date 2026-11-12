@@ -11,6 +11,9 @@ import string
 # The workspace the stack seeds on first start and Blue Core Marva loads by default.
 SEEDED_WORKSPACE = os.getenv("INTEGRATION_DANCER_SEED_WORKSPACE", "Blue Core")
 
+# The read-only workspace the dancer keeps in sync with LC's latest profiles.
+SYNCED_WORKSPACE = os.getenv("INTEGRATION_DANCER_SYNC_WORKSPACE", "LC Latest")
+
 # Keycloak client the dancer's frontend logs in with.
 DANCER_CLIENT_ID = "bluecore_api"
 

@@ -10,6 +10,7 @@ from playwright.sync_api import APIRequestContext
 from tests.integration.dancer._support import (
     DANCER_CLIENT_ID,
     SEEDED_WORKSPACE,
+    SYNCED_WORKSPACE,
     auth_headers,
     dancer_api_url,
     dancer_url,
@@ -371,3 +372,99 @@ def test_workspace_lifecycle_round_trip(
     assert workspace_id not in [
         ws["id"] for ws in _serve_workspaces(request_context, config)
     ]
+
+
+# ========================================================================
+# "LC Latest" mirrors LC's profiles: it is served to Marva like any other
+# workspace, reports when it last synced, and is locked, so it can't be renamed, deleted or edited (each
+# sync would replace those changes). Duplicating it gives an editable copy.
+# Needs a dancer image with the Blue Core sync (newer than v0.1.00).
+# ------------------------------------------------------------------------
+def test_synced_lc_workspace_is_served_locked_and_can_be_duplicated(
+    request_context: APIRequestContext, config, keycloak_access_token: str
+):
+    log_header("DCTap Dancer 'LC Latest' workspace")
+    headers = auth_headers(keycloak_access_token)
+    served = next(
+        (
+            ws
+            for ws in _serve_workspaces(request_context, config)
+            if ws["name"] == SYNCED_WORKSPACE
+        ),
+        None,
+    )
+    log_expected_actual(f"'{SYNCED_WORKSPACE}' served", True, served is not None)
+    assert served is not None, (
+        f"No '{SYNCED_WORKSPACE}' workspace; is the dancer image older than the "
+        "Blue Core sync, or did the sync fail (see the dancer's logs)?"
+    )
+    workspace_id = served["id"]
+
+    profiles = _get(
+        request_context, config, f"{dancer_api_url()}/serve/{workspace_id}/profile"
+    )
+    assert profiles.status == 200
+    assert profiles.json(), f"'{SYNCED_WORKSPACE}' has no profiles"
+
+    details = _get(
+        request_context,
+        config,
+        f"{dancer_api_url()}/workspaces/{workspace_id}",
+        headers=headers,
+    )
+    log_expected_actual("isLocked", True, details.json()["data"].get("isLocked"))
+    assert details.json()["data"].get("isLocked") is True
+
+    status = _get(
+        request_context,
+        config,
+        f"{dancer_api_url()}/bluecore/lc-latest",
+        headers=headers,
+    ).json()["data"]
+    log_expected_actual("sync status", "available, checked", status)
+    assert status["available"] is True
+    assert status["checkedAt"] and status["lastSuccessAt"]
+
+    for method, kwargs in (("PUT", {"json": {"name": "renamed"}}), ("DELETE", {})):
+        blocked = send_request(
+            request_context,
+            method,
+            f"{dancer_api_url()}/workspaces/{workspace_id}",
+            config.request_timeout,
+            headers=headers,
+            **kwargs,
+        )
+        log_expected_actual(f"{method} status", 403, blocked.status)
+        assert blocked.status == 403
+
+    copy_name = temp_workspace_name()
+    copy = send_request(
+        request_context,
+        "POST",
+        f"{dancer_api_url()}/workspaces/{workspace_id}/duplicate",
+        config.request_timeout,
+        headers=headers,
+        json={"name": copy_name},
+    )
+    log_expected_actual("duplicate status", 201, copy.status)
+    assert copy.status == 201
+    copy_id = copy.json()["data"]["id"]
+    try:
+        copy_details = _get(
+            request_context,
+            config,
+            f"{dancer_api_url()}/workspaces/{copy_id}",
+            headers=headers,
+        )
+        log_expected_actual(
+            "copy isLocked", False, copy_details.json()["data"].get("isLocked")
+        )
+        assert copy_details.json()["data"].get("isLocked") is False
+    finally:
+        send_request(
+            request_context,
+            "DELETE",
+            f"{dancer_api_url()}/workspaces/{copy_id}",
+            config.request_timeout,
+            headers=headers,
+        )
