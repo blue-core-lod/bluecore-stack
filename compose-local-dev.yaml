@@ -16,11 +16,12 @@
 ##   LOCAL_BLUECORE_MODELS_DIR     -> bluecore-models repo
 ##   LOCAL_MARVA_DIR               -> marva_editor repo
 ##   LOCAL_SINOPIA_DIR             -> sinopia_editor repo
+##   LOCAL_DCTAP_DANCER_DIR        -> dctap-dancer repo (blue-core-lod fork)
 ##
 ## Defaults live in scripts/dev/local-repo-paths. scripts/dev/run is the
 ## intended entrypoint.
 ## To run `docker compose -f compose-local-dev.yaml up --build` directly instead,
-## set those five vars yourself (env or a .env file in this directory).
+## set those six vars yourself (env or a .env file in this directory).
 ################################################################################
 
 
@@ -121,6 +122,32 @@ services:
     command: sh -lc "node --watch middleware/marva-keycloak-middleware.js"
     volumes:
       - ${LOCAL_MARVA_DIR}:/app
+
+  # DCTap Dancer HOT-RELOAD dev servers, run from your local checkout of the
+  # blue-core-lod fork and served through Nginx at http://localhost/marva/dancer/.
+  # Runs with Marva. Two watchers in one container:
+  #   - backend (:3000): tsx watch, restarts on backend/src changes
+  #   - frontend (:5173): Vite dev server with HMR, edits show without a reload
+  # nginx/local-dev.conf sends /marva/dancer/api/ to :3000 and the rest to :5173.
+  # Workspaces persist in ./dctap-dancer-data/ (or DCTAP_DANCER_DATA_DIR).
+  dctap-dancer:
+    profiles: ["marva"]
+    image: node:22
+    working_dir: /app
+    command: >-
+      sh -lc "npm ci &&
+      npx concurrently --names api,ui --kill-others-on-fail
+      'npx tsx watch backend/src/index.ts'
+      'npm run dev --workspace=frontend -- --host 0.0.0.0 --port 5173 --strictPort'"
+    environment:
+      # vite.config.ts reads this; served under /marva/dancer/ like the image
+      VITE_BASE_PATH: /marva/dancer/
+    volumes:
+      - ${LOCAL_DCTAP_DANCER_DIR}:/app
+      # Linux node_modules stay in the container, not in your checkout
+      - /app/node_modules
+      - /app/backend/node_modules
+      - /app/frontend/node_modules
 
   # Sinopia HOT-RELOAD dev server, run from your local checkout and served
   # through Nginx at http://localhost/sinopia/ (hot-reload; edits show live).

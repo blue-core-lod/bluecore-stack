@@ -11,6 +11,9 @@ services:
   marva:
     profiles: ["integration-full"]
 
+  dctap-dancer:
+    profiles: ["integration-full"]
+
   marva-keycloak-middleware:
     profiles: ["integration-full"]
     environment:
