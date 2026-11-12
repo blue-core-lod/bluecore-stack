@@ -25,6 +25,7 @@ By default, local source mode expects sibling repositories:
   |-- bluecore-models/
   |-- marva_editor/
   |-- sinopia_editor/
+  |-- dctap-dancer/   <- blue-core-lod/dctap-dancer (runs with Marva)
 ```
 
 `bluecore-models` is included because the local API and workflows import it 
@@ -45,6 +46,7 @@ export LOCAL_BLUECORE_WORKFLOWS_DIR=/path/to/bluecore-workflows
 export LOCAL_BLUECORE_MODELS_DIR=/path/to/bluecore-models
 export LOCAL_MARVA_DIR=/path/to/marva_editor
 export LOCAL_SINOPIA_DIR=/path/to/sinopia_editor
+export LOCAL_DCTAP_DANCER_DIR=/path/to/dctap-dancer
 export LOCAL_GRAPH_TOOLBOX_DIR=/path/to/graph-toolbox  # defaults to nginx/toolbox (submodule)
 ```
 `scripts/dev/run`, `scripts/dev/update-stack`, and `scripts/dev/load-data` use 
@@ -64,6 +66,7 @@ The script knows the default repository paths and base branches:
 | `bluecore-workflows` | `LOCAL_BLUECORE_WORKFLOWS_DIR` | sibling `../bluecore-workflows` | `main` |
 | `sinopia_editor` | `LOCAL_SINOPIA_DIR` | sibling `../sinopia_editor` | `main` |
 | `marva_editor` | `LOCAL_MARVA_DIR` | sibling `../marva_editor` | `bluecore-dev-mvp` |
+| `dctap-dancer` | `LOCAL_DCTAP_DANCER_DIR` | sibling `../dctap-dancer` | `bluecore-dev-mvp` |
 | `graph-toolbox` | `LOCAL_GRAPH_TOOLBOX_DIR` | **submodule** `nginx/toolbox` | `main` |
 
 ```bash
