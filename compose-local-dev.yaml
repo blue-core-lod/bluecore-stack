@@ -100,7 +100,7 @@ services:
 
   # --- Frontends: run from local source on a node base image with the dev server (HMR) ---
   marva:
-    image: node:23
+    image: node:24
     profiles: ["marva"]
     working_dir: /app
     command: sh -lc "npm install && npm run dev -- --host --port 8080"
@@ -116,7 +116,7 @@ services:
       - /app/node_modules
 
   marva-keycloak-middleware:
-    image: node:23-alpine
+    image: node:24-alpine
     profiles: ["marva"]
     working_dir: /app
     command: sh -lc "node --watch middleware/marva-keycloak-middleware.js"
@@ -132,7 +132,7 @@ services:
   # Workspaces persist in ./dctap-dancer-data/ (or DCTAP_DANCER_DATA_DIR).
   dctap-dancer:
     profiles: ["marva"]
-    image: node:22
+    image: node:24
     working_dir: /app
     command: >-
       sh -lc "npm ci &&

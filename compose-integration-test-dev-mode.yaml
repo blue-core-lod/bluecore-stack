@@ -56,7 +56,7 @@ services:
 
   # Run middleware from local marva_editor source with file watch for rapid iteration.
   marva-keycloak-middleware:
-    image: ${MARVA_KEYCLOAK_MIDDLEWARE_IMAGE:-node:23-alpine}
+    image: ${MARVA_KEYCLOAK_MIDDLEWARE_IMAGE:-node:24-alpine}
     working_dir: /app
     command: sh -lc "node --watch middleware/marva-keycloak-middleware.js"
     volumes:
@@ -64,7 +64,7 @@ services:
 
   # Run Marva frontend from local marva_editor source via Vite dev server.
   marva:
-    image: ${MARVA_IMAGE:-node:23}
+    image: ${MARVA_IMAGE:-node:24}
     working_dir: /app
     command: sh -lc "npm install && npm run dev -- --host --port 8080"
     volumes:
