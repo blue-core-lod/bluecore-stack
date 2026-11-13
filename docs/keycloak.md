@@ -90,7 +90,7 @@ A server's `.env` can override `KEYCLOAK_IMAGE`, so check staging and production
 ### After upgrading
 
 - `--import-realm` skips a realm that already exists, so the upgrade leaves the realm's data as-is. Re-export and diff against the previous export to catch format changes the new version made.
-- Log in through each client: Airflow (`bluecore_workflows`), Sinopia, Marva, the API's `/docs` Authorize button, and **Export to Catalog** on a Blue Core Instance page.
+- Log in through each client: Airflow (`bluecore_workflows`), Sinopia, Marva, bluecore-editor (`bluecore_api`, like Sinopia), the API's `/docs` Authorize button, and **Export to Catalog** on a Blue Core Instance page.
 
 ### Browser clients (keycloak-js)
 

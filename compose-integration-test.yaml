@@ -28,6 +28,10 @@ services:
   airflow-triggerer:
     profiles: ["disabled"]
 
+  # Nothing in the suite exercises it yet.
+  editor:
+    profiles: ["disabled"]
+
   nginx:
     profiles: ["integration-full"]
 
