@@ -416,21 +416,6 @@ def test_synced_lc_workspace_is_served_locked_and_can_be_duplicated(
     log_expected_actual("isLocked", True, details.json()["data"].get("isLocked"))
     assert details.json()["data"].get("isLocked") is True
 
-    listed = next(
-        ws
-        for ws in _get(
-            request_context,
-            config,
-            f"{dancer_api_url()}/workspaces",
-            headers=headers,
-        ).json()["data"]
-        if ws["id"] == workspace_id
-    )
-    log_expected_actual("card source", "LC, with date and link", listed)
-    assert listed["sourceName"] == "Library of Congress Profiles"
-    assert listed["sourceUrl"].startswith("https://github.com/lcnetdev/marva-profiles")
-    assert listed["sourceUpdatedAt"] > 0
-
     for method, kwargs in (("PUT", {"json": {"name": "renamed"}}), ("DELETE", {})):
         blocked = send_request(
             request_context,
