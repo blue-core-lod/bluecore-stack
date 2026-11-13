@@ -15,12 +15,42 @@ through Nginx. They live in `tests/ui/` and run in the same suite as the
   Templates page) run only in dev-mode; on the published image they skip (its
   bundle bakes a non-local URL).
 
+`tests/ui/dancer/` drives the DCTap Dancer (Marva's template editor):
+
+- Logged-out redirect to Keycloak (PKCE), rejected credentials, and login back
+  to a clean URL with "Signed in as …".
+- The home page lists "Blue Core"; opening it shows its folders, and a shape
+  shows its rows.
+- A bookmarked workspace link survives login; creating and downloading a
+  workspace; log out; and no uncaught JS errors or same-origin `5xx`.
+
+`tests/ui/marva/test_dancer.py` covers Marva's side of the dancer:
+
+- Marva loads its profiles from "Blue Core" after login.
+- The DCTap menu lists the workspaces; picking one reloads Marva with it.
+- "Edit Templates (DCTap Dancer)" opens the dancer already signed in.
+- A saved workspace that no longer exists falls back to "Blue Core".
+
+These fail (not skip) on a Marva build without the dancer integration, such as
+a published image that predates it. To test unpublished Marva changes, build
+Marva from a branch (`--marva-ref` / `--dev-mode`).
+
+Tests that change data create temporary `integration test …` workspaces and
+delete them afterwards, so "Blue Core" is never modified.
+
 Requires the full stack (Nginx + Sinopia), which the runner enables by default;
 UI tests skip automatically in a lightweight run. Chromium installs
 automatically (`playwright install chromium`).
 
 ```bash
+# Sinopia
 ./scripts/test/integration-tests.sh tests/ui/sinopia
+
+# Marva 
+./scripts/test/integration-tests.sh tests/ui/marva
+
+# DCTap Dancer
+./scripts/test/integration-tests.sh tests/ui/dancer
 ```
 
 ## 🐛 Debugging

@@ -6,6 +6,9 @@ samlapi_formauth.py
 !/logs/.keepme
 /uploads/*
 !/uploads/.keepme
+# DCTap Dancer workspaces (Marva profiles), bind-mounted into the container
+/dctap-dancer-data/*
+!/dctap-dancer-data/.keepme
 __pycache__/
 *.py[cod]
 tests/playwright/.venv/

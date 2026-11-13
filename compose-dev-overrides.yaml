@@ -6,6 +6,7 @@ services:
   sinopia: { restart: "no" }
   marva: { restart: "no" }
   marva-keycloak-middleware: { restart: "no" }
+  dctap-dancer: { restart: "no" }
   airflow-apiserver: { restart: "no" }
   airflow-scheduler: { restart: "no" }
   airflow-dag-processor: { restart: "no" }

@@ -135,13 +135,14 @@ Updates sibling Blue Core repositories:
   bluecore-workflows    base branch: main
   sinopia_editor        base branch: main
   marva_editor          base branch: bluecore-dev-mvp
+  dctap-dancer          base branch: bluecore-dev-mvp
   toolbox (graph-toolbox, submodule at nginx/toolbox)
                         base branch: main
 
 Repository paths default to the standard sibling layout and can be overridden
 with LOCAL_BLUECORE_API_DIR, LOCAL_BLUECORE_WORKFLOWS_DIR,
-LOCAL_BLUECORE_MODELS_DIR, LOCAL_MARVA_DIR, LOCAL_SINOPIA_DIR, and
-LOCAL_GRAPH_TOOLBOX_DIR.
+LOCAL_BLUECORE_MODELS_DIR, LOCAL_MARVA_DIR, LOCAL_SINOPIA_DIR,
+LOCAL_DCTAP_DANCER_DIR, and LOCAL_GRAPH_TOOLBOX_DIR.
 
 graph-toolbox is a submodule rather than a sibling checkout, so it differs:
   - --install initializes it (git submodule update --init), never clones it.
@@ -215,6 +216,7 @@ repos=(
   "$LOCAL_BLUECORE_WORKFLOWS_DIR:main:https://github.com/blue-core-lod/bluecore-workflows.git"
   "$LOCAL_SINOPIA_DIR:main:https://github.com/blue-core-lod/sinopia_editor.git"
   "$LOCAL_MARVA_DIR:bluecore-dev-mvp:https://github.com/blue-core-lod/marva_editor.git"
+  "$LOCAL_DCTAP_DANCER_DIR:bluecore-dev-mvp:https://github.com/blue-core-lod/dctap-dancer.git"
   "$LOCAL_GRAPH_TOOLBOX_DIR:main:https://github.com/blue-core-lod/graph-toolbox.git"
 )
 
@@ -358,7 +360,12 @@ install_repo_if_missing() {
     return 0
   fi
 
-  if [[ -e "$repo_dir" ]]; then
+  # A folder with no files in it is a placeholder Docker made for a mount
+  # while the repo was missing (empty node_modules/, data/, ...): replace it.
+  if [[ -d "$repo_dir" ]] && [[ -z "$(find "$repo_dir" -type f ! -name .DS_Store -print -quit)" ]]; then
+    warn "    removing empty placeholder folder (left by Docker): $repo_dir"
+    run rm -rf "$repo_dir" || return 1
+  elif [[ -e "$repo_dir" ]]; then
     err "    cannot install: $repo_dir exists but is not a Git repository"
     return 1
   fi

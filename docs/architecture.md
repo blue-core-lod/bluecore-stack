@@ -22,6 +22,7 @@ Nginx (:80) -> bc_api (:8100)            -> Postgres (airflow/keycloak/bluecore 
             -> Keycloak (:8080)          -> Postgres (keycloak DB)
             -> Sinopia (:8004)
             -> Marva (:8080) + marva-keycloak-middleware (:9401)
+            -> DCTap Dancer (:3000)      -> SQLite (./dctap-dancer-data bind mount)
 ```
 
 Airflow uses CeleryExecutor with Redis as the broker. DAGs live in the workflows image at `/opt/airflow/ils_middleware/dags`.
@@ -41,5 +42,6 @@ All local browser traffic enters through Nginx.
 | `/sinopia/` | `sinopia:8004` |
 | `/marva/` | `marva:8080` |
 | `/marva/util/` | `marva-keycloak-middleware:9401` |
+| `/marva/dancer/` | `dctap-dancer:3000`|
 
 In local-source subset mode, some upstreams may intentionally be absent. Nginx still starts; disabled routes return `502`.

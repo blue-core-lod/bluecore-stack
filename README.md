@@ -2,10 +2,11 @@
 
 `bluecore-stack` is the Docker Compose orchestration layer for local Blue Core 
 development and integration testing. It wires together the Blue Core API, Blue Core 
-Workflows/Airflow, Keycloak, Nginx, Postgres, Marva, Sinopia, and supporting services.
+Workflows/Airflow, Keycloak, Nginx, Postgres, Marva, DCTap Dancer (Marva's
+template editor), Sinopia, and supporting services.
 
 Application source code lives in sibling repositories such as `bluecore_api`, 
-`bluecore-workflows`, `marva_editor`, and `sinopia_editor`. This repository starts 
+`bluecore-workflows`, `marva_editor`, `dctap-dancer`, and `sinopia_editor`. This repository starts 
 those services either from published container images or from local checkouts 
 with live reload.
 
@@ -29,6 +30,8 @@ Blue Core is deployed in the following environments:
 graph LR;
     sinopia["Sinopia"] --> keycloak["Keycloak"]
     marva["Marva"] --> keycloak
+    marva -- "Workspaces/Templates" --> dancer["DCTap Dancer"]
+    dancer --> keycloak
     graph_toolkit["Graph Toolkit"] --> keycloak
     notebooks@{ shape: docs, label: "Jupyter Notebooks"} --> keycloak
 
@@ -76,6 +79,7 @@ graph LR;
      |-- bluecore-workflows/
      |-- bluecore-models/
      |-- marva_editor/
+     |-- dctap-dancer/      <- Marva's template editor (runs with Marva)
      |-- sinopia_editor/
    ```
    > 📝 Tip: You can run `./scripts/dev/update-stack --install` to quickly clone 
@@ -116,6 +120,7 @@ graph LR;
    | Airflow / Workflows | `http://localhost/workflows` |
    | Keycloak | `http://localhost/keycloak` |
    | Marva | `http://localhost/marva/` |
+   | DCTap Dancer (Marva templates) | `http://localhost/marva/dancer/` |
    | Sinopia | `http://localhost/sinopia/` |
 
 5. Sign in with local development credentials.
@@ -144,6 +149,7 @@ graph LR;
 - 🧑‍💻 [Local development](docs/local-development.md): local-source mode, image mode, subset starts, live reload, and data loading.
 - 🧱 [Developing bluecore-models](docs/bluecore-models.md): local model-code reload behavior and migrations.
 - 🔐 [Keycloak](docs/keycloak.md): local users, admin login, realm import/export, and Airflow auth.
+- 💃 [DCTap Dancer](docs/dctap-dancer.md): Marva's template editor, its "Blue Core" workspace, where profiles are stored, and releases.
 - 🧪 [Integration testing](docs/integration-testing.md): local test runner, dev mode, branch refs, local sources, and workflow parity.
 - 🖥️ [UI testing](docs/ui-testing.md): browser-driven tests and Playwright debugging.
 - 🏗️ [Architecture](docs/architecture.md): compose files, service topology, and Nginx routing.

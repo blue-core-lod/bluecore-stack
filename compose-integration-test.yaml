@@ -11,6 +11,14 @@ services:
   marva:
     profiles: ["integration-full"]
 
+  dctap-dancer:
+    profiles: ["integration-full"]
+    # Own data, not the host's ./dctap-dancer-data that local dev uses, so test
+    # runs never touch dev workspaces. The runner's `down -v` resets it, so each
+    # run reseeds "Blue Core" from LC's profiles.
+    volumes:
+      - integration-dctap-dancer-data:/app/data
+
   marva-keycloak-middleware:
     profiles: ["integration-full"]
     environment:
@@ -149,3 +157,6 @@ services:
       AIRFLOW__CORE__INTERNAL_API_SECRET_KEY: ${INTEGRATION_AIRFLOW_INTERNAL_API_SECRET_KEY:-integration-internal-api-secret}
       AIRFLOW__API_AUTH__JWT_SECRET: ${INTEGRATION_AIRFLOW_API_AUTH_JWT_SECRET:-integration-api-auth-jwt-secret}
       AIRFLOW_CONFIG: /tmp/airflow.cfg
+
+volumes:
+  integration-dctap-dancer-data:

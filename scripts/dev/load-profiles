@@ -60,7 +60,7 @@ host="${host%/}"
 
 # Remaining args are the remote host and/or flags (e.g. --dry-run, --page-size)
 # passed straight through to the CLI's `load profiles` command.
-uv tool run --directory "$api_project" --from bluecore-client bluecore --verbose \
+uv tool run --directory "$api_project" --from 'bluecore-client[cli]' bluecore --verbose \
   --bluecore-url "$host" \
   --api-url "$host/api" \
   --keycloak-url "$host/keycloak" \
