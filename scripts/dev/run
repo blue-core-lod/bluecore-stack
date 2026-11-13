@@ -79,6 +79,15 @@ if [[ "${#missing[@]}" -gt 0 ]]; then
   exit 1
 fi
 
+# Marva and DCTap Dancer show their newest release tag on the dashboard, so
+# fetch new tags (tags only: branches and files are untouched). Never prompts
+# or blocks: if GitHub can't be reached, warn and start anyway.
+for repo_dir in "$LOCAL_MARVA_DIR" "$LOCAL_DCTAP_DANCER_DIR"; do
+  GIT_TERMINAL_PROMPT=0 GIT_SSH_COMMAND="ssh -o BatchMode=yes" \
+    git -C "$repo_dir" fetch --quiet --tags origin 2>/dev/null \
+    || echo "⚠️  Couldn't fetch release tags for $(basename "$repo_dir"); its dashboard version may be out of date"
+done
+
 echo "🏗️  Local mode (compose-local-dev.yaml)"
 echo "   always: postgres, keycloak, nginx, bc_api"
 echo "   profiles: ${COMPOSE_PROFILES:-<none — core only>}"
