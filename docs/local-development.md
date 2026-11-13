@@ -133,6 +133,11 @@ it can take a few minutes. Postgres, Keycloak, Nginx, and the Blue Core API
 always start because the API runs database migrations. Nginx tolerates 
 absent services; disabled routes return `502`, and the landing page greys them out.
 
+In local mode, `run` first checks that every Blue Core repo is installed (the 
+sibling checkouts and the `graph-toolbox` submodule). If any are missing it 
+lists them all and stops before starting Docker, so Docker never creates empty 
+placeholder folders. Install them with `./scripts/dev/update-stack --install`.
+
 ## 🔁 Live Reload Behavior
 
 | Service | URL | Live reload behavior |

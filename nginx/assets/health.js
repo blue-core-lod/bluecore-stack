@@ -34,33 +34,47 @@ async function checkGateway() {
 // Each row carries data-probe="/route". With the dev Nginx config, a route whose
 // upstream is down returns 502/503/504 (or the fetch fails), so treat as offline.
 // #############################################################################
-async function probeRow(row) {
-  const url = row.getAttribute('data-probe');
-  let up = false;
-  let version = null;
+// Fetch a probe URL: is the service up, and does it advertise a version?
+async function probe(url) {
   try {
     const res = await fetch(url, { method: 'GET', redirect: 'manual', cache: 'no-store' });
-    up = !(res.status === 502 || res.status === 503 || res.status === 504);
+    const up = !(res.status === 502 || res.status === 503 || res.status === 504);
 
     // A JSON payload may advertise the service version, e.g. {"version": "1.2.3"}
     const contentType = res.headers.get('content-type') || '';
     if (up && contentType.includes('application/json')) {
       try {
         const payload = await res.json();
-        if (payload && payload.version) version = payload.version;
-        console.log(`Version: ${version}`)
+        return { up, version: (payload && payload.version) || null };
       } catch (e) {
-        version = null; // not valid JSON after all
+        // not valid JSON after all
       }
     }
+    return { up, version: null };
   } catch (e) {
-    up = false; // connection failed
+    return { up: false, version: null }; // connection failed
   }
-  row.classList.toggle('unavailable', !up);
-  row.setAttribute('aria-disabled', String(!up));
+}
 
+// A row can also show a second service's version, e.g. Marva's row shows
+// DCTap Dancer's: data-extra-version-probe="/route" data-extra-version-label="…".
+// Only the main probe decides whether the row is available.
+async function probeRow(row) {
+  const extraUrl = row.getAttribute('data-extra-version-probe');
+  const [main, extra] = await Promise.all([
+    probe(row.getAttribute('data-probe')),
+    extraUrl ? probe(extraUrl) : Promise.resolve(null)
+  ]);
+  row.classList.toggle('unavailable', !main.up);
+  row.setAttribute('aria-disabled', String(!main.up));
+
+  const parts = [];
+  if (main.version) parts.push(`Version: ${main.version}`);
+  if (main.up && extra && extra.version) {
+    parts.push(`${row.getAttribute('data-extra-version-label') || 'Version'}: ${extra.version}`);
+  }
   const versionEl = row.querySelector('.version');
-  if (versionEl) versionEl.innerHTML = version ? `Version: ${version}` : '';
+  if (versionEl) versionEl.textContent = parts.join(', ');
 }
 
 function checkServices() {

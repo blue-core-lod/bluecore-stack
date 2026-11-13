@@ -360,7 +360,12 @@ install_repo_if_missing() {
     return 0
   fi
 
-  if [[ -e "$repo_dir" ]]; then
+  # A folder with no files in it is a placeholder Docker made for a mount
+  # while the repo was missing (empty node_modules/, data/, ...): replace it.
+  if [[ -d "$repo_dir" ]] && [[ -z "$(find "$repo_dir" -type f ! -name .DS_Store -print -quit)" ]]; then
+    warn "    removing empty placeholder folder (left by Docker): $repo_dir"
+    run rm -rf "$repo_dir" || return 1
+  elif [[ -e "$repo_dir" ]]; then
     err "    cannot install: $repo_dir exists but is not a Git repository"
     return 1
   fi
