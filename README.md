@@ -81,6 +81,7 @@ graph LR;
      |-- marva_editor/
      |-- dctap-dancer/      <- Marva's template editor (runs with Marva)
      |-- sinopia_editor/
+     |-- bluecore-editor/
    ```
    > 📝 Tip: You can run `./scripts/dev/update-stack --install` to quickly clone 
    > any missing sibling repositories into the required default paths, initialize the 

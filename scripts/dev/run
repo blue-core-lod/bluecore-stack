@@ -4,7 +4,7 @@ set -euo pipefail
 ## Bring up the dev stack. Default: build every Blue Core service from the LOCAL
 ## repo checkouts below, with live-reload source mounts.
 ##
-##   ./scripts/dev/run                 # full local stack (everything)
+##   ./scripts/dev/run                 # full local stack
 ##   ./scripts/dev/run --image         # GHCR-published images instead
 ##
 ## Run a SUBSET (local mode only). postgres, keycloak, nginx and the bluecore
@@ -15,6 +15,7 @@ set -euo pipefail
 ##   ./scripts/dev/run --sinopia       # core + Sinopia
 ##   ./scripts/dev/run --airflow       # core + Airflow
 ##   ./scripts/dev/run --marva --sinopia   # combine as needed
+##   ./scripts/dev/run --editor        # core + bluecore-editor
 ##
 ## No subset flag = everything. Subset flags are ignored in --image mode.
 ## bluecore-models is mounted into the local API and Airflow services automatically.
@@ -39,7 +40,8 @@ for arg in "$@"; do
     --marva)   selected=1; profiles+=("marva") ;;
     --sinopia) selected=1; profiles+=("sinopia") ;;
     --airflow) selected=1; profiles+=("airflow") ;;
-    -h|--help) sed -n '3,21p' "${BASH_SOURCE[0]}"; exit 0 ;;
+    --editor)  selected=1; profiles+=("editor") ;;
+    -h|--help) sed -n '3,22p' "${BASH_SOURCE[0]}"; exit 0 ;;
     *) echo "Unknown option: $arg" >&2; exit 1 ;;
   esac
 done
@@ -53,7 +55,7 @@ fi
 
 # Local mode: select profiles. No subset flag => run everything.
 if [[ "$selected" == "0" ]]; then
-  export COMPOSE_PROFILES="airflow,sinopia,marva"
+  export COMPOSE_PROFILES="airflow,sinopia,marva,editor"
 else
   export COMPOSE_PROFILES="$(IFS=,; echo "${profiles[*]:-}")"
 fi
@@ -69,7 +71,8 @@ is_checkout() {
 missing=()
 for repo_dir in \
   "$LOCAL_BLUECORE_API_DIR" "$LOCAL_BLUECORE_MODELS_DIR" "$LOCAL_BLUECORE_WORKFLOWS_DIR" \
-  "$LOCAL_SINOPIA_DIR" "$LOCAL_MARVA_DIR" "$LOCAL_DCTAP_DANCER_DIR" "$LOCAL_GRAPH_TOOLBOX_DIR"; do
+  "$LOCAL_SINOPIA_DIR" "$LOCAL_MARVA_DIR" "$LOCAL_DCTAP_DANCER_DIR" "$LOCAL_BLUECORE_EDITOR_DIR" \
+  "$LOCAL_GRAPH_TOOLBOX_DIR"; do
   is_checkout "$repo_dir" || missing+=("$(basename "$repo_dir")  ($repo_dir)")
 done
 if [[ "${#missing[@]}" -gt 0 ]]; then

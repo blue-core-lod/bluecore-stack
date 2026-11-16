@@ -23,6 +23,7 @@ IMAGE_VARS=(
   SINOPIA_IMAGE
   MARVA_IMAGE
   MARVA_KEYCLOAK_MIDDLEWARE_IMAGE
+  BLUECORE_EDITOR_IMAGE
 )
 
 # Published images live in ghcr.io/blue-core-lod/<service>; anything else is local.
