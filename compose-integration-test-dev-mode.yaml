@@ -58,7 +58,7 @@ services:
   marva-keycloak-middleware:
     image: ${MARVA_KEYCLOAK_MIDDLEWARE_IMAGE:-node:24-alpine}
     working_dir: /app
-    command: sh -lc "npm install --prefix middleware && node --watch middleware/marva-keycloak-middleware.js" # BLUECORE: install first (downloads LC validator)
+    command: sh -lc "npm install --prefix middleware && node --watch middleware/marva-keycloak-middleware.js" # Install first (downloads LC validator)
     volumes:
       - ${LOCAL_MARVA_DIR}:/app
 
