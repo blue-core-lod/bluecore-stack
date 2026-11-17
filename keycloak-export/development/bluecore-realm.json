@@ -802,7 +802,7 @@
       "client.secret.creation.time" : "1747168703",
       "backchannel.logout.session.required" : "true",
       "frontchannel.logout.session.required" : "true",
-      "post.logout.redirect.uris" : "http://localhost/marva/##http://localhost/sinopia##http://localhost/sinopia/*##http://localhost/marva/dancer/*",
+      "post.logout.redirect.uris" : "http://localhost/marva/##http://localhost/marva-login/##http://localhost/sinopia##http://localhost/sinopia/*##http://localhost/marva/dancer/*",
       "display.on.consent.screen" : "false",
       "oauth2.device.authorization.grant.enabled" : "false",
       "backchannel.logout.revoke.offline.tokens" : "false"

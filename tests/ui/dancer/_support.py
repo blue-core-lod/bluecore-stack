@@ -50,12 +50,14 @@ def submit_keycloak_login(page: Page, timeout: int) -> None:
 def login_to_dancer(page: Page, timeout: int, path: str = "/") -> None:
     """
     Open a dancer page logged out, log in through Keycloak, and wait until the
-    editor is back with the "Signed in as …" bar showing.
+    editor is back with the Blue Core header's Logout button showing.
     """
     page.goto(f"{dancer_url()}{path}", wait_until="domcontentloaded", timeout=timeout)
     submit_keycloak_login(page, timeout)
     page.wait_for_url(f"{dancer_url()}/**", timeout=timeout)
-    expect(page.locator(".bluecore-user-bar")).to_be_visible(timeout=timeout)
+    expect(
+        page.locator(".bluecore-header").get_by_role("button", name="Logout")
+    ).to_be_visible(timeout=timeout)
 
 
 def workspace_card(page: Page, name: str) -> Locator:
