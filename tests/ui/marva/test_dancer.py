@@ -161,7 +161,9 @@ def test_edit_templates_opens_the_dancer_signed_in(page: Page, ui_timeout_ms: in
     dancer = new_tab_info.value
     dancer.wait_for_url(f"{dancer_url()}/**", timeout=ui_timeout_ms)
 
-    expect(dancer.locator(".bluecore-user-bar")).to_be_visible(timeout=ui_timeout_ms)
+    expect(
+        dancer.locator(".bluecore-header").get_by_role("button", name="Logout")
+    ).to_be_visible(timeout=ui_timeout_ms)
     log_expected_actual("dancer tab URL", f"{dancer_url()}/", dancer.url)
     assert dancer.url == f"{dancer_url()}/"
     assert KEYCLOAK_AUTH_PATH not in dancer.url

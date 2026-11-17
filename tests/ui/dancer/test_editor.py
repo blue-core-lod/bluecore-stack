@@ -7,12 +7,16 @@ import pytest
 from playwright.sync_api import Page, expect
 
 from tests.integration.support.logging import log_expected_actual, log_header
-from tests.ui._support import KEYCLOAK_AUTH_PATH, full_stack_enabled, keycloak_username
+from tests.ui._support import (
+    KEYCLOAK_AUTH_PATH,
+    bluecore_url,
+    full_stack_enabled,
+    keycloak_username,
+)
 from tests.ui.dancer._support import (
     SEEDED_WORKSPACE,
     dancer_url,
     login_to_dancer,
-    submit_keycloak_login,
     temp_workspace_name,
     workspace_card,
 )
@@ -91,19 +95,37 @@ def test_invalid_credentials_are_rejected(page: Page, ui_timeout_ms: int):
 
 # ========================================================================
 # Logging in returns to the dancer with a clean address bar (no leftover
-# #state=…&code=…) and shows who is signed in.
+# #state=…&code=…).
 # ------------------------------------------------------------------------
-def test_login_returns_with_a_clean_url_and_shows_the_user(
-    page: Page, ui_timeout_ms: int
-):
+def test_login_returns_with_a_clean_url(page: Page, ui_timeout_ms: int):
     log_header("DCTap Dancer login")
     login_to_dancer(page, ui_timeout_ms)
 
     log_expected_actual("URL after login", f"{dancer_url()}/", page.url)
     assert page.url == f"{dancer_url()}/"
-    expect(page.locator(".bluecore-user-bar")).to_contain_text(
-        f"Signed in as {keycloak_username()}"
-    )
+
+
+def login_page_url() -> str:
+    return f"{bluecore_url()}/marva-login/"
+
+
+# ========================================================================
+# The dancer has the same Blue Core header and footer as Marva.
+# ------------------------------------------------------------------------
+def test_shows_the_bluecore_header_and_footer(page: Page, ui_timeout_ms: int):
+    log_header("DCTap Dancer Blue Core header and footer")
+    login_to_dancer(page, ui_timeout_ms)
+
+    header = page.locator("header.bluecore-header")
+    expect(header.locator(".bluecore-header-app-name")).to_contain_text("DCTAP DANCER")
+    header.get_by_role("button", name="Switch applications").click()
+    expect(
+        page.locator("#bluecore-app-menu").get_by_role("link", name="Marva")
+    ).to_be_visible()
+
+    footer = page.locator("footer.bluecore-footer")
+    expect(footer).to_be_visible()
+    expect(footer.get_by_role("link", name="Contact us")).to_be_visible()
 
 
 # ========================================================================
@@ -198,16 +220,20 @@ def test_download_a_workspace(page: Page, ui_timeout_ms: int, dancer_api):
 
 
 # ========================================================================
-# Log out ends the session: the token cookie is cleared and the next visit
-# needs the Keycloak login again.
+# Log out ends the session and lands on the Marva login page: the token
+# cookie is cleared and the next visit needs the Keycloak login again.
 # ------------------------------------------------------------------------
 def test_log_out(page: Page, ui_timeout_ms: int):
     log_header("DCTap Dancer log out")
     login_to_dancer(page, ui_timeout_ms)
 
-    page.locator(".bluecore-user-bar").get_by_role("button", name="Log out").click()
-    page.wait_for_url(f"**{KEYCLOAK_AUTH_PATH}**", timeout=ui_timeout_ms)
-    expect(page.locator("#username")).to_be_visible(timeout=ui_timeout_ms)
+    page.locator(".bluecore-header").get_by_role("button", name="Logout").click()
+    # lands on the Marva login page (not the Keycloak sign-in form); needs
+    # http://localhost/marva-login/ in the bluecore_api client's valid post
+    # logout redirect URIs (keycloak-export/development/bluecore-realm.json)
+    page.wait_for_url(login_page_url(), timeout=ui_timeout_ms)
+    log_expected_actual("URL after logout", login_page_url(), page.url)
+    assert page.url == login_page_url()
 
     cookies = [
         c["name"] for c in page.context.cookies() if c["name"] == "dancer_access_token"
@@ -215,9 +241,8 @@ def test_log_out(page: Page, ui_timeout_ms: int):
     log_expected_actual("token cookie after logout", [], cookies)
     assert cookies == []
 
-    submit_keycloak_login(page, ui_timeout_ms)
-    page.wait_for_url(f"{dancer_url()}/**", timeout=ui_timeout_ms)
-    expect(page.locator(".bluecore-user-bar")).to_be_visible(timeout=ui_timeout_ms)
+    # the Keycloak session really ended: the dancer asks for the login again
+    login_to_dancer(page, ui_timeout_ms)
 
 
 # ========================================================================
