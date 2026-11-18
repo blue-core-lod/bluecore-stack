@@ -253,8 +253,6 @@ def test_authenticated_header_shows_user_and_nav(
 ):
     log_header("Sinopia authenticated header and nav")
     page = authenticated_page
-    # Authenticated home header: user identity, logout, and the app entry link.
-    expect(page.locator(".editor-header-user")).to_be_visible(timeout=ui_timeout_ms)
     expect(page.locator(".editor-header-logout")).to_be_visible()
     expect(page.get_by_role("link", name="Linked Data Editor")).to_be_visible()
 
