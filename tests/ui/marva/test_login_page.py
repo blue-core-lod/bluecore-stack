@@ -84,6 +84,12 @@ def test_signed_out_shows_bluecore_header_footer_and_login(
     expect(footer).to_be_visible()
     expect(footer.locator(".bluecore-footer-app-list a")).to_have_text(APPS)
 
+    # the logo links to the homepage
+    for bar in (header, footer):
+        expect(bar.get_by_role("link", name="Blue Core home")).to_have_attribute(
+            "href", "/"
+        )
+
     login = page.get_by_role("link", name="Login", exact=True)
     expect(login).to_have_attribute("href", "/marva/")
     log_expected_actual("URL", login_page_url(), page.url)

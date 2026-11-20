@@ -1,0 +1,997 @@
+/* Homepage styles (nginx/index.html). Header/footer styles are in bluecore-header-footer.css. */
+
+:root {
+  --home-navy: #011f49;
+  --home-heading: #042d5d;
+  --home-input-border: #5e6f8b;
+  --home-card: #ebf7ff;
+  --home-hero-panel: rgba(1, 29, 69, 0.8);
+  --home-error: #b3261e;
+  --home-search-band: #0c5393;
+  --home-search-border: #ababa9;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  font-family: var(--bluecore-font);
+  font-weight: 300;
+  color: #000000;
+  background: #ffffff;
+}
+
+/* keep link targets from hiding under the sticky header */
+[id] {
+  scroll-margin-top: calc(var(--bluecore-header-height, 0px) + 16px);
+}
+
+/* header links: land with the section heading just below the header */
+.home-section[id] {
+  scroll-margin-top: calc(var(--bluecore-header-height, 0px) - 50px);
+}
+
+/* homepage footer doesn't stick (the apps' footers still do) */
+bluecore-footer[variant='home'] {
+  position: static;
+}
+
+/* ---------------------------------------------------------------------------
+   Shared pieces
+   ------------------------------------------------------------------------- */
+
+/* Core Blue pill button, like the footer's "Contact us" */
+.home-pill {
+  display: inline-block;
+  box-sizing: border-box;
+  height: 36px;
+  padding: 0 24px;
+  border: 0;
+  border-radius: 20px;
+  background: var(--bluecore-blue);
+  color: #ffffff;
+  font: inherit;
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 36px;
+  letter-spacing: 2px;
+  text-align: center;
+  text-transform: uppercase;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.home-pill:hover,
+.home-pill:focus-visible {
+  background: var(--bluecore-blue-dark);
+}
+
+/* section title between two dotted lines */
+.home-heading {
+  display: flex;
+  align-items: center;
+  gap: 78px;
+  margin: 0;
+  padding: 0 50px;
+  font-size: 30px;
+  font-weight: 700;
+  line-height: 24px;
+  color: var(--home-heading);
+  text-align: center;
+  white-space: nowrap;
+}
+
+.home-heading::before,
+.home-heading::after {
+  content: '';
+  flex: 1 1 426px;
+  height: 1px;
+  background: url('heading-line.svg') no-repeat center / 100% 1px;
+}
+
+.home-section {
+  padding-top: 102px;
+}
+
+/* ---------------------------------------------------------------------------
+   Search band under the hero
+   ------------------------------------------------------------------------- */
+
+.home-search {
+  display: block;
+  background: var(--home-search-band);
+}
+
+.home-search form {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 44px;
+  min-height: 72px;
+  padding: 0 16px;
+}
+
+.home-search label {
+  flex: none;
+  font-size: 20px;
+  font-weight: 400;
+  line-height: 24px;
+  color: #ffffff;
+}
+
+.home-search-field {
+  position: relative;
+  flex: 0 1 671px;
+  min-width: 0;
+}
+
+.home-search input {
+  box-sizing: border-box;
+  width: 100%;
+  height: 36px;
+  margin: 0;
+  padding: 0 80px 0 12px;
+  border: 1px solid var(--home-search-border);
+  border-radius: 2px;
+  background: #ffffff;
+  font: inherit;
+  font-size: 16px;
+  font-weight: 400;
+  color: #000000;
+}
+
+.home-search button {
+  position: absolute;
+  top: 6px;
+  right: 4px;
+  height: 24px;
+  padding: 0 6px;
+  border: 1px solid #006cb8;
+  border-radius: 4px;
+  background: var(--bluecore-blue);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 20px;
+  color: #ffffff;
+  cursor: pointer;
+}
+
+.home-search button:hover,
+.home-search button:focus-visible {
+  background: var(--bluecore-blue-dark);
+}
+
+.home-search input:focus-visible,
+.home-search button:focus-visible {
+  outline: 2px solid #ffffff;
+  outline-offset: 1px;
+}
+
+/* ---------------------------------------------------------------------------
+   Welcome / login (above the fold)
+   ------------------------------------------------------------------------- */
+
+.home-hero {
+  padding: 53px 0 41px;
+  background: #011d45 url('hero.png') center / cover no-repeat;
+}
+
+.home-hero-band {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 506px 68px;
+  min-height: 575px;
+}
+
+.home-welcome,
+.home-hero-edge {
+  background: var(--home-hero-panel);
+  backdrop-filter: blur(4.5px);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.25);
+}
+
+.home-welcome {
+  box-sizing: border-box;
+  padding: 50px 40px 40px 99px;
+  color: #ffffff;
+}
+
+.home-welcome h1 {
+  margin: 0 0 4px;
+  font-size: 50px;
+  font-weight: 100;
+  line-height: 50px;
+}
+
+.home-welcome-tagline,
+.home-welcome-text {
+  max-width: 649px;
+  margin: 0;
+  font-size: 16px;
+  line-height: 24px;
+}
+
+.home-welcome-text {
+  margin-top: 48px;
+}
+
+.home-partners {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 40px 42px;
+  max-width: 651px;
+  margin: 44px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.home-partners a {
+  display: block;
+}
+
+.home-partners img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  object-fit: contain;
+}
+
+.home-login {
+  box-sizing: border-box;
+  padding: 57px 40px 40px 66px;
+  background: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(5px);
+  box-shadow: 0 10px 10px rgba(0, 0, 0, 0.25);
+  color: var(--home-navy);
+}
+
+/* lets the Welcome back card keep Logout at the bottom */
+.home-login {
+  display: flex;
+  flex-direction: column;
+}
+
+/* only one of: login, reset password, or Welcome back */
+.home-login-view {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.home-login-view[hidden] {
+  display: none;
+}
+
+/* hidden until we know if the user is logged in (stops the login form flashing) */
+.home-login[aria-busy='true'] .home-login-view {
+  visibility: hidden;
+}
+
+.home-login h2 {
+  margin: 0 0 50px;
+  font-size: 28px;
+  font-weight: 300;
+  line-height: 30px;
+}
+
+.home-login label {
+  margin-bottom: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 24px;
+  letter-spacing: 0.28px;
+  text-transform: uppercase;
+}
+
+.home-login input,
+.home-login select {
+  box-sizing: border-box;
+  width: 377px;
+  max-width: 100%;
+  height: 40px;
+  margin: 0;
+  padding: 0 14px;
+  border: 1px solid var(--home-input-border);
+  border-radius: 1px;
+  background: #ffffff;
+  font: inherit;
+  font-size: 16px;
+  font-weight: 400;
+  letter-spacing: 0.32px;
+  color: #000000;
+}
+
+.home-login input:focus-visible,
+.home-login select:focus-visible,
+.home-login-reveal:focus-visible {
+  outline: 2px solid var(--bluecore-blue);
+  outline-offset: 1px;
+}
+
+.home-login input[aria-invalid='true'] {
+  border-color: var(--home-error);
+}
+
+.home-login-view > input {
+  margin-bottom: 29px;
+}
+
+.home-login-intro {
+  max-width: 377px;
+  margin: -30px 0 30px;
+  font-size: 16px;
+  line-height: 24px;
+  color: #000000;
+}
+
+.home-signed-in-name {
+  overflow-wrap: anywhere;
+}
+
+/* Welcome back card */
+#home-signed-in {
+  flex: 1;
+}
+
+#home-signed-in h2 {
+  margin-bottom: 35px;
+}
+
+#home-signed-in .home-login-intro {
+  margin: 0 0 29px;
+}
+
+.home-signed-in-apps {
+  margin: 0;
+  padding: 0 0 0 30px;
+  font-size: 20px;
+  font-weight: 400;
+  line-height: 35px;
+  letter-spacing: 0.4px;
+  margin-bottom: 40px;
+  list-style: disc;
+  color: var(--bluecore-blue);
+}
+
+.home-signed-in-apps li::marker {
+  font-size: 14px;
+}
+
+.home-signed-in-logout {
+  width: 370px;
+  max-width: 100%;
+  margin: auto 0 0 7px;
+}
+
+.home-login-password,
+.home-login-select {
+  position: relative;
+  width: 377px;
+  max-width: 100%;
+}
+
+.home-login-password input {
+  padding-right: 48px;
+}
+
+.home-login-reveal {
+  position: absolute;
+  top: 0;
+  right: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 40px;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+}
+
+.home-login-reveal img {
+  display: block;
+}
+
+.home-login-reveal[aria-pressed='true'] img {
+  opacity: 0.45;
+}
+
+.home-login-forgot {
+  align-self: flex-end;
+  color: var(--bluecore-blue);
+  /* right edge lines up with the inputs */
+  margin: 6px max(0px, calc(100% - 377px)) 9px 0;
+  font-size: 14px;
+  letter-spacing: 0.28px;
+}
+
+.home-login-select select {
+  padding-right: 48px;
+  appearance: none;
+  cursor: pointer;
+}
+
+.home-login-select img {
+  position: absolute;
+  top: 50%;
+  right: 16px;
+  transform: translateY(-50%);
+  pointer-events: none;
+}
+
+.home-login-error {
+  width: 377px;
+  max-width: 100%;
+  margin: 12px 0 -12px;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 20px;
+  color: var(--home-error);
+}
+
+.home-login-submit,
+.home-reset-submit {
+  width: 370px;
+  max-width: 100%;
+  margin: 39px 0 0 7px;
+}
+
+.home-reset-submit {
+  margin-top: 10px;
+}
+
+.home-login-submit[aria-busy='true'],
+.home-reset-submit[aria-busy='true'] {
+  cursor: progress;
+  opacity: 0.75;
+}
+
+.home-login-contact {
+  align-self: stretch;
+  max-width: 384px;
+  margin: 39px 0 0;
+  font-size: 16px;
+  line-height: 24px;
+  color: #000000;
+  text-align: center;
+}
+
+.home-login-contact a {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: 40px;
+}
+
+.home-login-contact img {
+  display: block;
+}
+
+/* reset password result message */
+.home-reset-message {
+  width: 377px;
+  max-width: 100%;
+  margin: 0 0 10px;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 20px;
+  color: var(--home-navy);
+}
+
+.home-reset-message.is-error {
+  color: var(--home-error);
+}
+
+.home-login-back {
+  align-self: center;
+  margin: 30px 0 0;
+  font-size: 16px;
+}
+
+/* ---------------------------------------------------------------------------
+   Applications
+   ------------------------------------------------------------------------- */
+
+.home-section#applications {
+  padding-top: 130px;
+  /* same landing spot as the other sections */
+  scroll-margin-top: calc(var(--bluecore-header-height, 0px) - 78px);
+}
+
+.home-app-groups {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 657px));
+  justify-content: center;
+  gap: 24px;
+  margin-top: 78px;
+  padding: 0 50px;
+}
+
+.home-app-group {
+  box-sizing: border-box;
+  min-height: 560px;
+  padding: 35px 0 40px;
+  border-radius: 5px;
+  background: var(--home-card);
+}
+
+.home-app-group-dev {
+  background: rgba(235, 247, 255, 0.55);
+}
+
+.home-app-group h3 {
+  margin: 0;
+  padding: 0 27px;
+  font-size: 28px;
+  font-weight: 400;
+  line-height: 30px;
+  text-transform: uppercase;
+}
+
+/* the white strip under each group's title */
+.home-app-group h3::after {
+  content: '';
+  display: block;
+  height: 10px;
+  margin: -5px -27px 0;
+  background: rgba(255, 255, 255, 0.6);
+}
+
+.home-app-group-dev h3::after {
+  background: rgba(255, 255, 255, 0.8);
+}
+
+.home-app-group ul {
+  margin: 47px 0 0;
+  padding: 0 27px 0 26px;
+  list-style: none;
+}
+
+/* dotted divider between apps */
+.home-app-group li + li {
+  margin-top: 40px;
+  padding-top: 40px;
+  background: url('card-divider.svg') no-repeat 156px 0 / 304px 1px;
+}
+
+.home-app {
+  display: grid;
+  grid-template-columns: 56px minmax(0, 1fr);
+  column-gap: 0;
+  align-items: start;
+  color: #000000;
+  text-decoration: none;
+}
+
+.home-app-icon {
+  grid-row: 1 / span 3;
+  position: relative;
+  display: block;
+  margin-top: 2px;
+}
+
+.home-app-icon img {
+  display: block;
+}
+
+/* edit and workflows icons are two images stacked */
+.home-icon-edit {
+  width: 33px;
+  height: 33px;
+}
+
+.home-icon-edit img,
+.home-icon-workflows img {
+  position: absolute;
+}
+
+.home-icon-edit-box {
+  top: 1px;
+  left: 0;
+}
+
+.home-icon-edit-pen {
+  top: 0;
+  left: 7px;
+}
+
+.home-icon-workflows {
+  width: 38px;
+  height: 32px;
+}
+
+.home-icon-workflows-arrows {
+  top: 4px;
+  left: 0;
+}
+
+.home-icon-workflows-heads {
+  top: 0;
+  left: 31px;
+}
+
+.home-icon-keycloak {
+  margin: -8px 0 0 -1px;
+  opacity: 0.8;
+}
+
+.home-app-name {
+  font-size: 40px;
+  font-weight: 700;
+  line-height: 44px;
+}
+
+.home-app-name-caps {
+  text-transform: uppercase;
+}
+
+.home-app-sub {
+  font-size: 20px;
+  line-height: 30px;
+}
+
+.home-app .version {
+  font-size: 13px;
+  line-height: 20px;
+  color: var(--bluecore-blue-light);
+}
+
+.home-app .version:empty {
+  display: none;
+}
+
+.home-app:hover .home-app-name,
+.home-app:focus-visible .home-app-name {
+  color: var(--bluecore-blue);
+  text-decoration: underline dotted;
+  text-underline-offset: 6px;
+}
+
+/* set by health.js when an app is down */
+.home-app.unavailable {
+  opacity: 0.45;
+}
+
+.home-app.unavailable .home-app-sub::after {
+  content: ' (currently unavailable)';
+}
+
+/* ---------------------------------------------------------------------------
+   Community
+   ------------------------------------------------------------------------- */
+
+/* centered text with the button underneath */
+.home-community {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  max-width: 1137px;
+  margin: 47px auto 0;
+  padding: 0 50px;
+}
+
+.home-community-text p {
+  margin: 0 0 30px;
+  font-size: 20px;
+  line-height: 30px;
+}
+
+.home-community-text p:last-child {
+  margin-bottom: 0;
+}
+
+.home-community-button {
+  width: 572px;
+  max-width: 100%;
+  height: auto;
+  min-height: 36px;
+  margin-top: 47px;
+  line-height: 24px;
+  padding: 6px 16px;
+}
+
+/* ---------------------------------------------------------------------------
+   About Blue Core
+   ------------------------------------------------------------------------- */
+
+.home-about {
+  display: flex;
+  justify-content: space-between;
+  gap: 60px;
+  max-width: 1440px;
+  box-sizing: border-box;
+  margin: 73px auto 0;
+  padding: 0 80px 89px 91px;
+}
+
+.home-about-text {
+  max-width: 737px;
+}
+
+.home-about-text h3 {
+  margin: 0 0 6px;
+  font-size: 28px;
+  font-weight: 400;
+  line-height: 30px;
+  text-transform: uppercase;
+}
+
+.home-about-text p {
+  margin: 0;
+  font-size: 20px;
+  line-height: 30px;
+}
+
+.home-about-text p + h3 {
+  margin-top: 84px;
+}
+
+/* timeline: years alternate right and left of the line */
+.home-timeline {
+  --timeline-arrow: 102.333px;
+  flex: none;
+  display: grid;
+  grid-template-columns: 160px 10px 190px;
+  grid-auto-rows: 140px;
+  margin: 34px 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: 20px;
+  line-height: 30px;
+}
+
+.home-timeline::before {
+  content: '';
+  grid-column: 2;
+  grid-row: 1 / span 5;
+  margin: 14px 0 21px;
+  background: var(--bluecore-blue);
+}
+
+.home-timeline li {
+  display: grid;
+  grid-template-columns: auto auto;
+  grid-template-rows: 30px auto;
+  align-content: start;
+  align-items: center;
+}
+
+.home-timeline li:nth-child(odd) {
+  grid-column: 3;
+  grid-template-columns: calc(var(--timeline-arrow) + 14px) auto;
+  justify-content: start;
+}
+
+/* fixed-width arrow slot, so long labels can't pull the arrow off the line */
+.home-timeline li:nth-child(even) {
+  grid-column: 1;
+  grid-template-columns: auto calc(var(--timeline-arrow) + 14px);
+  justify-content: end;
+}
+
+.home-timeline li:nth-child(1) { grid-row: 1; }
+.home-timeline li:nth-child(2) { grid-row: 2; }
+.home-timeline li:nth-child(3) { grid-row: 3; }
+.home-timeline li:nth-child(4) { grid-row: 4; }
+.home-timeline li:nth-child(5) { grid-row: 5; }
+
+/* line out to each year */
+.home-timeline li::before {
+  content: '';
+  grid-row: 1;
+  width: var(--timeline-arrow);
+  height: 10.667px;
+  background: url('timeline-arrow.svg') no-repeat center / 100% 100%;
+}
+
+.home-timeline li:nth-child(odd)::before {
+  grid-column: 1;
+  margin-right: 14px;
+}
+
+/* first year's line runs across the top of the main line */
+.home-timeline li:first-child::before {
+  width: calc(var(--timeline-arrow) + 10px);
+  margin-left: -10px;
+  background:
+    url('timeline-arrow.svg') no-repeat right center / var(--timeline-arrow) 100%,
+    linear-gradient(#15489b, #15489b) no-repeat left center / 10px 2px;
+}
+
+.home-timeline li:nth-child(even)::before {
+  grid-column: 2;
+  margin-left: 14px;
+  transform: rotate(180deg);
+}
+
+.home-timeline-year {
+  grid-row: 1;
+}
+
+.home-timeline li:nth-child(odd) .home-timeline-year {
+  grid-column: 2;
+}
+
+.home-timeline li:nth-child(even) .home-timeline-year {
+  grid-column: 1;
+}
+
+.home-timeline-label {
+  grid-row: 2;
+  grid-column: 1 / -1;
+  margin-top: 6px;
+}
+
+.home-timeline li:nth-child(odd) .home-timeline-label {
+  padding-left: 24px;
+  max-width: 160px;
+}
+
+.home-timeline li:nth-child(even) .home-timeline-label {
+  padding-right: 18px;
+  text-align: right;
+}
+
+/* ---------------------------------------------------------------------------
+   Narrower screens
+   ------------------------------------------------------------------------- */
+
+@media (max-width: 1200px) {
+  .home-hero-band {
+    grid-template-columns: minmax(0, 1fr) 460px;
+  }
+
+  .home-hero-edge {
+    display: none;
+  }
+
+  .home-welcome {
+    padding-left: 48px;
+  }
+
+  .home-login {
+    padding-left: 40px;
+  }
+
+  .home-about {
+    padding-left: 50px;
+    padding-right: 50px;
+  }
+}
+
+@media (max-width: 960px) {
+  .home-hero {
+    padding: 0;
+  }
+
+  .home-hero-band {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  /* login card on its own row: keep it a card, centered on the hero image */
+  .home-hero-band {
+    padding-bottom: 40px;
+  }
+
+  .home-login {
+    justify-self: center;
+    width: calc(100% - 32px);
+    max-width: 506px;
+    margin-top: 40px;
+    padding: 48px 40px 40px;
+  }
+
+  .home-login-view {
+    box-sizing: border-box;
+    width: 100%;
+    max-width: 384px;
+    margin: 0 auto;
+  }
+
+  .home-app-groups {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .home-app-group {
+    min-height: 0;
+  }
+
+  .home-about {
+    flex-direction: column;
+    align-items: center;
+  }
+}
+
+@media (max-width: 600px) {
+  /* search label above the field */
+  .home-search form {
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 14px 16px 18px;
+  }
+
+  .home-search label {
+    flex-basis: 100%;
+  }
+
+  .home-search-field {
+    flex: 1 1 100%;
+  }
+
+  .home-section#applications {
+    padding-top: 80px;
+    scroll-margin-top: calc(var(--bluecore-header-height, 0px) - 28px);
+  }
+
+  .home-heading {
+    gap: 16px;
+    padding: 0 16px;
+    font-size: 24px;
+    white-space: normal;
+  }
+
+  .home-heading::before,
+  .home-heading::after {
+    flex-basis: 24px;
+  }
+
+  .home-welcome {
+    padding: 32px 16px;
+  }
+
+  .home-login {
+    margin-top: 24px;
+    padding: 32px 20px;
+  }
+
+  .home-welcome h1 {
+    font-size: 38px;
+    line-height: 42px;
+  }
+
+  .home-login h2 {
+    margin-bottom: 24px;
+  }
+
+  .home-login-submit,
+  .home-reset-submit,
+  .home-signed-in-logout {
+    margin-left: 0;
+  }
+
+  .home-login-contact a {
+    margin-left: 8px;
+  }
+
+  .home-app-groups,
+  .home-community,
+  .home-about {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+
+  .home-app-group ul {
+    padding: 0 16px;
+  }
+
+  .home-app-group li + li {
+    background-position: center 0;
+    background-size: 70% 1px;
+  }
+
+  .home-app-name {
+    font-size: 30px;
+    line-height: 36px;
+  }
+
+  .home-timeline {
+    --timeline-arrow: 70px;
+    grid-template-columns: 130px 10px 150px;
+    font-size: 17px;
+  }
+}
