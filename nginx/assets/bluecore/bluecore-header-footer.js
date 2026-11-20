@@ -1,33 +1,41 @@
-// Blue Core header and footer, as custom elements, for every Blue Core app served from this
-// host: the static pages (e.g. /marva-login/) and apps such as the DCTap Dancer.
+// Shared Blue Core header and footer for every app.
 //
 //   <script src="/assets/bluecore/bluecore-header-footer.js"></script>   (in <head>, no defer)
 //   <bluecore-header app-name="MARVA" current-app="marva"></bluecore-header>
 //   <bluecore-footer></bluecore-footer>
 //
+// Two looks:
+//   default          the apps (Marva, Dancer, Airflow): app name, Contact, app menu
+//   variant="home"   the homepage: Applications / Community / About, Partners in the footer
+// The logo always links to the homepage.
+//
 // <bluecore-header> attributes:
-//   app-name     the name after the logo
-//   current-app  an id from APPS below, left out of the "Switch applications" menu
-//   username     shows "Signed in as <username>"
-//   logout       shows a Logout button, which fires a `bluecore-logout` event (bubbles) for
-//                the app to handle, e.g. header.addEventListener('bluecore-logout', ...)
-//   slim         compact one-row version that keeps more vertical space for editing
+//   app-name      name shown after the logo
+//   current-app   app to leave out of the "Switch applications" menu
+//   username      shows "Signed in as <username>"
+//   logout        shows Logout; clicking it fires a `bluecore-logout` event
+//   slim          smaller one-row header
+//   links         JSON [{label, href}]: extra links (app) or replaces the section links (home)
+//   home-href     homepage URL (default "/")
+//   variant       "home" for the homepage look
+//   contact       home only: add the Contact link
+//   app-switcher  home only: add the "Switch applications" menu
 // <bluecore-footer> attributes:
-//   slim         compact one-row version
+//   slim          smaller one-row footer
+//   home-href     homepage URL (default "/")
+//   variant       "home" for the homepage look
+//   sections      home only: JSON [{heading, links: [{label, href}]}] (default Partners, Community)
 //
-// Changing an attribute re-renders the element. While shown, each element sets its height on
-// :root as --bluecore-header-height / --bluecore-footer-height (borders included), so an app
-// can size its full-height views to fit between them.
-//
-// The script also loads bluecore-header-footer.css (next to it). Loading it in <head> without
-// defer lets the elements render as the page is parsed rather than popping in afterwards; an
-// app can also add the script itself and create the elements once it has loaded.
+// The header (and the apps' footer) stick to the window. Each element keeps its height in
+// --bluecore-header-height / --bluecore-footer-height so apps can fit between them.
+// The matching CSS file is loaded automatically.
 (function () {
   if (customElements.get('bluecore-header')) return;
 
   var BASE = new URL('.', document.currentScript.src).href;
 
   var CONTACT_URL = 'mailto:contact@bluecore.info';
+  var HOME_URL = '/';
 
   var APPS = [
     { id: 'search', label: 'Search', href: '/api/search' },
@@ -39,10 +47,40 @@
     { id: 'workflows', label: 'Workflows', href: '/workflows/' },
   ];
 
-  // Pixel heights (borders included) and logo widths, full and slim
+  // homepage header links
+  var NAV_SECTIONS = [
+    { label: 'Applications', hash: '#applications' },
+    { label: 'Community', hash: '#community' },
+    { label: 'About', hash: '#about' },
+  ];
+
+  // homepage footer link columns
+  var SECTIONS = [
+    {
+      heading: 'Partners',
+      links: [
+        { label: 'Cornell University Library', href: 'https://www.library.cornell.edu/' },
+        { label: 'Stanford University Libraries', href: 'https://library.stanford.edu/' },
+        { label: 'Library of Congress', href: 'https://www.loc.gov/' },
+        { label: 'University of California Davis Library', href: 'https://library.ucdavis.edu/' },
+        { label: 'University of Pennsylvania Library', href: 'https://www.library.upenn.edu/' },
+      ],
+    },
+    {
+      heading: 'Community',
+      links: [
+        { label: 'Publications', href: 'https://bluecore.info/publications' },
+        { label: 'Presentations', href: 'https://bluecore.info/presentations' },
+        { label: 'Events', href: 'https://bluecore.info/' },
+      ],
+    },
+  ];
+
+  // heights and logo widths (homepage heights are minimums)
   var SIZES = {
     full: { header: 57, footer: 157, headerLogo: 177, footerLogo: 163 },
     slim: { header: 23, footer: 23, headerLogo: 93, footerLogo: 70 },
+    home: { header: 57, footer: 221, headerLogo: 177, footerLogo: 163 },
   };
 
   // The logo's vector pieces: [file, top, right, bottom, left] insets in percent, from Figma
@@ -75,13 +113,45 @@
     });
   }
 
+  // read a JSON list attribute (null if it isn't valid)
+  function jsonArrayAttribute(element, name) {
+    var raw = element.getAttribute(name);
+    if (!raw) return null;
+    try {
+      var value = JSON.parse(raw);
+      if (Array.isArray(value)) return value;
+    } catch (e) {
+      // reported below
+    }
+    console.warn('<' + element.localName + '>: ' + name + ' is not a JSON array');
+    return null;
+  }
+
+  function isLink(link) {
+    return Boolean(link) && typeof link.label === 'string' && typeof link.href === 'string';
+  }
+
+  // Links off this site open in a new tab
+  function linkHtml(link, className) {
+    var external = /^https?:\/\//.test(link.href) && new URL(link.href).origin !== window.location.origin;
+    return '<a class="' + className + '" href="' + escapeHtml(link.href) + '"' +
+      (external ? ' target="_blank" rel="noopener"' : '') + '>' + escapeHtml(link.label) + '</a>';
+  }
+
+  // logo, linking to the homepage
+  function homeLogoHtml(element, width, extraClass) {
+    var href = element.getAttribute('home-href') || HOME_URL;
+    return '<a class="bluecore-home-link' + (extraClass ? ' ' + extraClass : '') + '" href="' + escapeHtml(href) +
+      '" aria-label="Blue Core home">' + logoHtml(width) + '</a>';
+  }
+
   function logoHtml(width, extraClass) {
     var parts = LOGO_PARTS.map(function (p) {
       return '<span class="bluecore-logo-part" data-part="' + p[0] + '" style="top:' + p[1] + '%;right:' + p[2] +
         '%;bottom:' + p[3] + '%;left:' + p[4] + '%"><img src="' + BASE + 'logo/' + p[0] + '.svg" alt=""/></span>';
     }).join('');
     return '<span class="bluecore-logo' + (extraClass ? ' ' + extraClass : '') +
-      '" role="img" aria-label="Blue Core" style="width:' + width + 'px">' + parts + '</span>';
+      '" aria-hidden="true" style="width:' + width + 'px">' + parts + '</span>';
   }
 
   function setRootHeight(name, px) {
@@ -97,24 +167,50 @@
   class BluecoreElement extends HTMLElement {
     connectedCallback() {
       this.render();
+      // homepage header/footer get taller when they wrap; keep the height variable right
+      if (window.ResizeObserver && !this.resizeObserver) {
+        var self = this;
+        this.resizeObserver = new ResizeObserver(function () { self.updateHeight(); });
+        this.resizeObserver.observe(this);
+      }
     }
 
     disconnectedCallback() {
+      if (this.resizeObserver) {
+        this.resizeObserver.disconnect();
+        this.resizeObserver = null;
+      }
       setRootHeight(this.heightVar, null);
+    }
+
+    updateHeight() {
+      var bar = this.firstElementChild;
+      if (bar && this.isConnected) setRootHeight(this.heightVar, Math.round(bar.getBoundingClientRect().height));
     }
 
     attributeChangedCallback() {
       if (this.isConnected) this.render();
     }
 
+    isHome() {
+      return this.getAttribute('variant') === 'home';
+    }
+
     sizes() {
-      return this.hasAttribute('slim') ? SIZES.slim : SIZES.full;
+      if (this.hasAttribute('slim')) return SIZES.slim;
+      return this.isHome() ? SIZES.home : SIZES.full;
+    }
+
+    // apps: fixed height; homepage: at least this tall
+    heightStyle(px) {
+      return (this.isHome() && !this.hasAttribute('slim') ? 'min-height:' : 'height:') + px + 'px';
     }
   }
 
   class BluecoreHeader extends BluecoreElement {
     static get observedAttributes() {
-      return ['app-name', 'current-app', 'username', 'logout', 'slim'];
+      return ['app-name', 'current-app', 'username', 'logout', 'slim', 'links', 'home-href', 'variant', 'contact',
+        'app-switcher'];
     }
 
     constructor() {
@@ -136,43 +232,72 @@
       document.removeEventListener('keydown', this.onKeydown);
     }
 
-    render() {
-      var sizes = this.sizes();
-      var slim = this.hasAttribute('slim');
+    // the `links` attribute, or the homepage section links
+    navLinks() {
+      var links = jsonArrayAttribute(this, 'links');
+      if (links) return links.filter(isLink);
+      if (!this.isHome()) return [];
+      var home = this.getAttribute('home-href') || HOME_URL;
+      return NAV_SECTIONS.map(function (section) {
+        return { label: section.label, href: home + section.hash };
+      });
+    }
+
+    appSwitcherHtml() {
       var currentApp = this.getAttribute('current-app');
-      var username = this.getAttribute('username');
       var menuItems = APPS.filter(function (app) { return app.id !== currentApp; }).map(function (app) {
         return '<li><a href="' + app.href + '">' + escapeHtml(app.label) + '</a></li>';
       }).join('');
+      return '<div class="bluecore-app-switcher">' +
+        '<button type="button" class="bluecore-link bluecore-app-switcher-button" aria-haspopup="true"' +
+          ' aria-expanded="false" aria-controls="bluecore-app-menu">' +
+          '<span class="bluecore-app-switcher-label">Switch applications</span>' +
+          '<img class="bluecore-app-switcher-caret" src="' + BASE + 'caret-down.svg" alt=""/></button>' +
+        '<ul id="bluecore-app-menu" class="bluecore-app-menu" hidden>' + menuItems + '</ul>' +
+      '</div>';
+    }
+
+    render() {
+      var sizes = this.sizes();
+      var slim = this.hasAttribute('slim');
+      var home = this.isHome();
+      var appName = this.getAttribute('app-name');
+      var username = this.getAttribute('username');
+      var navLinks = this.navLinks().map(function (link) {
+        return linkHtml(link, 'bluecore-link bluecore-header-nav-link');
+      }).join('');
+      // apps always get Contact and the app menu; the homepage only if asked
+      var contact = !home || this.hasAttribute('contact');
+      var appSwitcher = !home || this.hasAttribute('app-switcher');
 
       this.innerHTML =
-        '<header class="bluecore-header' + (slim ? ' bluecore-header-slim' : '') + '" style="height:' + sizes.header + 'px">' +
+        '<header class="bluecore-header' + (slim ? ' bluecore-header-slim' : '') + (home ? ' bluecore-header-home' : '') +
+          '" style="' + this.heightStyle(sizes.header) + '">' +
           '<div class="bluecore-header-brand">' +
-            logoHtml(sizes.headerLogo) +
-            '<span class="bluecore-header-app-name"><span class="bluecore-header-divider" aria-hidden="true">|</span>' +
-              escapeHtml(this.getAttribute('app-name') || '') + '</span>' +
+            homeLogoHtml(this, sizes.headerLogo) +
+            (appName ? '<span class="bluecore-header-app-name"><span class="bluecore-header-divider" aria-hidden="true">|</span>' +
+              escapeHtml(appName) + '</span>' : '') +
           '</div>' +
           '<nav class="bluecore-header-links" aria-label="Blue Core">' +
             (username ? '<span class="bluecore-header-user">Signed in as <strong>' + escapeHtml(username) + '</strong></span>' : '') +
-            '<a class="bluecore-link" href="' + CONTACT_URL + '">Contact</a>' +
-            '<div class="bluecore-app-switcher">' +
-              '<button type="button" class="bluecore-link bluecore-app-switcher-button" aria-haspopup="true"' +
-                ' aria-expanded="false" aria-controls="bluecore-app-menu">Switch applications' +
-                '<img class="bluecore-app-switcher-caret" src="' + BASE + 'caret-down.svg" alt=""/></button>' +
-              '<ul id="bluecore-app-menu" class="bluecore-app-menu" hidden>' + menuItems + '</ul>' +
-            '</div>' +
+            navLinks +
+            (contact ? '<a class="bluecore-link" href="' + CONTACT_URL + '">Contact</a>' : '') +
+            (appSwitcher ? this.appSwitcherHtml() : '') +
             (this.hasAttribute('logout') ? '<button type="button" class="bluecore-link bluecore-logout-button">Logout</button>' : '') +
           '</nav>' +
         '</header>';
       setRootHeight(this.heightVar, sizes.header);
 
       var self = this;
-      this.querySelector('.bluecore-app-switcher-button').addEventListener('click', function () {
-        self.setMenuOpen(self.querySelector('.bluecore-app-menu').hidden);
-      });
-      this.querySelector('.bluecore-app-menu').addEventListener('click', function (event) {
-        if (event.target.closest('a')) self.setMenuOpen(false);
-      });
+      var switcherButton = this.querySelector('.bluecore-app-switcher-button');
+      if (switcherButton) {
+        switcherButton.addEventListener('click', function () {
+          self.setMenuOpen(self.querySelector('.bluecore-app-menu').hidden);
+        });
+        this.querySelector('.bluecore-app-menu').addEventListener('click', function (event) {
+          if (event.target.closest('a')) self.setMenuOpen(false);
+        });
+      }
       var logout = this.querySelector('.bluecore-logout-button');
       if (logout) {
         logout.addEventListener('click', function () {
@@ -209,7 +334,7 @@
 
   class BluecoreFooter extends BluecoreElement {
     static get observedAttributes() {
-      return ['slim'];
+      return ['slim', 'home-href', 'variant', 'sections'];
     }
 
     constructor() {
@@ -217,16 +342,29 @@
       this.heightVar = '--bluecore-footer-height';
     }
 
+    // the `sections` attribute, or the default columns
+    sections() {
+      var sections = jsonArrayAttribute(this, 'sections') || SECTIONS;
+      return sections.filter(function (section) {
+        return section && typeof section.heading === 'string' && Array.isArray(section.links);
+      });
+    }
+
     render() {
       var sizes = this.sizes();
+      this.innerHTML = this.isHome() && !this.hasAttribute('slim') ? this.homeHtml(sizes) : this.appHtml(sizes);
+      setRootHeight(this.heightVar, sizes.footer);
+    }
+
+    // logo, Contact us, then every Blue Core app
+    appHtml(sizes) {
       var slim = this.hasAttribute('slim');
       var appLinks = APPS.map(function (app) {
         return '<li><a class="bluecore-link" href="' + app.href + '">' + escapeHtml(app.label) + '</a></li>';
       }).join('');
-
-      this.innerHTML =
-        '<footer class="bluecore-footer' + (slim ? ' bluecore-footer-slim' : '') + '" style="height:' + sizes.footer + 'px">' +
-          logoHtml(sizes.footerLogo, 'bluecore-footer-logo') +
+      return '<footer class="bluecore-footer' + (slim ? ' bluecore-footer-slim' : '') + '" style="' +
+          this.heightStyle(sizes.footer) + '">' +
+          homeLogoHtml(this, sizes.footerLogo, 'bluecore-footer-logo') +
           '<a class="bluecore-footer-contact" href="' + CONTACT_URL + '">Contact us</a>' +
           '<div class="bluecore-footer-divider" aria-hidden="true"><img src="' + BASE + 'footer-divider.svg" alt=""/></div>' +
           '<nav class="bluecore-footer-apps" aria-labelledby="bluecore-footer-apps-heading">' +
@@ -234,7 +372,30 @@
             '<ul class="bluecore-footer-app-list">' + appLinks + '</ul>' +
           '</nav>' +
         '</footer>';
-      setRootHeight(this.heightVar, sizes.footer);
+    }
+
+    // homepage: logo, Contact us, then the link columns
+    homeHtml(sizes) {
+      var divider = '<div class="bluecore-footer-home-divider" aria-hidden="true"><img src="' + BASE +
+        'home/footer-divider.svg" alt=""/></div>';
+      var sectionsHtml = this.sections().map(function (section, index) {
+        var id = 'bluecore-footer-section-' + index;
+        var links = section.links.filter(isLink).map(function (link) {
+          return '<li>' + linkHtml(link, 'bluecore-link') + '</li>';
+        }).join('');
+        return divider +
+          '<nav class="bluecore-footer-section" aria-labelledby="' + id + '">' +
+            '<h2 id="' + id + '" class="bluecore-footer-heading">' + escapeHtml(section.heading) + '</h2>' +
+            '<ul class="bluecore-footer-links">' + links + '</ul>' +
+          '</nav>';
+      }).join('');
+      return '<footer class="bluecore-footer bluecore-footer-home" style="' + this.heightStyle(sizes.footer) + '">' +
+          '<div class="bluecore-footer-brand">' +
+            homeLogoHtml(this, sizes.footerLogo, 'bluecore-footer-home-logo') +
+            '<a class="bluecore-footer-home-contact" href="' + CONTACT_URL + '">Contact us</a>' +
+          '</div>' +
+          sectionsHtml +
+        '</footer>';
     }
   }
 

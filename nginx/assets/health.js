@@ -78,7 +78,7 @@ async function probeRow(row) {
 }
 
 function checkServices() {
-  document.querySelectorAll('.row[data-probe]').forEach(probeRow);
+  document.querySelectorAll('[data-probe]').forEach(probeRow);
 }
 
 document.addEventListener('DOMContentLoaded', () => {

@@ -3,108 +3,272 @@
 <head>
     <meta charset="utf-8"/>
     <meta name="viewport" content="width=device-width, initial-scale=1"/>
-    <title>Blue Core · API & Workflows</title>
-    <link rel="stylesheet" href="/assets/styles.css">
+    <title>Blue Core</title>
+    <!-- defines <bluecore-header> and <bluecore-footer>, and loads their CSS -->
+    <script src="/assets/bluecore/bluecore-header-footer.js"></script>
+    <link rel="stylesheet" href="/assets/bluecore/home/home.css">
 </head>
-
 <body>
-<header class="site-header">
-    <div class="container header-inner">
-        <div class="brand">
-            <img src="/assets/bluecore-small.png" alt="Blue Core Logo" class="logo">
-            <span class="sep">|</span>
-            <span class="brand-sub">Platform</span>
+<bluecore-header variant="home"></bluecore-header>
+
+<main>
+    <!-- Welcome / login -->
+    <section class="home-hero" aria-labelledby="home-welcome-heading">
+        <div class="home-hero-band">
+            <div class="home-welcome">
+                <h1 id="home-welcome-heading">Welcome to Blue Core</h1>
+                <p class="home-welcome-tagline">A community-operated, shared BIBFRAME datastore</p>
+                <p class="home-welcome-text">
+                    We aim to create a community-operated BIBFRAME datastore where ownership and creation of the
+                    metadata are shared among member institutions, eliminating the need for duplicative
+                    institutional copies, and bringing library linked open data to production at scale.
+                </p>
+                <ul class="home-partners" aria-label="Partner libraries">
+                    <li><a href="https://www.library.cornell.edu/" target="_blank" rel="noopener">
+                        <img src="/assets/bluecore/home/partners/cornell.png" alt="Cornell University Library" width="201" height="64"></a></li>
+                    <li><a href="https://library.stanford.edu/" target="_blank" rel="noopener">
+                        <img src="/assets/bluecore/home/partners/stanford.png" alt="Stanford University Libraries" width="164" height="50"></a></li>
+                    <li><a href="https://www.loc.gov/" target="_blank" rel="noopener">
+                        <img src="/assets/bluecore/home/partners/library-of-congress.png" alt="Library of Congress" width="201" height="50"></a></li>
+                    <li><a href="https://library.ucdavis.edu/" target="_blank" rel="noopener">
+                        <img src="/assets/bluecore/home/partners/ucdavis.png" alt="University of California Davis Library" width="131" height="38"></a></li>
+                    <li><a href="https://www.library.upenn.edu/" target="_blank" rel="noopener">
+                        <img src="/assets/bluecore/home/partners/penn.png" alt="Penn Libraries, University of Pennsylvania" width="139" height="80"></a></li>
+                </ul>
+            </div>
+
+            <!-- Login / reset password / Welcome back (see home-login.js).
+                 Starts hidden (aria-busy) so the login form doesn't flash. -->
+            <div class="home-login" id="home-login" aria-live="polite" aria-busy="true"
+                 data-keycloak-realm="/keycloak/realms/bluecore"
+                 data-client-id="bluecore_api"
+                 data-redirect-path="/sinopia/">
+
+                <form class="home-login-view" id="home-login-form" novalidate>
+                    <h2>Login to Blue Core applications</h2>
+
+                    <label for="home-login-username">Username / e-mail address</label>
+                    <input id="home-login-username" name="username" type="text" autocomplete="username" required>
+
+                    <label for="home-login-password">Password</label>
+                    <div class="home-login-password">
+                        <input id="home-login-password" name="password" type="password" autocomplete="current-password" required>
+                        <button type="button" class="home-login-reveal" aria-label="Show password" aria-pressed="false">
+                            <img src="/assets/bluecore/home/icons/hide.svg" alt="" width="20" height="15.885">
+                        </button>
+                    </div>
+                    <button type="button" class="bluecore-link home-login-forgot">Forgot password?</button>
+
+                    <label for="home-login-app">Application</label>
+                    <div class="home-login-select">
+                        <select id="home-login-app" name="app">
+                            <option value="/sinopia/">Sinopia</option>
+                            <option value="/marva/">Marva</option>
+                            <option value="/workflows/">Workflows</option>
+                        </select>
+                        <img src="/assets/bluecore/home/icons/select-caret.svg" alt="" width="23" height="13">
+                    </div>
+
+                    <p class="home-login-error" role="alert" hidden></p>
+
+                    <button type="submit" class="home-pill home-login-submit">Login</button>
+
+                    <p class="home-login-contact">
+                        Don’t have a login yet?
+                        <a class="bluecore-link" href="mailto:contact@bluecore.info">
+                            <img src="/assets/bluecore/home/icons/mail.svg" alt="" width="22" height="16">Contact us</a>
+                    </p>
+                </form>
+
+                <form class="home-login-view" id="home-reset-form" novalidate hidden>
+                    <h2>Reset your password</h2>
+                    <p class="home-login-intro">
+                        Enter your username or e-mail address and we’ll e-mail you a link to set a new password.
+                    </p>
+
+                    <label for="home-reset-username">Username / e-mail address</label>
+                    <input id="home-reset-username" name="username" type="text" autocomplete="username" required>
+
+                    <p class="home-reset-message" role="status" hidden></p>
+
+                    <button type="submit" class="home-pill home-reset-submit">Send reset link</button>
+
+                    <button type="button" class="bluecore-link home-login-back">Back to login</button>
+                </form>
+
+                <section class="home-login-view" id="home-signed-in" aria-labelledby="home-signed-in-heading" hidden>
+                    <h2 id="home-signed-in-heading">Welcome back<span class="home-signed-in-name"></span>!</h2>
+                    <p class="home-login-intro">You are logged in to:</p>
+
+                    <ul class="home-signed-in-apps">
+                        <li><a class="bluecore-link" href="/sinopia/">Sinopia</a></li>
+                        <li><a class="bluecore-link" href="/marva/">Marva</a></li>
+                        <li><a class="bluecore-link" href="/toolbox/">Graph Toolbox</a></li>
+                    </ul>
+
+                    <button type="button" class="home-pill home-signed-in-logout">Logout</button>
+
+                    <p class="home-login-contact">
+                        Questions?
+                        <a class="bluecore-link" href="mailto:contact@bluecore.info">
+                            <img src="/assets/bluecore/home/icons/mail.svg" alt="" width="22" height="16">Contact us</a>
+                    </p>
+                </section>
+            </div>
+
+            <div class="home-hero-edge" aria-hidden="true"></div>
         </div>
+    </section>
 
-        <!-- Live gateway status -->
-        <div id="gw-badge" class="status-badge" role="status" aria-live="polite" title="Gateway status">
-            <span class="dot"></span>
-            <span class="label">Checking…</span>
+    <!-- Search (opens the API's search page) -->
+    <search class="home-search">
+        <form action="/api/search" method="get" role="search" aria-label="Search Blue Core">
+            <label for="home-search-q">Search Blue Core</label>
+            <div class="home-search-field">
+                <input id="home-search-q" name="q" type="search" required>
+                <button type="submit">Search</button>
+            </div>
+        </form>
+    </search>
+
+    <!-- Applications -->
+    <section class="home-section" id="applications" aria-labelledby="applications-heading">
+        <h2 class="home-heading" id="applications-heading">Blue Core applications</h2>
+
+        <div class="home-app-groups">
+            <section class="home-app-group" aria-labelledby="catalogers-heading">
+                <h3 id="catalogers-heading">For catalogers</h3>
+                <ul>
+                    <li><a class="home-app" href="/sinopia/" data-probe="/sinopia/health">
+                        <span class="home-app-icon home-icon-edit" aria-hidden="true">
+                            <img class="home-icon-edit-box" src="/assets/bluecore/home/icons/edit-box.svg" alt="" width="32" height="32">
+                            <img class="home-icon-edit-pen" src="/assets/bluecore/home/icons/edit-pen.svg" alt="" width="26" height="27">
+                        </span>
+                        <span class="home-app-name">Sinopia</span>
+                        <span class="home-app-sub">Create and manage BIBFRAME descriptions.</span>
+                        <span class="version"></span>
+                    </a></li>
+                    <li><a class="home-app" href="/marva-login/" data-probe="/marva/health"
+                           data-extra-version-probe="/marva/dancer/api/health" data-extra-version-label="DCTap Version">
+                        <span class="home-app-icon home-icon-edit" aria-hidden="true">
+                            <img class="home-icon-edit-box" src="/assets/bluecore/home/icons/edit-box.svg" alt="" width="32" height="32">
+                            <img class="home-icon-edit-pen" src="/assets/bluecore/home/icons/edit-pen.svg" alt="" width="26" height="27">
+                        </span>
+                        <span class="home-app-name">Marva</span>
+                        <span class="home-app-sub">Create and manage BIBFRAME descriptions.</span>
+                        <span class="version"></span>
+                    </a></li>
+                    <li><a class="home-app" href="/toolbox/" data-probe="/toolbox/">
+                        <span class="home-app-icon" aria-hidden="true">
+                            <img src="/assets/bluecore/home/icons/toolbox.svg" alt="" width="36" height="36">
+                        </span>
+                        <span class="home-app-name">Graph Toolbox</span>
+                        <span class="home-app-sub">Explore, query, and visualize graph data.</span>
+                    </a></li>
+                </ul>
+            </section>
+
+            <section class="home-app-group home-app-group-dev" aria-labelledby="developers-heading">
+                <h3 id="developers-heading">For developers</h3>
+                <ul>
+                    <li><a class="home-app" href="/api/docs" data-probe="/api/health">
+                        <span class="home-app-icon" aria-hidden="true">
+                            <img src="/assets/bluecore/home/icons/api.svg" alt="" width="47" height="32">
+                        </span>
+                        <span class="home-app-name home-app-name-caps">API</span>
+                        <span class="home-app-sub">Blue Core API</span>
+                        <span class="version"></span>
+                    </a></li>
+                    <li><a class="home-app" href="/keycloak/" data-probe="/keycloak/">
+                        <span class="home-app-icon" aria-hidden="true">
+                            <img class="home-icon-keycloak" src="/assets/bluecore/home/icons/keycloak.png" alt="" width="48" height="48">
+                        </span>
+                        <span class="home-app-name home-app-name-caps">Keycloak</span>
+                        <span class="home-app-sub">Manage realms, clients, and identity flows.</span>
+                    </a></li>
+                    <li><a class="home-app" href="/workflows/" data-probe="/workflows/health">
+                        <span class="home-app-icon home-icon-workflows" aria-hidden="true">
+                            <img class="home-icon-workflows-arrows" src="/assets/bluecore/home/icons/workflows-arrows.svg" alt="" width="31" height="24">
+                            <img class="home-icon-workflows-heads" src="/assets/bluecore/home/icons/workflows-heads.svg" alt="" width="7" height="32">
+                        </span>
+                        <span class="home-app-name home-app-name-caps">Workflows</span>
+                        <span class="home-app-sub">Trigger, monitor, and debug pipelines.</span>
+                        <span class="version"></span>
+                    </a></li>
+                </ul>
+            </section>
         </div>
-    </div>
-</header>
+    </section>
 
-<main class="container">
-    <p class="lead">API, identity, workflows, and tools.</p>
+    <!-- Community (text from bluecore.info) -->
+    <section class="home-section" id="community" aria-labelledby="community-heading">
+        <h2 class="home-heading" id="community-heading">Community</h2>
 
-    <nav class="list">
+        <div class="home-community">
+            <div class="home-community-text">
+                <p>
+                    Blue Core is a co-created and co-owned linked data environment. Those who contribute linked data to
+                    Blue Core hold co-ownership over data, and as a part of this co-ownership, there is an agreement
+                    that their participation is an endorsement and also an irrevocable agreement for the linked data
+                    contributed to be perpetually “locked open” in accordance with the Blue Core Vision.
+                </p>
+                <p>
+                    Blue Core will be more successful and able to grow if there are other ways to engage, either as a
+                    prelude to joining the core group or as a long-term arrangement. The shared nature of Blue Core
+                    data means that any contributors or editors follow community norms. Support for the open aspect
+                    requires access mechanisms that nonetheless have resource implications and require a service level
+                    commitment to support production reuse. Finally, institutional and vendor stakeholders may be
+                    engaged with outreach, training, and development whether or not they are data contributors or users.
+                </p>
+            </div>
+            <a class="home-pill home-community-button" href="https://bluecore.info/publications">View publications and presentations</a>
+        </div>
+    </section>
 
-        <a class="row" href="/api/search" data-probe="/api/health">
-            <span class="ic">🔎</span>
-            <span class="txt">
-                <span class="title">Search</span>
-                <span class="sub">Blue Core Search</span>
-                <span class="version"></span>
-            </span>
-            <span class="chev">›</span>
-        </a>
+    <!-- About Blue Core (text from bluecore.info) -->
+    <section class="home-section" id="about" aria-labelledby="about-heading">
+        <h2 class="home-heading" id="about-heading">About Blue Core</h2>
 
-        <a class="row" href="/sinopia/" data-probe="/sinopia/health">
-            <span class="ic">📝</span>
-            <span class="txt">
-                <span class="title">Sinopia</span>
-                <span class="sub">Create and manage BIBFRAME descriptions.</span>
-                <span class="version"></span>
-            </span>
-            <span class="chev">›</span>
-        </a>
+        <div class="home-about">
+            <div class="home-about-text">
+                <h3>Our vision</h3>
+                <p>
+                    We imagine the development of a new library metadata environment with linked data at its core that
+                    is cooperatively shaped and owned, eliminating the need for every institution to establish linked
+                    data tooling locally. This new socio-technical system will be designed from the start to enable
+                    broad and equitable participation. It will avoid the need to copy and synchronize metadata between
+                    systems, other than for downstream uses such as indexing to support searching in local systems, or
+                    seeding operational records for circulation or acquisitions. It will support a clear separation of
+                    shared bibliographic data (e.g. BIBFRAME Works and Instances) from locally managed, institutional
+                    data (holdings and administrative data stored in library service platforms like FOLIO and Alma).
+                </p>
 
-        <a class="row" href="/marva-login/" data-probe="/marva/health"
-           data-extra-version-probe="/marva/dancer/api/health" data-extra-version-label="DCTap Version">
-            <span class="ic">📝</span>
-            <span class="txt">
-                <span class="title">Marva</span>
-                <span class="sub">Create and manage BIBFRAME descriptions.</span>
-                <span class="version"></span>
-            </span>
-            <span class="chev">›</span>
-        </a>
+                <h3>Why the name Blue Core?</h3>
+                <p>
+                    The James Madison Memorial Building at the Library of Congress is the largest library building in
+                    the world. Opened in 1980, it serves as the nation’s official memorial to President James Madison,
+                    and contains several reading rooms and staff areas. The Madison Building is divided into four
+                    “cores”: green, red, yellow, and blue. Doors and accents painted the color of the corresponding core
+                    orient individuals navigating their way through its many corridors. Initial planning phases for the
+                    Blue Core project occurred in the blue core of the Madison Building, and the project name is a nod
+                    to these origins.
+                </p>
+            </div>
 
-        <a class="row" href="/toolbox/" data-probe="/toolbox/">
-            <span class="ic">🧰</span>
-            <span class="txt">
-                <span class="title">Graph Toolbox</span>
-                <span class="sub">Explore, query, and visualize graph data.</span>
-             </span>
-            <span class="chev">›</span>
-        </a>
-
-        <a class="row" href="/api/docs" data-probe="/api/health">
-            <span class="ic">📚</span>
-            <span class="txt">
-                <span class="title">API Endpoints</span>
-                <span class="sub">Blue Core API</span>
-                <span class="version"></span>
-            </span>
-            <span class="chev">›</span>
-        </a>
-
-        <a class="row" href="/keycloak/" data-probe="/keycloak/">
-            <span class="ic">🔐️</span>
-            <span class="txt">
-                <span class="title">Keycloak</span>
-                <span class="sub">Manage realms, clients, and identity flows.</span>
-            </span>
-            <span class="chev">›</span>
-        </a>
-
-        <a class="row" href="/workflows/" data-probe="/workflows/health">
-            <span class="ic">⚙️</span>
-            <span class="txt">
-                <span class="title">Workflows</span>
-                <span class="sub">Trigger, monitor, and debug pipelines.</span>
-                <span class="version"></span>
-            </span>
-            <span class="chev">›</span>
-        </a>
-    </nav>
-
-    <footer class="links">
-        <a href="/api/openapi.json">OpenAPI JSON</a>
-        <a href="/workflows/api/v2/monitor/health">Workflows Health</a>
-    </footer>
+            <ol class="home-timeline" aria-label="Project timeline">
+                <li><span class="home-timeline-year">2023</span><span class="home-timeline-label">The vision begins!</span></li>
+                <li><span class="home-timeline-year">2024</span><span class="home-timeline-label">Planning</span></li>
+                <li><span class="home-timeline-year">2025</span><span class="home-timeline-label">Prototype</span></li>
+                <li><span class="home-timeline-year">2026</span><span class="home-timeline-label">Refine prototype</span></li>
+                <li><span class="home-timeline-year">2027</span><span class="home-timeline-label">Launch minimum viable product</span></li>
+            </ol>
+        </div>
+    </section>
 </main>
 
+<bluecore-footer variant="home"></bluecore-footer>
+
 <script src="/assets/health.js" defer></script>
+<script src="/assets/bluecore/home/home-login.js" defer></script>
 </body>
 </html>

@@ -350,3 +350,428 @@ bluecore-footer {
   font-size: 12px;
   line-height: 18px;
 }
+
+/* header sticks to the top, footer to the bottom */
+bluecore-header {
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+}
+
+bluecore-footer {
+  position: sticky;
+  bottom: 0;
+  z-index: 999;
+}
+
+/* but not the footer on small screens */
+@media (max-height: 700px), (max-width: 980px) {
+  bluecore-footer {
+    position: static;
+  }
+}
+
+/* logo link to the homepage */
+.bluecore-home-link {
+  display: block;
+  flex: none;
+  border-radius: 2px;
+}
+
+.bluecore-home-link:focus-visible {
+  outline: 2px solid var(--bluecore-blue);
+  outline-offset: 3px;
+}
+
+/* ===========================================================================================
+   App header and footer on smaller screens. Heights stay the same (apps like Marva rely
+   on them), except the footer on phones, which grows to fit its wrapping app list.
+   ========================================================================================= */
+
+@media (max-width: 1100px) {
+  .bluecore-footer:not(.bluecore-footer-home):not(.bluecore-footer-slim) {
+    padding-left: 40px;
+  }
+
+  .bluecore-footer:not(.bluecore-footer-home):not(.bluecore-footer-slim) .bluecore-footer-contact {
+    margin-left: 32px;
+  }
+
+  .bluecore-footer:not(.bluecore-footer-home):not(.bluecore-footer-slim) .bluecore-footer-divider {
+    margin-left: 48px;
+  }
+
+  .bluecore-footer:not(.bluecore-footer-home) .bluecore-footer-app-list {
+    column-gap: 24px;
+  }
+}
+
+@media (max-width: 1000px) {
+  /* "Signed in as" hides; Logout stays */
+  .bluecore-header:not(.bluecore-header-home) .bluecore-header-user {
+    display: none;
+  }
+}
+
+@media (max-width: 900px) {
+  .bluecore-header:not(.bluecore-header-home):not(.bluecore-header-slim) {
+    padding: 0 20px 0 16px;
+    align-items: center;
+  }
+
+  .bluecore-header:not(.bluecore-header-home):not(.bluecore-header-slim) .bluecore-header-brand {
+    align-items: center;
+  }
+
+  .bluecore-header:not(.bluecore-header-home):not(.bluecore-header-slim) .bluecore-header-app-name {
+    margin: 0 0 0 16px;
+  }
+
+  .bluecore-header:not(.bluecore-header-home):not(.bluecore-header-slim) .bluecore-header-divider {
+    margin-right: 12px;
+  }
+
+  .bluecore-header:not(.bluecore-header-home) .bluecore-header-links {
+    flex: none;
+    gap: 20px;
+    margin-top: 0;
+    margin-left: 12px;
+  }
+
+  /* a long app name shortens with "…" rather than running into the links */
+  .bluecore-header:not(.bluecore-header-home) .bluecore-header-brand {
+    min-width: 0;
+  }
+
+  .bluecore-header:not(.bluecore-header-home) .bluecore-header-app-name {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  /* logo and Contact us on the left, the app list on the right */
+  .bluecore-footer:not(.bluecore-footer-home):not(.bluecore-footer-slim) {
+    display: grid;
+    grid-template-columns: auto auto minmax(0, 1fr);
+    grid-template-rows: auto 1fr;
+    column-gap: 28px;
+    padding: 0 20px;
+  }
+
+  .bluecore-footer:not(.bluecore-footer-home):not(.bluecore-footer-slim) .bluecore-footer-logo {
+    grid-area: 1 / 1;
+    margin-top: 30px;
+  }
+
+  .bluecore-footer:not(.bluecore-footer-home):not(.bluecore-footer-slim) .bluecore-footer-contact {
+    grid-area: 2 / 1;
+    margin: 16px 0 0;
+  }
+
+  .bluecore-footer:not(.bluecore-footer-home):not(.bluecore-footer-slim) .bluecore-footer-divider {
+    grid-area: 1 / 2 / 3;
+    margin: 42px 0 0;
+  }
+
+  .bluecore-footer:not(.bluecore-footer-home):not(.bluecore-footer-slim) .bluecore-footer-apps {
+    grid-area: 1 / 3 / 3;
+    margin: 20px 0 0;
+  }
+
+  .bluecore-footer:not(.bluecore-footer-home):not(.bluecore-footer-slim) .bluecore-footer-app-list {
+    column-gap: 20px;
+    margin-top: 2px;
+  }
+
+  .bluecore-footer:not(.bluecore-footer-home):not(.bluecore-footer-slim) .bluecore-footer-app-list .bluecore-link {
+    line-height: 26px;
+  }
+
+  /* slim footer: no room for the app list (the header's menu has them) */
+  .bluecore-footer-slim:not(.bluecore-footer-home) .bluecore-footer-divider,
+  .bluecore-footer-slim:not(.bluecore-footer-home) .bluecore-footer-apps {
+    display: none;
+  }
+}
+
+@media (max-width: 640px) {
+  /* Contact hides from the header (the footer has Contact us) */
+  .bluecore-header:not(.bluecore-header-home) .bluecore-header-links > a[href^="mailto:"] {
+    display: none;
+  }
+
+  /* the menu says "Apps" (screen readers still hear "Switch applications") */
+  .bluecore-header:not(.bluecore-header-home) .bluecore-app-switcher-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  .bluecore-header:not(.bluecore-header-home) .bluecore-app-switcher-button::before {
+    content: 'Apps';
+  }
+
+  .bluecore-header:not(.bluecore-header-home):not(.bluecore-header-slim) .bluecore-header-app-name {
+    font-size: 20px;
+  }
+
+  /* footer: logo and Contact us stay left; the app list wraps on the right (the footer grows) */
+  .bluecore-footer:not(.bluecore-footer-home):not(.bluecore-footer-slim) {
+    height: auto !important;
+    min-height: 157px;
+    padding-bottom: 16px;
+  }
+}
+
+@media (max-width: 480px) {
+  /* smaller logo */
+  .bluecore-header:not(.bluecore-header-home):not(.bluecore-header-slim) .bluecore-logo {
+    width: 116px !important;
+  }
+
+  .bluecore-header:not(.bluecore-header-home):not(.bluecore-header-slim) .bluecore-header-app-name {
+    margin-left: 10px;
+    font-size: 17px;
+  }
+
+  .bluecore-header:not(.bluecore-header-home):not(.bluecore-header-slim) .bluecore-header-divider {
+    margin-right: 8px;
+  }
+
+  .bluecore-header:not(.bluecore-header-home) .bluecore-header-links {
+    gap: 14px;
+  }
+
+  .bluecore-header-slim:not(.bluecore-header-home) {
+    padding: 0 8px;
+  }
+
+  .bluecore-footer-slim:not(.bluecore-footer-home) .bluecore-footer-contact {
+    margin-left: 10px;
+  }
+
+  /* smaller logo and Contact us, no divider, to leave room for the app list */
+  .bluecore-footer:not(.bluecore-footer-home):not(.bluecore-footer-slim) {
+    column-gap: 20px;
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+
+  .bluecore-footer:not(.bluecore-footer-home):not(.bluecore-footer-slim) .bluecore-footer-logo .bluecore-logo {
+    width: 130px !important;
+  }
+
+  .bluecore-footer:not(.bluecore-footer-home):not(.bluecore-footer-slim) .bluecore-footer-contact {
+    width: 130px;
+    font-size: 16px;
+  }
+
+  .bluecore-footer:not(.bluecore-footer-home):not(.bluecore-footer-slim) .bluecore-footer-divider {
+    display: none;
+  }
+}
+
+@media (max-width: 360px) {
+  .bluecore-header:not(.bluecore-header-home):not(.bluecore-header-slim) {
+    padding: 0 12px;
+  }
+
+  .bluecore-header:not(.bluecore-header-home):not(.bluecore-header-slim) .bluecore-logo {
+    width: 100px !important;
+  }
+
+  .bluecore-header:not(.bluecore-header-home):not(.bluecore-header-slim) .bluecore-header-app-name {
+    font-size: 15px;
+  }
+}
+
+/* ===========================================================================================
+   Homepage header and footer (variant="home"). Doesn't affect the apps.
+   ========================================================================================= */
+
+/* normal font weight */
+.bluecore-header-home,
+.bluecore-footer-home {
+  font-weight: 400;
+}
+
+/* phones: links wrap under the logo */
+@media (max-width: 760px) {
+  .bluecore-header-home {
+    flex-wrap: wrap;
+    gap: 8px 24px;
+    padding: 10px 16px;
+  }
+
+  .bluecore-header-home .bluecore-header-links {
+    flex-wrap: wrap;
+    gap: 4px 20px;
+    margin-top: 0;
+  }
+}
+
+/* height is set by the JS */
+.bluecore-footer-home {
+  padding-left: 100px;
+  border-top: 0;
+}
+
+/* logo with Contact us under it */
+.bluecore-footer-home .bluecore-footer-brand {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  width: 310px;
+  flex: none;
+}
+
+.bluecore-footer-home-logo {
+  margin: 46px 0 0 3px;
+}
+
+.bluecore-footer-home-contact {
+  box-sizing: border-box;
+  width: 181px;
+  height: 36px;
+  margin-top: 45px;
+  border-radius: 20px;
+  background: var(--bluecore-blue);
+  color: #ffffff;
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 36px;
+  text-align: center;
+  text-decoration: none;
+  flex: none;
+}
+
+.bluecore-footer-home-contact:hover,
+.bluecore-footer-home-contact:focus-visible {
+  background: var(--bluecore-blue-dark);
+}
+
+/* dotted divider, rotated upright */
+.bluecore-footer-home-divider {
+  position: relative;
+  width: 1px;
+  height: 120px;
+  margin-top: 52px;
+  flex: none;
+}
+
+.bluecore-footer-home-divider img {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%) rotate(90deg);
+}
+
+/* a column of links */
+.bluecore-footer-home .bluecore-footer-section {
+  margin: 44px 92px 0 12px;
+  min-width: 0;
+}
+
+.bluecore-footer-home .bluecore-footer-heading {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 30px;
+  color: #000000;
+  text-transform: uppercase;
+}
+
+/* three links per column */
+.bluecore-footer-home .bluecore-footer-links {
+  display: grid;
+  grid-template-rows: repeat(3, 30px);
+  grid-auto-flow: column;
+  grid-auto-columns: max-content;
+  column-gap: 72px;
+  margin: 7px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.bluecore-footer-home .bluecore-footer-links .bluecore-link {
+  font-weight: 300;
+  line-height: 30px;
+}
+
+/* narrower screens: tighten, then wrap, then stack */
+@media (max-width: 1200px) {
+  .bluecore-footer-home {
+    padding-left: 40px;
+  }
+
+  .bluecore-footer-home .bluecore-footer-brand {
+    width: 230px;
+  }
+
+  .bluecore-footer-home .bluecore-footer-section {
+    margin-right: 40px;
+  }
+
+  .bluecore-footer-home .bluecore-footer-links {
+    column-gap: 40px;
+  }
+}
+
+/* logo and Contact us on top, links below */
+@media (max-width: 980px) {
+  .bluecore-footer-home {
+    flex-wrap: wrap;
+    align-content: flex-start;
+    padding: 28px 40px;
+  }
+
+  .bluecore-footer-home .bluecore-footer-brand {
+    flex-direction: row;
+    align-items: center;
+    gap: 32px;
+    width: 100%;
+  }
+
+  .bluecore-footer-home-logo,
+  .bluecore-footer-home-contact {
+    margin: 0;
+  }
+
+  .bluecore-footer-home-divider {
+    margin-top: 24px;
+  }
+
+  .bluecore-footer-home .bluecore-footer-section {
+    margin-top: 16px;
+  }
+}
+
+/* one column, no dividers */
+@media (max-width: 760px) {
+  .bluecore-footer-home {
+    padding: 24px 16px;
+  }
+
+  .bluecore-footer-home .bluecore-footer-brand {
+    flex-wrap: wrap;
+    gap: 16px 24px;
+  }
+
+  .bluecore-footer-home-divider {
+    display: none;
+  }
+
+  .bluecore-footer-home .bluecore-footer-section {
+    flex-basis: 100%;
+    margin: 20px 0 0;
+  }
+
+  .bluecore-footer-home .bluecore-footer-links {
+    grid-template-rows: none;
+    grid-auto-flow: row;
+    margin-top: 0;
+  }
+}
