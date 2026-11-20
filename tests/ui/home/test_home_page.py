@@ -117,6 +117,61 @@ def test_apps_keep_their_header_and_footer(page: Page, ui_timeout_ms: int):
 
 
 # ========================================================================
+# The apps' header and footer fit smaller screens: nothing overlapping or off
+# the side, the app menu, Logout and the footer's app list all still there.
+# ------------------------------------------------------------------------
+@pytest.mark.parametrize("slim", [False, True], ids=["full", "slim"])
+@pytest.mark.parametrize("width", [1100, 900, 600, 390, 320])
+def test_app_header_and_footer_fit_smaller_screens(
+    page: Page, ui_timeout_ms: int, width: int, slim: bool
+):
+    log_header(f"App header and footer at {width}px ({'slim' if slim else 'full'})")
+    page.set_viewport_size({"width": width, "height": 800})
+    page.goto(f"{bluecore_url()}/marva-login/", timeout=ui_timeout_ms)
+    page.evaluate(
+        """slim => {
+            const h = document.querySelector('bluecore-header');
+            h.setAttribute('app-name', 'DCTAP DANCER');
+            h.setAttribute('username', 'developer');
+            h.setAttribute('logout', '');
+            document.querySelectorAll('bluecore-header, bluecore-footer')
+                .forEach(e => e.toggleAttribute('slim', slim));
+        }""",
+        slim,
+    )
+    header = page.locator("header.bluecore-header")
+    expect(header.get_by_role("button", name="Switch applications")).to_be_visible()
+    expect(header.get_by_role("button", name="Logout")).to_be_visible()
+
+    result = page.evaluate(
+        """() => {
+            const header = document.querySelector('header.bluecore-header');
+            const brand = header.querySelector('.bluecore-header-brand');
+            const links = header.querySelector('.bluecore-header-links');
+            const footer = document.querySelector('footer.bluecore-footer');
+            return {
+                scrollWidth: document.documentElement.scrollWidth,
+                gap: links.getBoundingClientRect().left - brand.getBoundingClientRect().right,
+                header: header.getBoundingClientRect().height,
+                footer: footer.getBoundingClientRect().height,
+            };
+        }"""
+    )
+    log_expected_actual("header and footer", "fit, same heights", result)
+    assert result["scrollWidth"] <= width
+    assert result["gap"] >= 0
+    assert result["header"] == (23 if slim else 57)
+    if slim:
+        assert result["footer"] == 23
+    else:
+        # the footer grows on phones to fit its wrapping app list
+        assert result["footer"] >= 157
+        expect(page.locator(".bluecore-footer-app-list a")).to_have_text(APPS)
+        for link in page.locator(".bluecore-footer-app-list a").all():
+            expect(link).to_be_visible()
+
+
+# ========================================================================
 # Header options: custom links, Contact, and the app menu.
 # ------------------------------------------------------------------------
 def test_header_options(page: Page, ui_timeout_ms: int):

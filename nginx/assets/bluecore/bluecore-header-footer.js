@@ -250,7 +250,8 @@
       }).join('');
       return '<div class="bluecore-app-switcher">' +
         '<button type="button" class="bluecore-link bluecore-app-switcher-button" aria-haspopup="true"' +
-          ' aria-expanded="false" aria-controls="bluecore-app-menu">Switch applications' +
+          ' aria-expanded="false" aria-controls="bluecore-app-menu">' +
+          '<span class="bluecore-app-switcher-label">Switch applications</span>' +
           '<img class="bluecore-app-switcher-caret" src="' + BASE + 'caret-down.svg" alt=""/></button>' +
         '<ul id="bluecore-app-menu" class="bluecore-app-menu" hidden>' + menuItems + '</ul>' +
       '</div>';

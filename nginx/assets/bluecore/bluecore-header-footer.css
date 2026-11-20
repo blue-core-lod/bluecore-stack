@@ -384,6 +384,211 @@ bluecore-footer {
 }
 
 /* ===========================================================================================
+   App header and footer on smaller screens. Heights stay the same (apps like Marva rely
+   on them), except the footer on phones, which grows to fit its wrapping app list.
+   ========================================================================================= */
+
+@media (max-width: 1100px) {
+  .bluecore-footer:not(.bluecore-footer-home):not(.bluecore-footer-slim) {
+    padding-left: 40px;
+  }
+
+  .bluecore-footer:not(.bluecore-footer-home):not(.bluecore-footer-slim) .bluecore-footer-contact {
+    margin-left: 32px;
+  }
+
+  .bluecore-footer:not(.bluecore-footer-home):not(.bluecore-footer-slim) .bluecore-footer-divider {
+    margin-left: 48px;
+  }
+
+  .bluecore-footer:not(.bluecore-footer-home) .bluecore-footer-app-list {
+    column-gap: 24px;
+  }
+}
+
+@media (max-width: 1000px) {
+  /* "Signed in as" hides; Logout stays */
+  .bluecore-header:not(.bluecore-header-home) .bluecore-header-user {
+    display: none;
+  }
+}
+
+@media (max-width: 900px) {
+  .bluecore-header:not(.bluecore-header-home):not(.bluecore-header-slim) {
+    padding: 0 20px 0 16px;
+    align-items: center;
+  }
+
+  .bluecore-header:not(.bluecore-header-home):not(.bluecore-header-slim) .bluecore-header-brand {
+    align-items: center;
+  }
+
+  .bluecore-header:not(.bluecore-header-home):not(.bluecore-header-slim) .bluecore-header-app-name {
+    margin: 0 0 0 16px;
+  }
+
+  .bluecore-header:not(.bluecore-header-home):not(.bluecore-header-slim) .bluecore-header-divider {
+    margin-right: 12px;
+  }
+
+  .bluecore-header:not(.bluecore-header-home) .bluecore-header-links {
+    flex: none;
+    gap: 20px;
+    margin-top: 0;
+    margin-left: 12px;
+  }
+
+  /* a long app name shortens with "…" rather than running into the links */
+  .bluecore-header:not(.bluecore-header-home) .bluecore-header-brand {
+    min-width: 0;
+  }
+
+  .bluecore-header:not(.bluecore-header-home) .bluecore-header-app-name {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  /* logo and Contact us on the left, the app list on the right */
+  .bluecore-footer:not(.bluecore-footer-home):not(.bluecore-footer-slim) {
+    display: grid;
+    grid-template-columns: auto auto minmax(0, 1fr);
+    grid-template-rows: auto 1fr;
+    column-gap: 28px;
+    padding: 0 20px;
+  }
+
+  .bluecore-footer:not(.bluecore-footer-home):not(.bluecore-footer-slim) .bluecore-footer-logo {
+    grid-area: 1 / 1;
+    margin-top: 30px;
+  }
+
+  .bluecore-footer:not(.bluecore-footer-home):not(.bluecore-footer-slim) .bluecore-footer-contact {
+    grid-area: 2 / 1;
+    margin: 16px 0 0;
+  }
+
+  .bluecore-footer:not(.bluecore-footer-home):not(.bluecore-footer-slim) .bluecore-footer-divider {
+    grid-area: 1 / 2 / 3;
+    margin: 42px 0 0;
+  }
+
+  .bluecore-footer:not(.bluecore-footer-home):not(.bluecore-footer-slim) .bluecore-footer-apps {
+    grid-area: 1 / 3 / 3;
+    margin: 20px 0 0;
+  }
+
+  .bluecore-footer:not(.bluecore-footer-home):not(.bluecore-footer-slim) .bluecore-footer-app-list {
+    column-gap: 20px;
+    margin-top: 2px;
+  }
+
+  .bluecore-footer:not(.bluecore-footer-home):not(.bluecore-footer-slim) .bluecore-footer-app-list .bluecore-link {
+    line-height: 26px;
+  }
+
+  /* slim footer: no room for the app list (the header's menu has them) */
+  .bluecore-footer-slim:not(.bluecore-footer-home) .bluecore-footer-divider,
+  .bluecore-footer-slim:not(.bluecore-footer-home) .bluecore-footer-apps {
+    display: none;
+  }
+}
+
+@media (max-width: 640px) {
+  /* Contact hides from the header (the footer has Contact us) */
+  .bluecore-header:not(.bluecore-header-home) .bluecore-header-links > a[href^="mailto:"] {
+    display: none;
+  }
+
+  /* the menu says "Apps" (screen readers still hear "Switch applications") */
+  .bluecore-header:not(.bluecore-header-home) .bluecore-app-switcher-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  .bluecore-header:not(.bluecore-header-home) .bluecore-app-switcher-button::before {
+    content: 'Apps';
+  }
+
+  .bluecore-header:not(.bluecore-header-home):not(.bluecore-header-slim) .bluecore-header-app-name {
+    font-size: 20px;
+  }
+
+  /* footer: logo and Contact us stay left; the app list wraps on the right (the footer grows) */
+  .bluecore-footer:not(.bluecore-footer-home):not(.bluecore-footer-slim) {
+    height: auto !important;
+    min-height: 157px;
+    padding-bottom: 16px;
+  }
+}
+
+@media (max-width: 480px) {
+  /* smaller logo */
+  .bluecore-header:not(.bluecore-header-home):not(.bluecore-header-slim) .bluecore-logo {
+    width: 116px !important;
+  }
+
+  .bluecore-header:not(.bluecore-header-home):not(.bluecore-header-slim) .bluecore-header-app-name {
+    margin-left: 10px;
+    font-size: 17px;
+  }
+
+  .bluecore-header:not(.bluecore-header-home):not(.bluecore-header-slim) .bluecore-header-divider {
+    margin-right: 8px;
+  }
+
+  .bluecore-header:not(.bluecore-header-home) .bluecore-header-links {
+    gap: 14px;
+  }
+
+  .bluecore-header-slim:not(.bluecore-header-home) {
+    padding: 0 8px;
+  }
+
+  .bluecore-footer-slim:not(.bluecore-footer-home) .bluecore-footer-contact {
+    margin-left: 10px;
+  }
+
+  /* smaller logo and Contact us, no divider, to leave room for the app list */
+  .bluecore-footer:not(.bluecore-footer-home):not(.bluecore-footer-slim) {
+    column-gap: 20px;
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+
+  .bluecore-footer:not(.bluecore-footer-home):not(.bluecore-footer-slim) .bluecore-footer-logo .bluecore-logo {
+    width: 130px !important;
+  }
+
+  .bluecore-footer:not(.bluecore-footer-home):not(.bluecore-footer-slim) .bluecore-footer-contact {
+    width: 130px;
+    font-size: 16px;
+  }
+
+  .bluecore-footer:not(.bluecore-footer-home):not(.bluecore-footer-slim) .bluecore-footer-divider {
+    display: none;
+  }
+}
+
+@media (max-width: 360px) {
+  .bluecore-header:not(.bluecore-header-home):not(.bluecore-header-slim) {
+    padding: 0 12px;
+  }
+
+  .bluecore-header:not(.bluecore-header-home):not(.bluecore-header-slim) .bluecore-logo {
+    width: 100px !important;
+  }
+
+  .bluecore-header:not(.bluecore-header-home):not(.bluecore-header-slim) .bluecore-header-app-name {
+    font-size: 15px;
+  }
+}
+
+/* ===========================================================================================
    Homepage header and footer (variant="home"). Doesn't affect the apps.
    ========================================================================================= */
 
