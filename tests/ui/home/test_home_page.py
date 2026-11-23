@@ -360,6 +360,24 @@ def test_login_panel_starts_hidden(page: Page, ui_timeout_ms: int):
 
 
 # ========================================================================
+# A slow login check shows "Checking your login…", then the form.
+# ------------------------------------------------------------------------
+def test_slow_login_check_shows_loading(page: Page, ui_timeout_ms: int):
+    log_header("Homepage login panel, slow login check")
+    page.route(
+        "**/protocol/openid-connect/auth?*",
+        lambda route: (page.wait_for_timeout(1500), route.continue_()),
+    )
+    page.goto(home_url(), timeout=ui_timeout_ms)
+    loading = page.get_by_role("status").filter(has_text="Checking your login")
+    expect(loading).to_be_visible(timeout=ui_timeout_ms)
+    expect(page.locator("#home-login-form")).not_to_be_visible()
+
+    expect(loading).to_be_hidden(timeout=ui_timeout_ms)
+    expect(page.locator("#home-login-form")).to_be_visible()
+
+
+# ========================================================================
 # Empty login fields are flagged.
 # ------------------------------------------------------------------------
 def test_empty_login_is_flagged(page: Page, ui_timeout_ms: int):
