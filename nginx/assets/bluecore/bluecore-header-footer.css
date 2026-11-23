@@ -684,13 +684,17 @@ bluecore-footer {
   text-transform: uppercase;
 }
 
+.bluecore-footer-home .bluecore-footer-section:first-of-type {
+  min-width: 528px;
+}
+
 /* three links per column */
 .bluecore-footer-home .bluecore-footer-links {
   display: grid;
   grid-template-rows: repeat(3, 30px);
   grid-auto-flow: column;
-  grid-auto-columns: max-content;
-  column-gap: 72px;
+  grid-auto-columns: minmax(192px, max-content);
+  column-gap: 70px;
   margin: 7px 0 0;
   padding: 0;
   list-style: none;
@@ -715,7 +719,12 @@ bluecore-footer {
     margin-right: 40px;
   }
 
+  .bluecore-footer-home .bluecore-footer-section:first-of-type {
+    min-width: 0;
+  }
+
   .bluecore-footer-home .bluecore-footer-links {
+    grid-auto-columns: max-content;
     column-gap: 40px;
   }
 }
