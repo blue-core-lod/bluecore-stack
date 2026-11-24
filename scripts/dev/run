@@ -18,7 +18,7 @@ set -euo pipefail
 ##
 ## No subset flag = everything. Subset flags are ignored in --image mode.
 ## Your local bluecore-models is used by the API and Airflow; your local
-## bluecore-airflow-common and Graph Toolbox (nginx/toolbox) by Airflow.
+## bluecore-airflow-common and graph-toolbox (Airflow plugin) by Airflow.
 ################################################################################
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
@@ -74,6 +74,8 @@ for repo_dir in \
   "$LOCAL_BLUECORE_AIRFLOW_COMMON_DIR"; do
   is_checkout "$repo_dir" || missing+=("$(basename "$repo_dir")  ($repo_dir)")
 done
+# Nginx serves the old static Toolbox site from the pinned nginx/toolbox submodule.
+is_checkout "$ROOT_DIR/nginx/toolbox" || missing+=("nginx/toolbox submodule  ($ROOT_DIR/nginx/toolbox)")
 if [[ "${#missing[@]}" -gt 0 ]]; then
   echo "❌ Missing Blue Core repo(s):" >&2
   printf '   %s\n' "${missing[@]}" >&2

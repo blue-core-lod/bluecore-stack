@@ -18,7 +18,7 @@
 ##   LOCAL_SINOPIA_DIR             -> sinopia_editor repo
 ##   LOCAL_DCTAP_DANCER_DIR        -> dctap-dancer repo (blue-core-lod fork)
 ##   LOCAL_BLUECORE_AIRFLOW_COMMON_DIR -> bluecore-airflow-common repo
-##   LOCAL_GRAPH_TOOLBOX_DIR       -> graph-toolbox (nginx/toolbox submodule)
+##   LOCAL_GRAPH_TOOLBOX_DIR       -> graph-toolbox repo (Airflow plugin)
 ##
 ## Defaults live in scripts/dev/local-repo-paths. scripts/dev/run is the
 ## intended entrypoint.
@@ -57,8 +57,8 @@ x-workflows-local: &workflows-local
     - ${LOCAL_BLUECORE_WORKFLOWS_DIR}/ils_middleware:/opt/airflow/ils_middleware
     - ${LOCAL_BLUECORE_MODELS_DIR}/src:/bluecore_models/src
     - ${LOCAL_BLUECORE_AIRFLOW_COMMON_DIR}/src:/bluecore_airflow_common/src
-    # Graph Toolbox from your checkout (nginx/toolbox by default). The whole folder
-    # is mounted so files replaced by git or an editor still show up.
+    # Graph Toolbox Airflow plugin from ../graph-toolbox (not the nginx/toolbox submodule).
+    # The whole folder is mounted so files replaced by git or an editor still show up.
     - ${LOCAL_GRAPH_TOOLBOX_DIR}:/bluecore_graph_toolbox
     # Registers the Toolbox plugin with Airflow (no pip install needed).
     - ./scripts/dev/airflow-plugins/graph_toolbox.py:/opt/airflow/plugins/graph_toolbox.py:ro

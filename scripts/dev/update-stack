@@ -137,8 +137,7 @@ Updates sibling Blue Core repositories:
   marva_editor          base branch: bluecore-dev-mvp
   dctap-dancer          base branch: bluecore-dev-mvp
   bluecore-airflow-common base branch: main
-  toolbox (graph-toolbox, submodule at nginx/toolbox)
-                        base branch: main
+  graph-toolbox         base branch: main  (the Airflow plugin)
 
 Repository paths default to the standard sibling layout and can be overridden
 with LOCAL_BLUECORE_API_DIR, LOCAL_BLUECORE_WORKFLOWS_DIR,
@@ -146,12 +145,8 @@ LOCAL_BLUECORE_MODELS_DIR, LOCAL_MARVA_DIR, LOCAL_SINOPIA_DIR,
 LOCAL_DCTAP_DANCER_DIR, LOCAL_BLUECORE_AIRFLOW_COMMON_DIR, and
 LOCAL_GRAPH_TOOLBOX_DIR.
 
-graph-toolbox is a submodule rather than a sibling checkout, so it differs:
-  - --install initializes it (git submodule update --init), never clones it.
-  - --check compares the pinned commit against origin/main, and an
-    update checks out the base branch before pulling.
-  - Updating it moves bluecore-stack's recorded submodule pointer; commit that
-    bump here or the next `git submodule update` discards the update.
+The nginx/toolbox submodule (old static Toolbox site) stays pinned:
+  - --install initializes it at the pinned commit; --check and updates skip it.
 
 Behavior:
   - With --install, clone any missing sibling repositories into the expected
@@ -708,6 +703,9 @@ update_repo() {
 if [[ "$install_missing" == "1" && "$check_only" != "1" ]]; then
   info "Installing missing Blue Core sibling repositories"
   ensure_stack_env || { err "    failed: seeding bluecore-stack .env"; failed=$((failed + 1)); failed_repos+=("bluecore-stack"); }
+  # Old static Toolbox site for Nginx: pinned until the plugin refactor (graph-toolbox #37).
+  install_only_repo "$ROOT_DIR/nginx/toolbox" "" "" \
+    || { err "    failed: nginx/toolbox submodule"; failed=$((failed + 1)); failed_repos+=("nginx/toolbox"); }
 elif [[ "$check_only" == "1" ]]; then
   info "Checking Blue Core sibling repositories for new base-branch changes"
 else

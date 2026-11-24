@@ -14,9 +14,9 @@
 : "${LOCAL_DCTAP_DANCER_DIR:=$ROOT_DIR/../dctap-dancer}"
 : "${LOCAL_BLUECORE_AIRFLOW_COMMON_DIR:=$ROOT_DIR/../bluecore-airflow-common}"
 
-# graph-toolbox is a submodule of this repo, not a sibling checkout, so it lives
-# under nginx/ rather than alongside bluecore-stack.
-: "${LOCAL_GRAPH_TOOLBOX_DIR:=$ROOT_DIR/nginx/toolbox}"
+# The Graph Toolbox Airflow plugin. Not the nginx/toolbox submodule: that stays
+# pinned to the old static site until the plugin refactor (graph-toolbox #37) is done.
+: "${LOCAL_GRAPH_TOOLBOX_DIR:=$ROOT_DIR/../graph-toolbox}"
 
 export LOCAL_BLUECORE_API_DIR
 export LOCAL_BLUECORE_WORKFLOWS_DIR

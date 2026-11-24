@@ -48,7 +48,7 @@ export LOCAL_MARVA_DIR=/path/to/marva_editor
 export LOCAL_SINOPIA_DIR=/path/to/sinopia_editor
 export LOCAL_DCTAP_DANCER_DIR=/path/to/dctap-dancer
 export LOCAL_BLUECORE_AIRFLOW_COMMON_DIR=/path/to/bluecore-airflow-common
-export LOCAL_GRAPH_TOOLBOX_DIR=/path/to/graph-toolbox  # defaults to nginx/toolbox (submodule)
+export LOCAL_GRAPH_TOOLBOX_DIR=/path/to/graph-toolbox  # the Airflow plugin
 ```
 `scripts/dev/run`, `scripts/dev/update-stack`, and `scripts/dev/load-data` use 
 the `local-repo-paths`.
@@ -69,7 +69,7 @@ The script knows the default repository paths and base branches:
 | `marva_editor` | `LOCAL_MARVA_DIR` | sibling `../marva_editor` | `bluecore-dev-mvp` |
 | `dctap-dancer` | `LOCAL_DCTAP_DANCER_DIR` | sibling `../dctap-dancer` | `bluecore-dev-mvp` |
 | `bluecore-airflow-common` | `LOCAL_BLUECORE_AIRFLOW_COMMON_DIR` | sibling `../bluecore-airflow-common` | `main` |
-| `graph-toolbox` | `LOCAL_GRAPH_TOOLBOX_DIR` | **submodule** `nginx/toolbox` | `main` |
+| `graph-toolbox` (Airflow plugin) | `LOCAL_GRAPH_TOOLBOX_DIR` | sibling `../graph-toolbox` | `main` |
 
 ```bash
 ./scripts/dev/update-stack --install  # clone missing repos, init the submodule, seed .env files
@@ -83,8 +83,8 @@ The script knows the default repository paths and base branches:
 `--install` only installs; it never pulls, merges, or rebases a repo that is 
 already present. For each repository it:
 
-- clones the repo at its base branch if the checkout is missing (or, for 
-  `graph-toolbox`, initializes the submodule... see below);
+- clones the repo at its base branch if the checkout is missing, and
+  initializes the `nginx/toolbox` submodule at its pinned commit;
 - generates the repo's `.env` from `scripts/dev/env-templates/<repo>.env` when 
   the repo has no `.env` yet. Existing `.env` files are never overwritten, and 
   repos without a template (`bluecore-models`) are left alone. See 
