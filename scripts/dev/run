@@ -17,9 +17,8 @@ set -euo pipefail
 ##   ./scripts/dev/run --marva --sinopia   # combine as needed
 ##
 ## No subset flag = everything. Subset flags are ignored in --image mode.
-## bluecore-models is mounted into the local API and Airflow services automatically;
-## bluecore-airflow-common and the graph-toolbox plugin (nginx/toolbox, whatever
-## branch it's on) into the Airflow services.
+## Your local bluecore-models is used by the API and Airflow; your local
+## bluecore-airflow-common and Graph Toolbox (nginx/toolbox) by Airflow.
 ################################################################################
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
