@@ -47,7 +47,8 @@ export LOCAL_BLUECORE_MODELS_DIR=/path/to/bluecore-models
 export LOCAL_MARVA_DIR=/path/to/marva_editor
 export LOCAL_SINOPIA_DIR=/path/to/sinopia_editor
 export LOCAL_DCTAP_DANCER_DIR=/path/to/dctap-dancer
-export LOCAL_GRAPH_TOOLBOX_DIR=/path/to/graph-toolbox  # defaults to nginx/toolbox (submodule)
+export LOCAL_BLUECORE_AIRFLOW_COMMON_DIR=/path/to/bluecore-airflow-common
+export LOCAL_GRAPH_TOOLBOX_DIR=/path/to/graph-toolbox  # the Airflow plugin
 ```
 `scripts/dev/run`, `scripts/dev/update-stack`, and `scripts/dev/load-data` use 
 the `local-repo-paths`.
@@ -67,7 +68,8 @@ The script knows the default repository paths and base branches:
 | `sinopia_editor` | `LOCAL_SINOPIA_DIR` | sibling `../sinopia_editor` | `main` |
 | `marva_editor` | `LOCAL_MARVA_DIR` | sibling `../marva_editor` | `bluecore-dev-mvp` |
 | `dctap-dancer` | `LOCAL_DCTAP_DANCER_DIR` | sibling `../dctap-dancer` | `bluecore-dev-mvp` |
-| `graph-toolbox` | `LOCAL_GRAPH_TOOLBOX_DIR` | **submodule** `nginx/toolbox` | `main` |
+| `bluecore-airflow-common` | `LOCAL_BLUECORE_AIRFLOW_COMMON_DIR` | sibling `../bluecore-airflow-common` | `main` |
+| `graph-toolbox` (Airflow plugin) | `LOCAL_GRAPH_TOOLBOX_DIR` | sibling `../graph-toolbox` | `main` |
 
 ```bash
 ./scripts/dev/update-stack --install  # clone missing repos, init the submodule, seed .env files
@@ -81,8 +83,8 @@ The script knows the default repository paths and base branches:
 `--install` only installs; it never pulls, merges, or rebases a repo that is 
 already present. For each repository it:
 
-- clones the repo at its base branch if the checkout is missing (or, for 
-  `graph-toolbox`, initializes the submodule... see below);
+- clones the repo at its base branch if the checkout is missing, and
+  initializes the `nginx/toolbox` submodule at its pinned commit;
 - generates the repo's `.env` from `scripts/dev/env-templates/<repo>.env` when 
   the repo has no `.env` yet. Existing `.env` files are never overwritten, and 
   repos without a template (`bluecore-models`) are left alone. See 
@@ -112,6 +114,27 @@ already present. For each repository it:
   If you leave it unstaged, the next `git submodule update` (or a fresh clone) 
   resets `nginx/toolbox` back to the old pinned commit and your update is 
   discarded.
+
+### 🧰 Graph Toolbox and airflow-common in local Airflow
+
+In local mode, the Airflow services run your local checkouts of
+`bluecore-airflow-common` and `graph-toolbox` instead of the versions in the
+Workflows image. Their `src/` folders are mounted and put first on `PYTHONPATH`,
+and `scripts/dev/airflow-plugins/graph_toolbox.py` is mounted into Airflow's
+plugins folder to register the Toolbox plugin, so no pip install is needed.
+
+- Whatever branch each checkout is on is what runs. `update-stack` keeps them on
+  the latest `main`; switch branches in `nginx/toolbox` or
+  `../bluecore-airflow-common` to try other work.
+- Open the Toolbox at http://localhost/workflows/graph-toolbox/ (log in at
+  `/workflows/` first) or from the Toolbox item in Airflow's nav.
+- The Airflow API server runs with hot reload in local mode
+  (`scripts/dev/airflow-apiserver-reload.py`). Python, template and CSS/JS
+  edits in the Toolbox, `bluecore-airflow-common` or
+  `bluecore-workflows/ils_middleware/plugins`, and branch switches in those
+  checkouts, restart it automatically. Refresh the page after a few seconds.
+- The Toolbox's version (landing page, `/health`) comes from the checkout's
+  `pyproject.toml`, since the package isn't pip-installed in this mode.
 
 ## 🚀 Run the Stack
 

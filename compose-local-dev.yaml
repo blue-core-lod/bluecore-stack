@@ -17,11 +17,13 @@
 ##   LOCAL_MARVA_DIR               -> marva_editor repo
 ##   LOCAL_SINOPIA_DIR             -> sinopia_editor repo
 ##   LOCAL_DCTAP_DANCER_DIR        -> dctap-dancer repo (blue-core-lod fork)
+##   LOCAL_BLUECORE_AIRFLOW_COMMON_DIR -> bluecore-airflow-common repo
+##   LOCAL_GRAPH_TOOLBOX_DIR       -> graph-toolbox repo (Airflow plugin)
 ##
 ## Defaults live in scripts/dev/local-repo-paths. scripts/dev/run is the
 ## intended entrypoint.
 ## To run `docker compose -f compose-local-dev.yaml up --build` directly instead,
-## set those six vars yourself (env or a .env file in this directory).
+## set those eight vars yourself (env or a .env file in this directory).
 ################################################################################
 
 
@@ -46,10 +48,22 @@ x-workflows-local: &workflows-local
     AIRFLOW__API_AUTH__JWT_SECRET: bluecore-dev-jwt-secret
     AIRFLOW__API__SECRET_KEY: bluecore-dev-flask-secret
     AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: "false"
-    PYTHONPATH: /bluecore_models/src:/opt/airflow
+    # How the plugins reach the Blue Core API and Airflow inside Docker.
+    BLUECORE_API_INTERNAL_URL: ${BLUECORE_API_INTERNAL_URL:-http://bc_api:8100}
+    AIRFLOW_API_INTERNAL_URL: ${AIRFLOW_API_INTERNAL_URL:-http://airflow-apiserver:8080/workflows}
+    # Use your local code instead of the versions installed in the image.
+    PYTHONPATH: /bluecore_models/src:/bluecore_airflow_common/src:/bluecore_graph_toolbox/src:/opt/airflow
   volumes:
     - ${LOCAL_BLUECORE_WORKFLOWS_DIR}/ils_middleware:/opt/airflow/ils_middleware
     - ${LOCAL_BLUECORE_MODELS_DIR}/src:/bluecore_models/src
+    - ${LOCAL_BLUECORE_AIRFLOW_COMMON_DIR}/src:/bluecore_airflow_common/src
+    # Graph Toolbox Airflow plugin from ../graph-toolbox (not the nginx/toolbox submodule).
+    # The whole folder is mounted so files replaced by git or an editor still show up.
+    - ${LOCAL_GRAPH_TOOLBOX_DIR}:/bluecore_graph_toolbox
+    # Registers the Toolbox plugin with Airflow (no pip install needed).
+    - ./scripts/dev/airflow-plugins/graph_toolbox.py:/opt/airflow/plugins/graph_toolbox.py:ro
+    # Starts the API server with hot reload (see airflow-apiserver below).
+    - ./scripts/dev/airflow-apiserver-reload.py:/opt/bluecore-dev/airflow-apiserver-reload.py:ro
 
 services:
   # --- Python: build the local Dockerfile (for deps), mount src, run autoreload ---
@@ -85,7 +99,11 @@ services:
       - ${LOCAL_BLUECORE_API_DIR}/uv.lock:/bluecore_api/uv.lock:ro
       - ${LOCAL_BLUECORE_MODELS_DIR}/src:/bluecore_models/src
 
-  airflow-apiserver:     { <<: *workflows-local }
+  # Restarts by itself when plugin code, templates or CSS/JS change.
+  # See scripts/dev/airflow-apiserver-reload.py.
+  airflow-apiserver:
+    <<: *workflows-local
+    command: ["python", "/opt/bluecore-dev/airflow-apiserver-reload.py"]
   airflow-scheduler:     { <<: *workflows-local }
   airflow-dag-processor: { <<: *workflows-local }
   airflow-worker:        { <<: *workflows-local }
