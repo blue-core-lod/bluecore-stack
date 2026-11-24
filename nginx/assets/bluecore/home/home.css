@@ -89,7 +89,7 @@ bluecore-footer[variant='home'] {
   content: '';
   flex: 1 1 426px;
   height: 1px;
-  background: url('heading-line.svg') no-repeat center / 100% 1px;
+  background: var(--home-heading-line) no-repeat center / 100% 1px;
 }
 
 /* space above each section's heading */
@@ -616,7 +616,7 @@ bluecore-footer[variant='home'] {
 .home-app-group li + li {
   margin-top: 40px;
   padding-top: 40px;
-  background: url('card-divider.svg') no-repeat 156px 0 / 304px 1px;
+  background: var(--home-card-divider) no-repeat 156px 0 / 304px 1px;
 }
 
 .home-app {
@@ -635,18 +635,14 @@ bluecore-footer[variant='home'] {
   margin-top: 2px;
 }
 
-.home-app-icon img {
-  display: block;
-}
-
-/* edit and workflows icons are two images stacked */
+/* edit and workflows icons are two images stacked (the images are in home-images.css) */
 .home-icon-edit {
   width: 33px;
   height: 33px;
 }
 
-.home-icon-edit img,
-.home-icon-workflows img {
+.home-icon-edit .home-icon-img,
+.home-icon-workflows .home-icon-img {
   position: absolute;
 }
 
@@ -695,14 +691,13 @@ bluecore-footer[variant='home'] {
   line-height: 30px;
 }
 
+/* The version is filled in after the page loads, so its line is always there
+   (even while empty) and the cards don't shift when it appears. */
 .home-app .version {
+  min-height: 20px;
   font-size: 13px;
   line-height: 20px;
   color: var(--bluecore-blue-light);
-}
-
-.home-app .version:empty {
-  display: none;
 }
 
 .home-app:hover .home-app-name,
@@ -847,7 +842,7 @@ bluecore-footer[variant='home'] {
   grid-row: 1;
   width: var(--timeline-arrow);
   height: 10.667px;
-  background: url('timeline-arrow.svg') no-repeat center / 100% 100%;
+  background: var(--home-timeline-arrow) no-repeat center / 100% 100%;
 }
 
 .home-timeline li:nth-child(odd)::before {
@@ -860,7 +855,7 @@ bluecore-footer[variant='home'] {
   width: calc(var(--timeline-arrow) + 10px);
   margin-left: -10px;
   background:
-    url('timeline-arrow.svg') no-repeat right center / var(--timeline-arrow) 100%,
+    var(--home-timeline-arrow) no-repeat right center / var(--timeline-arrow) 100%,
     linear-gradient(#15489b, #15489b) no-repeat left center / 10px 2px;
 }
 

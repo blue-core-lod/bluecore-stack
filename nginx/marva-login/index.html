@@ -14,6 +14,8 @@
         } catch (e) { /* storage blocked: signed out */ }
     </script>
     <!-- defines <bluecore-header> and <bluecore-footer>, and loads their CSS -->
+    <!-- the shared styles and fonts, loaded here so the page's first look is already styled -->
+    <link rel="stylesheet" href="/assets/bluecore/bluecore-header-footer.css" data-bluecore-header-footer>
     <script src="/assets/bluecore/bluecore-header-footer.js"></script>
     <style>
         html.bluecore-checking-session body { visibility: hidden; }

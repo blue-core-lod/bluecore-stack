@@ -4,9 +4,13 @@
     <meta charset="utf-8"/>
     <meta name="viewport" content="width=device-width, initial-scale=1"/>
     <title>Blue Core</title>
-    <!-- defines <bluecore-header> and <bluecore-footer>, and loads their CSS -->
+    <!-- the shared styles and fonts, loaded here so the page's first look is already styled -->
+    <link rel="stylesheet" href="/assets/bluecore/bluecore-header-footer.css" data-bluecore-header-footer>
+    <!-- defines <bluecore-header> and <bluecore-footer> -->
     <script src="/assets/bluecore/bluecore-header-footer.js"></script>
     <link rel="stylesheet" href="/assets/bluecore/home/home.css">
+    <!-- app icons and dotted lines, built into this stylesheet so they show with the page -->
+    <link rel="stylesheet" href="/assets/bluecore/home/home-images.css">
 </head>
 <body>
 <bluecore-header variant="home"></bluecore-header>
@@ -144,8 +148,8 @@
                 <ul>
                     <li><a class="home-app" href="/sinopia/" data-probe="/sinopia/health">
                         <span class="home-app-icon home-icon-edit" aria-hidden="true">
-                            <img class="home-icon-edit-box" src="/assets/bluecore/home/icons/edit-box.svg" alt="" width="32" height="32">
-                            <img class="home-icon-edit-pen" src="/assets/bluecore/home/icons/edit-pen.svg" alt="" width="26" height="27">
+                            <span class="home-icon-img home-icon-edit-box"></span>
+                            <span class="home-icon-img home-icon-edit-pen"></span>
                         </span>
                         <span class="home-app-name">Sinopia</span>
                         <span class="home-app-sub">Create and manage BIBFRAME descriptions.</span>
@@ -154,8 +158,8 @@
                     <li><a class="home-app" href="/marva-login/" data-probe="/marva/health"
                            data-extra-version-probe="/marva/dancer/api/health" data-extra-version-label="DCTap Version">
                         <span class="home-app-icon home-icon-edit" aria-hidden="true">
-                            <img class="home-icon-edit-box" src="/assets/bluecore/home/icons/edit-box.svg" alt="" width="32" height="32">
-                            <img class="home-icon-edit-pen" src="/assets/bluecore/home/icons/edit-pen.svg" alt="" width="26" height="27">
+                            <span class="home-icon-img home-icon-edit-box"></span>
+                            <span class="home-icon-img home-icon-edit-pen"></span>
                         </span>
                         <span class="home-app-name">Marva</span>
                         <span class="home-app-sub">Create and manage BIBFRAME descriptions.</span>
@@ -163,7 +167,7 @@
                     </a></li>
                     <li><a class="home-app" href="/toolbox/" data-probe="/toolbox/">
                         <span class="home-app-icon" aria-hidden="true">
-                            <img src="/assets/bluecore/home/icons/toolbox.svg" alt="" width="36" height="36">
+                            <span class="home-icon-img home-icon-toolbox"></span>
                         </span>
                         <span class="home-app-name">Graph Toolbox</span>
                         <span class="home-app-sub">Explore, query, and visualize graph data.</span>
@@ -176,7 +180,7 @@
                 <ul>
                     <li><a class="home-app" href="/api/docs" data-probe="/api/health">
                         <span class="home-app-icon" aria-hidden="true">
-                            <img src="/assets/bluecore/home/icons/api.svg" alt="" width="47" height="32">
+                            <span class="home-icon-img home-icon-api"></span>
                         </span>
                         <span class="home-app-name home-app-name-caps">API</span>
                         <span class="home-app-sub">Blue Core API</span>
@@ -184,15 +188,15 @@
                     </a></li>
                     <li><a class="home-app" href="/keycloak/" data-probe="/keycloak/">
                         <span class="home-app-icon" aria-hidden="true">
-                            <img class="home-icon-keycloak" src="/assets/bluecore/home/icons/keycloak.png" alt="" width="48" height="48">
+                            <span class="home-icon-img home-icon-keycloak"></span>
                         </span>
                         <span class="home-app-name home-app-name-caps">Keycloak</span>
                         <span class="home-app-sub">Manage realms, clients, and identity flows.</span>
                     </a></li>
                     <li><a class="home-app" href="/workflows/" data-probe="/workflows/health">
                         <span class="home-app-icon home-icon-workflows" aria-hidden="true">
-                            <img class="home-icon-workflows-arrows" src="/assets/bluecore/home/icons/workflows-arrows.svg" alt="" width="31" height="24">
-                            <img class="home-icon-workflows-heads" src="/assets/bluecore/home/icons/workflows-heads.svg" alt="" width="7" height="32">
+                            <span class="home-icon-img home-icon-workflows-arrows"></span>
+                            <span class="home-icon-img home-icon-workflows-heads"></span>
                         </span>
                         <span class="home-app-name home-app-name-caps">Workflows</span>
                         <span class="home-app-sub">Trigger, monitor, and debug pipelines.</span>
