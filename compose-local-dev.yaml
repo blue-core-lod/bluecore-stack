@@ -64,8 +64,11 @@ x-workflows-local: &workflows-local
     # submodule by default). The shim in the plugins folder registers it, so
     # it shows at http://localhost/workflows/graph-toolbox/ with no pip install.
     # The API server reloads on edits (see airflow-apiserver below).
-    - ${LOCAL_GRAPH_TOOLBOX_DIR}/src:/bluecore_graph_toolbox/src
-    - ${LOCAL_GRAPH_TOOLBOX_DIR}/pyproject.toml:/bluecore_graph_toolbox/pyproject.toml:ro
+    # The whole checkout, not src + a single-file pyproject.toml mount: a
+    # single-file mount pins the original file, so it goes stale as soon as an
+    # editor or git replaces it. Only src/ is on PYTHONPATH; the shim reads the
+    # version from pyproject.toml.
+    - ${LOCAL_GRAPH_TOOLBOX_DIR}:/bluecore_graph_toolbox
     - ./scripts/dev/airflow-plugins/graph_toolbox.py:/opt/airflow/plugins/graph_toolbox.py:ro
     # Hot-reload launcher, used only by airflow-apiserver's command below.
     - ./scripts/dev/airflow-apiserver-reload.py:/opt/bluecore-dev/airflow-apiserver-reload.py:ro
