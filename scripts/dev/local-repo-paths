@@ -13,6 +13,7 @@
 : "${LOCAL_SINOPIA_DIR:=$ROOT_DIR/../sinopia_editor}"
 : "${LOCAL_DCTAP_DANCER_DIR:=$ROOT_DIR/../dctap-dancer}"
 : "${LOCAL_BLUECORE_AIRFLOW_COMMON_DIR:=$ROOT_DIR/../bluecore-airflow-common}"
+: "${LOCAL_MARC_BIBFRAME_DIR:=$ROOT_DIR/../marc-bibframe}"
 
 # The Graph Toolbox Airflow plugin. Not the nginx/toolbox submodule: that stays
 # pinned to the old static site until the plugin refactor (graph-toolbox #37) is done.
@@ -25,4 +26,5 @@ export LOCAL_MARVA_DIR
 export LOCAL_SINOPIA_DIR
 export LOCAL_DCTAP_DANCER_DIR
 export LOCAL_BLUECORE_AIRFLOW_COMMON_DIR
+export LOCAL_MARC_BIBFRAME_DIR
 export LOCAL_GRAPH_TOOLBOX_DIR

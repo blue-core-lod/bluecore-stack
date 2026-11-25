@@ -19,11 +19,13 @@
 ##   LOCAL_DCTAP_DANCER_DIR        -> dctap-dancer repo (blue-core-lod fork)
 ##   LOCAL_BLUECORE_AIRFLOW_COMMON_DIR -> bluecore-airflow-common repo
 ##   LOCAL_GRAPH_TOOLBOX_DIR       -> graph-toolbox repo (Airflow plugin)
+##   LOCAL_MARC_BIBFRAME_DIR       -> marc-bibframe repo (its src/ shadows the
+##                                    PyPI release in bc_api and Airflow)
 ##
 ## Defaults live in scripts/dev/local-repo-paths. scripts/dev/run is the
 ## intended entrypoint.
 ## To run `docker compose -f compose-local-dev.yaml up --build` directly instead,
-## set those eight vars yourself (env or a .env file in this directory).
+## set those nine vars yourself (env or a .env file in this directory).
 ################################################################################
 
 
@@ -52,10 +54,11 @@ x-workflows-local: &workflows-local
     BLUECORE_API_INTERNAL_URL: ${BLUECORE_API_INTERNAL_URL:-http://bc_api:8100}
     AIRFLOW_API_INTERNAL_URL: ${AIRFLOW_API_INTERNAL_URL:-http://airflow-apiserver:8080/workflows}
     # Use your local code instead of the versions installed in the image.
-    PYTHONPATH: /bluecore_models/src:/bluecore_airflow_common/src:/bluecore_graph_toolbox/src:/opt/airflow
+    PYTHONPATH: /marc_bibframe/src:/bluecore_models/src:/bluecore_airflow_common/src:/bluecore_graph_toolbox/src:/opt/airflow
   volumes:
     - ${LOCAL_BLUECORE_WORKFLOWS_DIR}/ils_middleware:/opt/airflow/ils_middleware
     - ${LOCAL_BLUECORE_MODELS_DIR}/src:/bluecore_models/src
+    - ${LOCAL_MARC_BIBFRAME_DIR}/src:/marc_bibframe/src
     - ${LOCAL_BLUECORE_AIRFLOW_COMMON_DIR}/src:/bluecore_airflow_common/src
     # Graph Toolbox Airflow plugin from ../graph-toolbox (not the nginx/toolbox submodule).
     # The whole folder is mounted so files replaced by git or an editor still show up.
@@ -84,6 +87,7 @@ services:
         uvicorn bluecore_api.app.main:application
         --host 0.0.0.0 --port 8100 --root-path /api
         --reload --reload-dir /bluecore_api/src --reload-dir /bluecore_models/src
+        --reload-dir /marc_bibframe/src
     # Browser-facing URLs baked into the HTML view's "Load to Marva/Sinopia"
     # links (and internal-link detection). Without these the API falls back to
     # its dev.bcld.info defaults; point them at the local Nginx routes instead.
@@ -92,12 +96,13 @@ services:
       BLUECORE_URL: http://localhost/
       MARVA_BASE_URL: http://localhost/marva/
       SINOPIA_BASE_URL: http://localhost/sinopia/
-      PYTHONPATH: /bluecore_models/src:/bluecore_api/src
+      PYTHONPATH: /marc_bibframe/src:/bluecore_models/src:/bluecore_api/src
     volumes:
       - ${LOCAL_BLUECORE_API_DIR}/src:/bluecore_api/src
       - ${LOCAL_BLUECORE_API_DIR}/pyproject.toml:/bluecore_api/pyproject.toml:ro
       - ${LOCAL_BLUECORE_API_DIR}/uv.lock:/bluecore_api/uv.lock:ro
       - ${LOCAL_BLUECORE_MODELS_DIR}/src:/bluecore_models/src
+      - ${LOCAL_MARC_BIBFRAME_DIR}/src:/marc_bibframe/src
 
   # Restarts by itself when plugin code, templates or CSS/JS change.
   # See scripts/dev/airflow-apiserver-reload.py.
